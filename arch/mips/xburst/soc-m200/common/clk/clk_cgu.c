@@ -431,12 +431,15 @@ void __init init_cgu_clk(struct clk *clk)
 		clk->ops = NULL;
 	else if(no == CGU_DDR){
 		clk->ops = &clk_ddr_ops;
-		/*
-		 * DDR request cpm to stop clk  (4 << 16)
-		 * CPM response ddr stop clk request (1 << 24)
-		 */
-		if(ddr_readl(DDRP_PIR) & DDRP_PIR_DLLBYP)
-			cpm_set_bit(24,CPM_DDRCDR);
+		if(ddr_readl(DDRP_PIR) & DDRP_PIR_DLLBYP){
+                    /**
+                     * DDR request cpm to stop clk
+                     * (0x9 << 28) DDR_CLKSTP_CFG (0x13012068)
+                     * CPM response ddr stop clk request (1 << 26) (0x1000002c)
+                     */
+                    cpm_set_bit(26,CPM_DDRCDR);
+                    REG32(0xb3012068) |= 0x9 << 28;
+                }
 		REG32(0xb3012088) |= 4 << 16;
 	}
 	else

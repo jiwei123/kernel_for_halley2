@@ -1,9 +1,36 @@
 #ifndef __CHIP_CACHE_H__
 #define __CHIP_CACHE_H__
 #include <asm/cacheops.h>
+
+#define K0_TO_K1()		        \
+do {			                \
+    register unsigned long __k0_addr;	\
+			                \
+    __asm__ __volatile__(	        \
+    "la %0, 1f\n\t"		        \
+    "or	   %0, %0, %1\n\t"              \
+    "jr	   %0\n\t"                      \
+    "nop\n\t"                           \
+    "1: nop\n"                          \
+    : "=&r"(__k0_addr)                  \
+    : "r" (0x20000000) );               \
+} while(0)
+
+#define K1_TO_K0()                      \
+do {                                    \
+    register unsigned long __k0_addr;   \
+    __asm__ __volatile__(               \
+        "la %0, 1f\n\t"                 \
+        "jr	   %0\n\t"              \
+        "nop\n\t"                       \
+        "1:	   nop\n"               \
+        : "=&r" (__k0_addr));           \
+} while (0)
+
 #define cache_prefetch(label,size)					\
 do{									\
-	unsigned long addr,end;						\
+        register unsigned long addr,end;                                \
+        K0_TO_K1();                                                     \
 	/* Prefetch codes from label */					\
 	addr = (unsigned long)(&&label) & ~(32 - 1);			\
 	end = (unsigned long)(&&label + size) & ~(32 - 1);		\
@@ -16,6 +43,7 @@ do{									\
 				:					\
 				: "I" (Index_Prefetch_I), "r"(addr));	\
 	}								\
+        K1_TO_K0();                                                     \
 }									\
 while(0)
 

@@ -274,7 +274,11 @@ _cache(
 		return gcvSTATUS_INVALID_ARGUMENT;
 	}
 
-	dma_cache_sync(NULL, Logical, Bytes, DMA_BIDIRECTIONAL);
+        if(Operation == gcvCACHE_MEMORY_BARRIER) {
+            fast_iob();
+        } else {
+            dma_cache_sync(NULL, Logical, Bytes, DMA_BIDIRECTIONAL);
+        }
 
 	return gcvSTATUS_OK;
 }
