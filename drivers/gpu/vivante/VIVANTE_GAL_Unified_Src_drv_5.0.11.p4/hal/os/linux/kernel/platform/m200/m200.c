@@ -274,11 +274,20 @@ _cache(
 		return gcvSTATUS_INVALID_ARGUMENT;
 	}
 
-        if(Operation == gcvCACHE_MEMORY_BARRIER) {
-            fast_iob();
-        } else {
-            dma_cache_sync(NULL, Logical, Bytes, DMA_BIDIRECTIONAL);
-        }
+	switch(Operation){
+	case gcvCACHE_CLEAN:
+		dma_cache_sync(NULL,Logical,Bytes,DMA_BIDIRECTIONAL);
+		break;
+	case gcvCACHE_INVALIDATE:
+		dma_cache_sync(NULL,Logical,Bytes,DMA_FROM_DEVICE);
+		break;
+	case gcvCACHE_FLUSH:
+		dma_cache_sync(NULL, Logical, Bytes,DMA_TO_DEVICE);
+		break;
+	case gcvCACHE_MEMORY_BARRIER:
+		fast_iob();
+		break;
+	}
 
 	return gcvSTATUS_OK;
 }
