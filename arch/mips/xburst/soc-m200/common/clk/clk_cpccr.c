@@ -31,8 +31,18 @@ static struct cpccr_clk cpccr_clks[] = {
 };
 static unsigned int cpccr_selector[4] = {0,CLK_ID_SCLKA,CLK_ID_MPLL,0};
 
-#define AHB_MIN   (100 * 1000 * 1000)
-#define l2div_policy(rate,div) (rate > 200 * 1000 * 1000 ? div * 3 - 1 : div * 2 - 1)
+#define MHz (1000 * 1000)
+
+#define AHB_MIN	  (100*MHz)
+#define l2div_policy(rate,div) ({               \
+            unsigned int l2div;                 \
+            if(rate > 800*MHz)                  \
+                l2div = div * 4;                \
+            else if(rate > 200*MHz)             \
+                l2div = div * 3;                \
+            else                                \
+                l2div = div * 2;                \
+            l2div - 1;})
 
 static int cclk_set_rate_nopll(struct clk *clk,unsigned long rate,struct clk *parentclk,unsigned int cpccr) {
 	unsigned int parent_rate;
@@ -320,7 +330,7 @@ static int cpccr_set_rate(struct clk *clk,unsigned long rate) {
 			cache_prefetch(LAB1,64);
 			fast_iob();
 		LAB1:
-			tdiv = (ddr_pll_rate + 200 * 1000 * 1000 - 1) / (200 * 1000 * 1000);
+                        tdiv = (ddr_pll_rate + 200*MHz - 1) / (200*MHz);
 			tdiv = tdiv - 1;
 			cpccr_temp = cpccr & ~((3 << 28) | (0xf << cpccr_clks[CDIV].off) | (0xf << cpccr_clks[L2CDIV].off));
 			cpccr_temp |= cpccr_temp | (ddrsel << 28) | (tdiv << cpccr_clks[CDIV].off) | (tdiv << cpccr_clks[L2CDIV].off) ;

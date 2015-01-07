@@ -41,7 +41,7 @@ static struct cpu_core_ctrl
 } sw_core = {
 	.up_limit = 300*1000*1000,
 	.down_limit = 150*1000*1000,
-	.used_sw_core = 1,
+	.used_sw_core = 0,
 };
 
 #define core_clk_enable(clk,id)			\
