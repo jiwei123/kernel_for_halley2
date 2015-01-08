@@ -591,10 +591,16 @@ static noinline void cpu_resume(void)
 	if(!bypassmode) {
 		/**
 		 * reset dll of ddr.
+		 * WARNING: 2015-01-08
+		 * 	DDR CLK GATE(CPM_DRCG 0xB00000D0), BIT6 must set to 1 (or 0x40).
+		 * 	If clear BIT6, chip memory will not stable, gpu hang occur.
 		 */
-		*(volatile unsigned int *)0xB00000D0 = 0x13;
+
+#define CPM_DRCG			(0xB00000D0)
+
+		*(volatile unsigned int *)CPM_DRCG = 0x13 | (1<<6);
 		TCSM_DELAY(0x1ff);
-		*(volatile unsigned int *)0xB00000D0 = 0x11;
+		*(volatile unsigned int *)CPM_DRCG = 0x11 | (1<<6);
 		TCSM_DELAY(0x1ff);
 		/**
 		 * for disabled ddr enter power down.
@@ -605,9 +611,9 @@ static noinline void cpu_resume(void)
 		/**
 		 * reset dll of ddr too.
 		 */
-		*(volatile unsigned int *)0xB00000D0 = 0x13;
+		*(volatile unsigned int *)CPM_DRCG = 0x13 | (1<<6);
 		TCSM_DELAY(0x1ff);
-		*(volatile unsigned int *)0xB00000D0 = 0x11;
+		*(volatile unsigned int *)CPM_DRCG = 0x11 | (1<<6);
 		TCSM_DELAY(0x1ff);
                 /**
 		 * dll reset item & dll locked.
