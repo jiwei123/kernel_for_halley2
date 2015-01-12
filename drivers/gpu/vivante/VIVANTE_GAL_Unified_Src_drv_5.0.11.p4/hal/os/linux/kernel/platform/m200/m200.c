@@ -151,6 +151,7 @@ _adjustParam(
 	Args->contiguousSize  = (CONFIG_GPU_CONTIGUOUS_SIZE_MB) << 20;
 	Args->physSize        = 0x80000000;
 	Args->compression     = 0;
+        Args->recovery        = 0;      /* 0: disable recovery just for debug; 1: enable recovery when release kernel. */
 
 	return gcvSTATUS_OK;
 }
