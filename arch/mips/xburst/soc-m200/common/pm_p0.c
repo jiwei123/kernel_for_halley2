@@ -598,9 +598,9 @@ static noinline void cpu_resume(void)
 
 #define CPM_DRCG			(0xB00000D0)
 
-		*(volatile unsigned int *)CPM_DRCG = 0x13 | (1<<6);
+		*(volatile unsigned int *)CPM_DRCG = 0x53 | (1<<6);
 		TCSM_DELAY(0x1ff);
-		*(volatile unsigned int *)CPM_DRCG = 0x11 | (1<<6);
+		*(volatile unsigned int *)CPM_DRCG = 0x51 | (1<<6);
 		TCSM_DELAY(0x1ff);
 		/**
 		 * for disabled ddr enter power down.
@@ -611,9 +611,9 @@ static noinline void cpu_resume(void)
 		/**
 		 * reset dll of ddr too.
 		 */
-		*(volatile unsigned int *)CPM_DRCG = 0x13 | (1<<6);
+		*(volatile unsigned int *)CPM_DRCG = 0x53 | (1<<6);
 		TCSM_DELAY(0x1ff);
-		*(volatile unsigned int *)CPM_DRCG = 0x11 | (1<<6);
+		*(volatile unsigned int *)CPM_DRCG = 0x51 | (1<<6);
 		TCSM_DELAY(0x1ff);
                 /**
 		 * dll reset item & dll locked.
