@@ -1,6 +1,7 @@
 #include <linux/kthread.h>
 #include <linux/delay.h>
 #include <linux/list.h>
+#include <mach/libdmmu.h>
 #include <mach/jz_libdmmu.h>
 #include <linux/sched.h>
 #include <linux/regulator/consumer.h>
@@ -38,7 +39,7 @@
 /* CCLK divider. */
 #define ISP_CCLK_DIVIDER	(0x04)
 void isp_setting_init(struct isp_device *isp);
-static int isp_s_tlb_base(struct isp_device *isp, unsigned int *tlb_base);
+static int isp_s_tlb_base(struct isp_device *isp, unsigned int tlb_base);
 static int isp_mipi_init(struct isp_device *isp);
 
 static int isp_update_buffer(struct isp_device *isp, struct isp_buffer *buf, int);
@@ -2424,7 +2425,7 @@ static int isp_bypass_capture(struct isp_device *isp, struct isp_format *ifmt, u
 		ISP_PRINT(ISP_ERROR,"%s[%d]\n", __func__, __LINE__);
 	return ret;
 }
-static int isp_s_tlb_base(struct isp_device *isp, unsigned int *tlb_base)
+static int isp_s_tlb_base(struct isp_device *isp, unsigned int tlb_base)
 {
 
 	int tlb_en = 1;
@@ -2433,12 +2434,11 @@ static int isp_s_tlb_base(struct isp_device *isp, unsigned int *tlb_base)
 	int tlb_gcn = DMMU_PTE_CHECK_PAGE_VALID;
 	int tlb_cnm = DMMU_PTE_CHECK_PAGE_VALID;
 	int tlb_ridx = 0;  /*6 bits TLB entry read-index*/
-	unsigned int _tlb_base  = *tlb_base;
 	ISP_PRINT(ISP_INFO," Read ISP TLB CTRL : 0x%x\n", isp_reg_readl(isp, 0xF0004));
 	ISP_PRINT(ISP_INFO,"Read ISP TLB BASE : 0x%x\n", isp_reg_readl(isp, 0xF0008));
 
 	if(tlb_invld)
-		isp_reg_writel(isp, 0x00000010, 0xF0000);/*TLB Reset*/
+		isp_reg_writel(isp, 0x00000001, 0xF0000);/*TLB Reset*/
 	/*TLB Control*/
 	isp_reg_writel(isp,( tlb_en |
 				(mipi_sel << 1) |
@@ -2448,238 +2448,32 @@ static int isp_s_tlb_base(struct isp_device *isp, unsigned int *tlb_base)
 				), 0xF0004);
 
 	/*TLB Table Base Address*/
-	isp_reg_writel(isp, _tlb_base, 0xF0008);
+	isp_reg_writel(isp, tlb_base, 0xF0008);
 	dump_tlb_regs(isp);
 
 	return 0;
 }
+
 static int isp_tlb_map_one_vaddr(struct isp_device *isp, unsigned int vaddr, unsigned int size)
 {
 	int ret = 0;
-	struct isp_tlb_pidmanager *p = NULL;
-	struct isp_tlb_pidmanager *tmp = NULL;
-	struct isp_tlb_vaddrmanager *v = NULL;
-	struct isp_tlb_vaddrmanager *prev = NULL;
-	struct isp_tlb_vaddrmanager *after = NULL;
-	struct isp_tlb_vaddrmanager *tmv = NULL;
-	pid_t pid = current->tgid;
 
-	if(list_empty(&(isp->tlb_list))){
-		ISP_PRINT(ISP_ERROR,"%s[%d] vaddr can't map because tlb isn't inited!\n",__func__,__LINE__);
-		ret = -EINVAL;
-		goto out;
-	}
-	list_for_each_entry(tmp, &(isp->tlb_list), pid_entry){
-		if(tmp->pid == pid){
-			p = tmp;
-			break;
+	ret = dmmu_map(vaddr, size);
+	if(isp->tlb_flag == 0){
+		if(ret){
+			isp_s_tlb_base(isp,ret);
+			isp->tlb_flag = 1;
+		}else{
+			return -EINVAL;
 		}
-	}
-	if(!p){
-		ret = -EINVAL;
-		goto out;
-	}
-
-	list_for_each_entry(tmv, &(p->vaddr_list), vaddr_entry){
-		if(tmv->vaddr <= vaddr && vaddr < tmv->vaddr + tmv->size){
-			v = tmv;
-			break;
-		}else if(vaddr < tmv->vaddr){
-			after = tmv;
-			break;
-		}else
-			prev = tmv;
-	}
-	/* after != NULL or prev != NULL */
-	if(!v){
-		if(prev && (prev->vaddr + prev->size == vaddr)){
-			/* prev and current are sequential */
-			ISP_PRINT(ISP_INFO,"^^^%s[%d] *prev-current* vaddr = 0x%08x\n",__func__,__LINE__,vaddr);
-			prev->size += size;
-			v = prev;
-		}
-		if(after && (vaddr + size == after->vaddr)){
-			if(!v){
-				ISP_PRINT(ISP_INFO,"^^^%s[%d] *current-after* vaddr = 0x%08x\n",__func__,__LINE__,vaddr);
-				/* after and current are sequential */
-				after->vaddr = vaddr;
-				after->size += size;
-				v = after;
-			}else{
-				ISP_PRINT(ISP_INFO,"^^^%s[%d] *prev-current-after* vaddr = 0x%08x\n",__func__,__LINE__,vaddr);
-				/* prev, after and current are sequential */
-				prev->size += after->size;
-				list_del(&(after->vaddr_entry));
-				kfree(after);
-			}
-		}
-		if(!v){
-			/* prev ,after and current are discontinuous */
-			ISP_PRINT(ISP_INFO,"^^^%s[%d] alloc_vaddrmanager! vaddr = 0x%08x\n",__func__,__LINE__,vaddr);
-			v = kzalloc(sizeof(*v), GFP_KERNEL);
-			if(!v){
-				ISP_PRINT(ISP_ERROR,"%s[%d]\n",__func__,__LINE__);
-				ret = -EINVAL;
-				goto alloc_fail;
-			}
-			v->vaddr = vaddr;
-			v->size = size;
-			if(prev){
-				ISP_PRINT(ISP_INFO,"^^^%s[%d] *instand prev* vaddr = 0x%08x\n",__func__,__LINE__,vaddr);
-				prev->vaddr_entry.next->prev = &(v->vaddr_entry);
-				v->vaddr_entry.prev = &(prev->vaddr_entry);
-				v->vaddr_entry.next = prev->vaddr_entry.next;
-				prev->vaddr_entry.next = &(v->vaddr_entry);
-			}else if(after){
-				ISP_PRINT(ISP_INFO,"^^^%s[%d] *instand after* vaddr = 0x%08x\n",__func__,__LINE__,vaddr);
-				after->vaddr_entry.prev->next = &(v->vaddr_entry);
-				v->vaddr_entry.next = &(after->vaddr_entry);
-				v->vaddr_entry.prev = after->vaddr_entry.prev;
-				after->vaddr_entry.prev = &(v->vaddr_entry);
-			}else
-				list_add_tail(&(v->vaddr_entry), &(p->vaddr_list));
-		}
-		ret = dmmu_match_user_mem_tlb((void*)vaddr, size);
-		if(ret < 0)
-			goto match_fail;
-		ret = dmmu_map_user_mem((void *)vaddr, size);
-		if(ret < 0)
-			goto map_fail;
 	}
 	return 0;
-map_fail:
-match_fail:
-	kfree(v);
-alloc_fail:
-out:
-	return ret;
 }
 static int isp_tlb_unmap_all_vaddr(struct isp_device *isp)
 {
-	struct isp_tlb_pidmanager *p = NULL;
-	struct isp_tlb_pidmanager *tmp = NULL;
-	struct isp_tlb_vaddrmanager *v = NULL;
-	struct list_head *pos = NULL;
-	pid_t pid = current->tgid;
-
-	if(!list_empty(&(isp->tlb_list))){
-		list_for_each_entry(tmp, &(isp->tlb_list), pid_entry){
-			if(tmp->pid == pid){
-				p = tmp;
-				break;
-			}
-		}
-		/* if find, release it's vaddr_list */
-		if(p){
-			ISP_PRINT(ISP_INFO,"^^^%s[%d] unmap!\n",__func__,__LINE__);
-			/* if vaddr_list  of the tlb_pidmanager isn't empty, release it */
-			if(!list_empty(&(p->vaddr_list))){
-				list_for_each(pos, &(p->vaddr_list)){
-					v = list_entry(pos, struct isp_tlb_vaddrmanager,vaddr_entry);
-					list_del(&(v->vaddr_entry));
-					dmmu_unmap_user_mem((void *)(v->vaddr), v->size);
-					kfree(v);
-					pos = &(p->vaddr_list);
-				}
-			}
-		}
-	}
+	dmmu_unmap_all();
+	isp->tlb_flag = 0;
 	return 0;
-}
-static int isp_tlb_init(struct isp_device *isp)
-{
-	int ret = 0;
-	struct isp_tlb_pidmanager *p = NULL;
-	struct isp_tlb_pidmanager *tmp = NULL;
-	pid_t pid = current->tgid;
-
-	/* first */
-	if(list_empty(&(isp->tlb_list))){
-		ISP_PRINT(ISP_INFO,"^^^%s[%d] mmu_init! \n",__func__,__LINE__);
-		ret = dmmu_init();
-		if(ret < 0)
-			goto dmmu_fail;
-		isp->tlb_flag = 1;
-	}
-
-	/* if tlb_list isn't empty , check pid */
-	if(!list_empty(&(isp->tlb_list))){
-		list_for_each_entry(tmp, &(isp->tlb_list), pid_entry){
-			if(tmp->pid == pid){
-				p = tmp;
-				break;
-			}
-		}
-	}
-
-	/* if current->tgid isn't in tlb_list, add a isp_tlb_pidmanager */
-	if(!p){
-		p = kzalloc(sizeof(*p), GFP_KERNEL);
-		if(!p){
-			ISP_PRINT(ISP_ERROR,"%s[%d]\n",__func__,__LINE__);
-			ret = -EINVAL;
-			goto alloc_fail;
-		}
-		p->pid = pid;
-		INIT_LIST_HEAD(&(p->vaddr_list));
-		ret = dmmu_get_page_table_base_phys(&(p->tlbbase));
-		ISP_PRINT(ISP_INFO,"^^^%s[%d] alloc pidmanager! tlbbase = 0x%08x\n",__func__,__LINE__,p->tlbbase);
-		isp_s_tlb_base(isp,&(p->tlbbase));
-		if(ret < 0)
-			goto tlbbase_fail;
-		list_add_tail(&(p->pid_entry), &(isp->tlb_list));
-	}
-	return 0;
-tlbbase_fail:
-	kfree(p);
-alloc_fail:
-dmmu_fail:
-	return ret;
-}
-static int isp_tlb_deinit(struct isp_device *isp)
-{
-	int ret = 0;
-	struct isp_tlb_pidmanager *p = NULL;
-	struct isp_tlb_pidmanager *tmp = NULL;
-	struct isp_tlb_vaddrmanager *vaddr = NULL;
-	struct list_head *pos = NULL;
-	pid_t pid = current->tgid;
-
-	if(isp->tlb_flag == 0)
-		return 0;
-	/* if tlb_list isn't empty , check pid */
-	if(!list_empty(&(isp->tlb_list))){
-		list_for_each_entry(tmp, &(isp->tlb_list), pid_entry){
-			if(tmp->pid == pid){
-				p = tmp;
-				break;
-			}
-		}
-	}
-
-	/* if current->tgid is find, release it  */
-	if(p){
-		list_del(&(p->pid_entry));
-
-		/* if vaddr_list  of the tlb_pidmanager, release it */
-		if(!list_empty(&(p->vaddr_list))){
-			list_for_each(pos, &(p->vaddr_list)){
-				vaddr = list_entry(pos, struct isp_tlb_vaddrmanager,vaddr_entry);
-				list_del(&(vaddr->vaddr_entry));
-				kfree(vaddr);
-				pos = &(p->vaddr_list);
-			}
-		}
-		kfree(p);
-		ISP_PRINT(ISP_INFO,"%s[%d] kfree pidmanager! \n",__func__,__LINE__);
-	}
-	/* last */
-	if(list_empty(&(isp->tlb_list))){
-		ISP_PRINT(ISP_INFO,"%s[%d] mmu_deinit! \n",__func__,__LINE__);
-		ret = dmmu_deinit();
-		isp->tlb_flag = 0;
-	}
-	return ret;
 }
 static struct isp_ops isp_ops = {
 
@@ -2710,8 +2504,6 @@ static struct isp_ops isp_ops = {
 	.restore_flags = isp_restore_flags,
 	.process_raw = isp_process_raw,
 	.bypass_capture = isp_bypass_capture,
-	.tlb_init = isp_tlb_init,
-	.tlb_deinit = isp_tlb_deinit,
 	.tlb_map_one_vaddr = isp_tlb_map_one_vaddr,
 	.tlb_unmap_all_vaddr = isp_tlb_unmap_all_vaddr,
 };
@@ -2746,8 +2538,6 @@ int isp_device_init(struct isp_device* isp)
 		goto i2c_release;
 
 	isp->ops = &isp_ops;
-
-	INIT_LIST_HEAD(&(isp->tlb_list)); // add by xhshen
 	isp->tlb_flag = 0;
 
 	return 0;

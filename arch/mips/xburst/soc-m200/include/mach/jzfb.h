@@ -165,6 +165,8 @@ struct jzfb_platform_data {
 		struct smart_lcd_data_table *data_table;
 		int (*init) (void);
 		int (*gpio_for_slcd) (void);
+		int te_gpio;
+		int te_irq_level;
 
 	} smart_config;
 

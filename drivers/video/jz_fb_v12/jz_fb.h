@@ -220,6 +220,7 @@ struct jzfb_mode_res {
 /* Reserved for future extend */
 #define JZFB_ENABLE_FG0			_IOW('F', 0x139, int)
 #define JZFB_ENABLE_FG1			_IOW('F', 0x140, int)
+#define JZFB_GET_LCDTYPE		_IOR('F', 0x122, int)
 
 /* Reserved for future extend */
 #define JZFB_SET_VSYNCINT		_IOW('F', 0x210, int)
@@ -229,3 +230,4 @@ extern int jzfb_config_image_enh(struct fb_info *info);
 extern int jzfb_image_enh_ioctl(struct fb_info *info, unsigned int cmd,
 				unsigned long arg);
 extern int update_slcd_frame_buffer(void);
+extern int lcd_display_inited_by_uboot(void);

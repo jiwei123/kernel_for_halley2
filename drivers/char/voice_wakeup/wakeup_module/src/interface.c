@@ -23,7 +23,6 @@
 #define TAG	"[voice_wakeup]"
 
 int (*h_handler)(const char *fmt, ...);
-#define printk	h_handler
 
 enum wakeup_source {
 	WAKEUP_BY_OTHERS = 1,
@@ -77,13 +76,12 @@ int open(int mode)
 			REG32(0xB000100C) = 1<<0; /*dmic int en*/
 			REG32(0xB000100C) = 1<<26; /*tcu1 int en*/
 			REG32(0xB000102C) = 1<<0; /*rtc int en*/
-#ifdef CONFIG_SLEEP_DEBUG
 			dump_voice_wakeup();
-#endif
 			break;
 		case NORMAL_RECORD:
 			dmic_init_mode(NORMAL_RECORD);
 			dmic_record_enabled = 1;
+			break;
 		case NORMAL_WAKEUP:
 			wakeup_open();
 			dmic_init_mode(NORMAL_RECORD);
@@ -228,11 +226,9 @@ int handler(int par)
 
 		/* RTC interrupt pending */
 		if(REG32(0xb0001030) & (1<<0)) {
-#ifdef CONFIG_SLEEP_DEBUG
 			TCSM_PCHAR('R');
 			TCSM_PCHAR('T');
 			TCSM_PCHAR('C');
-#endif
 			ret = rtc_int_handler();
 			if(ret == SYS_TIMER) {
 				serial_put_hex(REG32(0xb0001010));
@@ -299,6 +295,7 @@ int close(int mode)
 			REG32(0xB0001028) |= 1<< 0;
 			dmic_disable_tri();
 			wakeup_close();
+			dmic_ioctl(DMIC_IOCTL_SET_SAMPLERATE, 16000);
 			dump_voice_wakeup();
 		}
 		return 0;

@@ -241,9 +241,8 @@ static long jzdmic_ioctl(struct file *filp, unsigned int cmd, unsigned long args
 			printk("not support , DMIC_SET_CHANNEL\n");
 			break;
 		case DMIC_SET_SAMPLERATE:
-			printk("dmic set samplerate\n");
 			copy_from_user(&samplerate, argp, sizeof(long));
-			ret = wakeup_module_ioctl(cmd, samplerate);
+			ret = wakeup_module_ioctl(DMIC_IOCTL_SET_SAMPLERATE, samplerate);
 			break;
 
 		case DMIC_GET_ROUTE:

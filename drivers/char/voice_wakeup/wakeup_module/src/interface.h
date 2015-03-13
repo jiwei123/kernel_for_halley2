@@ -3,9 +3,16 @@
 
 
 extern int (*h_handler)(const char *fmt, ...);
+/*#define CONFIG_SLEEP_DEBUG*/
+
+#ifdef CONFIG_SLEEP_DEBUG
 #define printk	h_handler
 #define printf printk
-
+#else
+#define debug_print(fmt, args...) do{} while(0)
+#define printk debug_print
+#define printf printk
+#endif
 
 enum open_mode {
 	EARLY_SLEEP = 1,
@@ -47,6 +54,7 @@ struct sleep_buffer {
 
 #define UART1_IOBASE    0x10031000
 #define U1_IOBASE (UART1_IOBASE + 0xa0000000)
+#ifdef CONFIG_SLEEP_DEBUG
 #define TCSM_PCHAR(x)                           \
 	*((volatile unsigned int*)(U1_IOBASE+OFF_TDR)) = x;     \
 while ((*((volatile unsigned int*)(U1_IOBASE + OFF_LSR)) & (LSR_TDRQ | LSR_TEMT)) != (LSR_TDRQ | LSR_TEMT))
@@ -61,6 +69,12 @@ static inline void serial_put_hex(unsigned int x) {
 		TCSM_PCHAR(d);
 	}
 }
+#else
+#define TCSM_PCHAR(x)	do {} while(0)
+#define serial_put_hex(x) do {} while(0)
+#endif
+
+
 
 #endif
 

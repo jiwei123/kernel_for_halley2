@@ -37,7 +37,9 @@ static struct jz_cpufreq {
 	struct clk *cpu_clk;
 	struct cpufreq_frequency_table *freq_table;
 	struct jz_notifier freq_up_change;
-	struct delayed_work freq_up_work;
+	struct work_struct freq_up_work;
+	struct timer_list freq_down_timer;
+	struct cpufreq_policy *cur_policy;
 } *jz_cpufreq;
 
 static int m200_verify_speed(struct cpufreq_policy *policy)
@@ -97,19 +99,25 @@ static int m200_target(struct cpufreq_policy *policy,
 #define CPUFRQ_MIN  12000
 extern struct cpufreq_frequency_table *init_freq_table(unsigned int max_freq,
 						       unsigned int min_freq);
+
+static void freq_down_timer(unsigned long data)
+{
+	struct cpufreq_policy * policy = jz_cpufreq->cur_policy;
+	policy->min = policy->cpuinfo.min_freq;
+}
 static void freq_up_irq_work(struct work_struct *work)
 {
-	jz_cpufreq->set_rate = 0;
+	struct cpufreq_policy * policy = jz_cpufreq->cur_policy;
+	del_timer(&jz_cpufreq->freq_down_timer);
+	if(policy->min != policy->max){
+		policy->min = policy->max;
+		policy->governor->governor(policy, CPUFREQ_GOV_LIMITS);
+	}
+	mod_timer(&jz_cpufreq->freq_down_timer,jiffies + msecs_to_jiffies(2000));
 }
 static int freq_up_change_notify(struct jz_notifier *notify,void *v)
 {
-	unsigned int current_rate;
-	current_rate = clk_get_rate(jz_cpufreq->cpu_clk) / 1000;
-	if(current_rate >= jz_cpufreq->second_rate)
-		return NOTIFY_OK;
-	cancel_delayed_work(&jz_cpufreq->freq_up_work);
-	jz_cpufreq->set_rate = 1;
-	schedule_delayed_work(&jz_cpufreq->freq_up_work, msecs_to_jiffies(2000));
+	schedule_work(&jz_cpufreq->freq_up_work);
 	return NOTIFY_OK;
 }
 static int __cpuinit m200_cpu_init(struct cpufreq_policy *policy)
@@ -158,14 +166,17 @@ static int __cpuinit m200_cpu_init(struct cpufreq_policy *policy)
 	policy->shared_type = CPUFREQ_SHARED_TYPE_ANY;
 	cpumask_setall(policy->cpus);
 	/* 300us for latency. FIXME: what's the actual transition time? */
-	policy->cpuinfo.transition_latency = 100 * 1000;
+	policy->cpuinfo.transition_latency = 40 * 1000;
 
 	mutex_init(&jz_cpufreq->mutex);
-	INIT_DELAYED_WORK(&jz_cpufreq->freq_up_work, freq_up_irq_work);
+	INIT_WORK(&jz_cpufreq->freq_up_work, freq_up_irq_work);
+
+	setup_timer(&jz_cpufreq->freq_down_timer,freq_down_timer,0);
 
 	jz_cpufreq->freq_up_change.jz_notify = freq_up_change_notify;
 	jz_cpufreq->freq_up_change.level = NOTEFY_PROI_NORMAL;
 	jz_cpufreq->freq_up_change.msg = JZ_CLK_CHANGING;
+	jz_cpufreq->cur_policy = policy;
 	jz_notifier_register(&jz_cpufreq->freq_up_change, NOTEFY_PROI_NORMAL);
 
 	printk("cpu freq init ok!\n");

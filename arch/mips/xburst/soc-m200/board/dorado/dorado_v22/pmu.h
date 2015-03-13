@@ -5,7 +5,6 @@
 #define PMU_I2C_BUSNUM  1
 /* ****************************PMU DC/LDO NAME******************************* */
 #define DC1_NAME "cpu_core"
-#define DC1_SLP_NAME "cpu_core_slp"
 #define DC2_NAME "cpu_vmema"
 #define DC3_NAME "cpu_mem12"
 #define DC4_NAME "cpu_vddio"
@@ -47,6 +46,29 @@
 #define LDORTC1_INIT_UV 1800
 #define LDORTC2_INIT_UV 1100
 /* ****************************PMU DC/LDO DEFAULT V END********************** */
+/* ****************************PMU DC/LDO SLP DEFAULT V********************** */
+#define DC1_INIT_SLP_UV     975
+#define DC2_INIT_SLP_UV     1200
+#define DC3_INIT_SLP_UV     1200
+#ifdef CONFIG_JZ_EPD_V12
+#define DC4_INIT_SLP_UV     3300
+#else
+#define DC4_INIT_SLP_UV     1800
+#endif
+#define DC5_INIT_SLP_UV     1800
+#define LDO1_INIT_SLP_UV    1800
+#define LDO2_INIT_SLP_UV    3300
+#define LDO3_INIT_SLP_UV    2800
+#define LDO4_INIT_SLP_UV    1800
+#define LDO5_INIT_SLP_UV    2500
+#define LDO6_INIT_SLP_UV    3300
+#define LDO7_INIT_SLP_UV    1800
+#define LDO8_INIT_SLP_UV    3300
+#define LDO9_INIT_SLP_UV    1800
+#define LDO10_INIT_SLP_UV   1800
+#define LDORTC1_INIT_SLP_UV 1800
+#define LDORTC2_INIT_SLP_UV 1100
+/* ****************************PMU DC/LDO SLP DEFAULT V END****************** */
 /* ****************************PMU DC/LDO ALWAYS ON************************** */
 #define DC1_ALWAYS_ON     1
 #define DC2_ALWAYS_ON     1

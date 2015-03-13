@@ -92,28 +92,6 @@ config SOUND_JZ_SPDIF_V12
 	help
 		Say 'Y' to enable On-Chip spdif
 
-menuconfig SOUND_JZ_DMIC_V12
-	bool "sound dmic device of xburst"
-	default n
-	help
-	  Say 'Y' to enable sound dmic devices support.
-
-if SOUND_JZ_DMIC_V12
-
-
-config JZ_DMIC0
-	bool "select dmic0"
-	help
-	Say "Y" to enable dmic0.
-
-config JZ_DMIC1
-	bool "select dmic1"
-	help
-	Say "Y" to enable dmic1.
-
-endif
-
-
 menuconfig SOUND_XBURST_DETECT
 	bool "sound detect device of xburst"
 	default n

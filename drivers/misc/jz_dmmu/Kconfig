@@ -1,5 +1,0 @@
-config JZ_DMMU_V12
-	bool "Dmmu V12 Driver"
-	help
-	  Support for Ingenic dmmu v12 operations.
-

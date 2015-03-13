@@ -582,6 +582,7 @@ static void inline write_inter_codec_reg_mask(struct i2s_device *i2s_dev, int ad
  **/
 enum codec_ioctl_cmd_t {
 	CODEC_INIT,
+	CODEC_TURN_ON,
 	CODEC_TURN_OFF,
 	CODEC_SHUTDOWN,
 	CODEC_RESET,

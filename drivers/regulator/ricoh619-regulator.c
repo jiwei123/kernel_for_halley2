@@ -194,10 +194,7 @@ static int ricoh61x_set_voltage(struct regulator_dev *rdev,
 	if (ricoh61x_suspend_status)
 		return -EBUSY;
 
-	if(ri->id != RICOH619_ID_DC1_SLP)
-		return __ricoh61x_set_voltage(parent, ri, min_uV, max_uV, selector);
-	else
-		return __ricoh61x_set_s_voltage(parent, ri, min_uV, max_uV);
+	return __ricoh61x_set_voltage(parent, ri, min_uV, max_uV, selector);
 }
 
 static int ricoh61x_get_voltage(struct regulator_dev *rdev)
@@ -315,10 +312,6 @@ static struct ricoh61x_regulator ricoh61x_regulator[] = {
 			600, 3500, 12500, 0xE8, ricoh61x_ops, 500,
 			0x00, 0, 0x00, 0),
 
-	RICOH61x_REG(DC1_SLP, 0x2C, 0, 0x2C, 1, 0x36, 0xFF, 0x3B,
-			600, 3500, 12500, 0xE8, ricoh61x_ops, 500,
-			0x00, 0, 0x00, 0),
-
 	RICOH61x_REG(DC2, 0x2E, 0, 0x2E, 1, 0x37, 0xFF, 0x3C,
 			600, 3500, 12500, 0xE8, ricoh61x_ops, 500,
 			0x00, 0, 0x00, 0),
@@ -406,6 +399,15 @@ static int ricoh61x_regulator_preinit(struct device *parent,
 		return 0;
 
 	if (ricoh61x_pdata->init_uV >= 0) {
+		ret = __ricoh61x_set_s_voltage(parent, ri,
+				ricoh61x_pdata->sleep_uV,
+				ricoh61x_pdata->sleep_uV);
+		if (ret < 0) {
+			dev_err(ri->dev, "Not able to initialize voltage %d "
+				"for rail %d err %d\n", ricoh61x_pdata->sleep_uV,
+				ri->desc.id, ret);
+			return ret;
+		}
 		ret = __ricoh61x_set_voltage(parent, ri,
 				ricoh61x_pdata->init_uV,
 				ricoh61x_pdata->init_uV, 0);

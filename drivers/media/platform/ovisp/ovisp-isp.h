@@ -167,7 +167,6 @@ struct isp_ops {
 	int (*restore_flags)(struct isp_device *, struct isp_format *f);
 	int (*process_raw)(struct isp_device *, struct isp_format *, unsigned int, unsigned int, unsigned char *);
 	int (*bypass_capture)(struct isp_device *, struct isp_format *, unsigned int);
-	int (*tlb_init)(struct isp_device *);
 	int (*tlb_deinit)(struct isp_device *);
 	int (*tlb_map_one_vaddr)(struct isp_device *, unsigned int, unsigned int);
 	int (*tlb_unmap_all_vaddr)(struct isp_device *);
@@ -201,19 +200,6 @@ typedef union isp_intc_register {
 	} bits;
 	unsigned int intc;
 } isp_intc_regs_t;
-
-struct isp_tlb_vaddrmanager{
-	struct list_head vaddr_entry;
-	unsigned int vaddr;
-	unsigned int size;
-};
-
-struct isp_tlb_pidmanager{
-	struct list_head pid_entry;
-	pid_t pid;
-	unsigned int tlbbase;
-	struct list_head vaddr_list;
-};
 
 struct isp_device {
 	struct device *dev;
@@ -260,7 +246,6 @@ struct isp_device {
 	int MaxExp;
 	int hdr[8];
 	int tlb_flag; // 0 disable; 1 enble
-	struct list_head tlb_list;
 };
 
 

@@ -75,6 +75,8 @@ struct jzgpio_chip {
 	void __iomem *reg;
 	void __iomem *shadow_reg;
 	int irq_base;
+	unsigned int resume_flag;
+	unsigned int pin_slp_status;
 	spinlock_t gpio_lock;
 	DECLARE_BITMAP(dev_map, 32);
 	DECLARE_BITMAP(gpio_map, 32);
@@ -336,6 +338,10 @@ static int jz_gpio_get(struct gpio_chip *chip, unsigned offset)
 {
 	struct jzgpio_chip *jz = gpio2jz(chip);
 
+	if(jz->resume_flag & BIT(offset)) {
+		jz->resume_flag &= ~BIT(offset);
+		return !!(jz->pin_slp_status & BIT(offset));
+	}
 	return !!(readl(jz->reg + PXPIN) & BIT(offset));
 }
 
@@ -464,9 +470,9 @@ static int gpio_set_type(struct irq_data *data, unsigned int flow_type)
 	case IRQ_TYPE_EDGE_FALLING:	func = GPIO_INT_FE;	break;
 	case IRQ_TYPE_EDGE_BOTH:
 		if (gpio_pin_level(jz, pin))
-			func = GPIO_INT_RE;
-		else
 			func = GPIO_INT_FE;
+		else
+			func = GPIO_INT_RE;
 		break;
 	default:
 		return -EINVAL;
@@ -715,8 +721,27 @@ int gpio_suspend(void)
 			}
 		}
 		gpio_suspend_set(jz);
+		jz->resume_flag = 0;
 	}
 	return 0;
+}
+static void check_wakeup_gpio(struct jzgpio_chip *jz)
+{
+	unsigned long pend,mask;
+	unsigned long pint;
+
+	pend = readl(jz->reg + PXFLG);
+	mask = readl(jz->reg + PXMSK);
+
+	pend = pend & ~mask;
+	if(pend) {
+		pint = readl(jz->reg + PXINT);
+		pend = pend & pint;
+		if(pend) {
+			jz->resume_flag = pend;
+			jz->pin_slp_status = readl(jz->reg + PXPAT0) & pend;
+		}
+	}
 }
 void gpio_resume(void)
 {
@@ -725,6 +750,7 @@ void gpio_resume(void)
 
 	for(i = 0; i < GPIO_NR_PORTS; i++) {
 		jz = &jz_gpio_chips[i];
+		check_wakeup_gpio(jz);
 		writel(jz->save[0], jz->reg + PXINT);
 		writel(jz->save[1], jz->reg + PXMSK);
 		writel(jz->save[2], jz->reg + PXPAT1);
