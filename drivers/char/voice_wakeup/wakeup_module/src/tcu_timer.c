@@ -138,9 +138,7 @@ void tcu_timer_request(int tcu_chan)
 {
 	tcu_channel = tcu_chan;
 	REG32(CPM_IOBASE + CPM_CLKGR0) &= ~(1<<30);
-#ifdef CONFIG_SLEEP_DEBUG
 	tcu_dump_reg();
-#endif
 	tcu_save();
 	/* stop clear */
 	tcu_writel(TCU_TSCR,(1 << tcu_channel));
@@ -159,9 +157,7 @@ void tcu_timer_request(int tcu_chan)
 	 * TCOUNT:  1: 1.953125ms
 	 * */
 	tcu_writel(CH_TCSR(tcu_channel),CSRDIV(CLK_DIV) | CSR_RTC_EN);
-#ifdef CONFIG_SLEEP_DEBUG
 	tcu_dump_reg();
-#endif
 }
 
 /*

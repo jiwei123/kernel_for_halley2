@@ -34,7 +34,7 @@
 #define UART2_PORTF							\
 	{ .name = "uart2-pf", .port = GPIO_PORT_F, .func = GPIO_FUNC_2, .pins = 0xc0, }
 #define UART3_PORTA							\
-	{ .name = "uart3", .port = GPIO_PORT_A, .func = GPIO_FUNC_1, .pins = 0xc << 28, }
+	{ .name = "uart3", .port = GPIO_PORT_A, .func = GPIO_FUNC_1, .pins = 0x1 << 31, }
 #define UART4_PORTB							\
 	{ .name = "uart4-pb", .port = GPIO_PORT_B, .func = GPIO_FUNC_2, .pins = 0xf0300000, }
 #define UART4_PORTF							\

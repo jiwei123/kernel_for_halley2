@@ -230,3 +230,4 @@ extern int jzfb_config_image_enh(struct fb_info *info);
 extern int jzfb_image_enh_ioctl(struct fb_info *info, unsigned int cmd,
 				unsigned long arg);
 extern int update_slcd_frame_buffer(void);
+extern int lcd_display_inited_by_uboot(void);

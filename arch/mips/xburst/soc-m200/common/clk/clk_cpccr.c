@@ -113,7 +113,7 @@ static inline void set_cpccr_h0div(struct clk *clk,unsigned int rate)
 
 		cpccr &= ~(1 << cpccr_clks[H0DIV].ce);
 		cpm_outl(cpccr,CPM_CPCCR);
-		clk->rate = pclk_rate / hdiv;
+		clk->rate = pclk_rate / (hdiv + 1);
 	}
 }
 //#define APB_RATE_MAX   (150 * 1000 * 1000)
@@ -142,8 +142,8 @@ static inline void set_cpccr_h2div(struct clk *clk,unsigned int rate)
 		while(cpm_inl(CPM_CPCSR) & 4);
 		cpccr &= ~(1 << cpccr_clks[H2DIV].ce);
 		cpm_outl(cpccr,CPM_CPCCR);
-		clk->rate = pclk_rate / hdiv;
-		relativeclk->rate = pclk_rate / pdiv;
+		clk->rate = pclk_rate / (hdiv + 1);
+		relativeclk->rate = pclk_rate / (pdiv + 1);
 	}
 }
 static inline void sw_ahb_from_l2cache(void)
@@ -162,8 +162,7 @@ static inline void sw_ahb_from_l2cache(void)
 	}else if(rate >= 150*1000*1000){
 		set_cpccr_h0div(ahb0,150*1000*1000);
 		set_cpccr_h2div(ahb2,150*1000*1000);
-	}else if(rate >= 50*1000*1000)
-	{
+	}else if(rate >= 50*1000*1000){
 		set_cpccr_h0div(ahb0,100*1000*1000);
 		set_cpccr_h2div(ahb2,100*1000*1000);
 	}else{

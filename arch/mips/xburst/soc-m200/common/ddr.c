@@ -154,6 +154,7 @@ static int ddr_mon2_proc_write(struct file *file, const char __user *buffer,
 	i = *((volatile unsigned int *)0xb00000d0);
 	i |= (1<<6);
 	*((volatile unsigned int *)0xb00000d0) = i;
+	*((volatile unsigned int *)0xb00000d0) = 0x7d;
 	printk("ddr_drcg = 0x%x\n",*((volatile unsigned int *)0xb00000d0));
 
 	i = simple_strtoul(buffer,NULL,0);
@@ -184,7 +185,7 @@ static void timercount2(unsigned long data)
 		*((volatile unsigned int *)0xb34f00dc) = 0;
 		/* start counter */
 		*((volatile unsigned int *)0xb34f00e4) = 3;
-		mod_timer(&timer,jiffies + msecs_to_jiffies(1));
+		mod_timer(&timer,jiffies + msecs_to_jiffies(100));
 		timer_flag = 1;
 	} else {
 		/* stop counter */
@@ -197,7 +198,7 @@ static void timercount2(unsigned long data)
 		printk(KERN_DEBUG "total_cycle = %d,valid_cycle = %d\n",i,j);
 		printk(KERN_DEBUG "rate      = %%%d\n",j * 100 / i);
 		printk(KERN_DEBUG "idle_rate = %%%d\n\n",k * 100 / i);
-		mod_timer(&timer,jiffies + msecs_to_jiffies(999));
+		mod_timer(&timer,jiffies + msecs_to_jiffies(800));
 		timer_flag = 0;
 	}
 }

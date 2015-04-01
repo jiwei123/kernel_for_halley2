@@ -18,11 +18,9 @@
 #include <linux/i2c.h>
 #include <linux/input.h>
 #include <linux/input/mt.h>
-//#include <linux/earlysuspend.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/interrupt.h>
-//#include <mach/irqs.h>
 #include <linux/kernel.h>
 #include <linux/semaphore.h>
 #include <linux/mutex.h>
@@ -39,6 +37,7 @@
 #include <linux/device.h>
 #include <linux/i2c/ite7258_tsc.h>
 #include <jz_notifier.h>
+#include <linux/fb.h>
 
 #include "ite7258_ts.h"
 
@@ -55,31 +54,32 @@
 
 
 struct ite7258_ts_data {
-        unsigned int irq;
-        unsigned int rst;
-        unsigned int x_max;
-        unsigned int y_max;
-        unsigned int x_pos;
-        unsigned int y_pos;
+	unsigned int irq;
+	unsigned int rst;
+	unsigned int x_max;
+	unsigned int y_max;
+	unsigned int x_pos;
+	unsigned int y_pos;
 	unsigned int is_suspend;
-        struct i2c_client *client;
-        struct input_dev *input_dev;
-        struct jztsc_platform_data *pdata;
-    //    struct early_suspend early_suspend;
+	struct i2c_client *client;
+	struct input_dev *input_dev;
+	struct jztsc_platform_data *pdata;
 	struct mutex lock;
-        struct work_struct  work;
-        struct workqueue_struct *workqueue;
-        char *vcc_name;
-        struct regulator *vcc_reg;
+	struct work_struct  work;
+	struct workqueue_struct *workqueue;
+	char *vcc_name;
+	struct regulator *vcc_reg;
+	struct notifier_block tp_notif;
 };
 
 struct ite7258_update_data{
-        struct i2c_client *client;
-        unsigned int fw_length;
-        unsigned int conf_length;
-        char *fw_buf;
-        char *conf_buf;
+	struct i2c_client *client;
+	unsigned int fw_length;
+	unsigned int conf_length;
+	char *fw_buf;
+	char *conf_buf;
 };
+
 
 static struct ite7258_update_data *update;
 
@@ -714,60 +714,56 @@ static int ite7258_print_version(struct i2c_client *client)
 
 }
 
-#if defined(CONFIG_PM) && defined(CONFIG_HAS_EARLYSUSPEND)
-static void ite7258_ts_suspend(struct early_suspend *handler)
+static void ite7258_do_suspend(struct ite7258_ts_data *ts)
 {
-       struct ite7258_ts_data *ts = container_of(handler, struct ite7258_ts_data,
-                        early_suspend);
 
-	//flush_work(&ts->work);
-	printk("---------------TP suspend\n");
-	mutex_lock(&ts->lock);
-	flush_scheduled_work();
-        disable_irq(ts->irq);
-	ts->is_suspend = 1;
-	regulator_disable(ts->vcc_reg);
-	mutex_unlock(&ts->lock);
-        dev_dbg(&ts->client->dev, "[FTS]ite7258 suspend\n");
+	if(ts->is_suspend == 0){
+		printk("---------------TP suspend\n");
+		mutex_lock(&ts->lock);
+		flush_scheduled_work();
+		disable_irq(ts->irq);
+		ts->is_suspend = 1;
+		regulator_disable(ts->vcc_reg);
+		mutex_unlock(&ts->lock);
+		dev_dbg(&ts->client->dev, "[FTS]ite7258 suspend\n");
+	}
+}
+
+static void ite7258_do_resume(struct ite7258_ts_data *ts)
+{
+	if(ts->is_suspend){
+		gpio_direction_output(ts->rst, 1);
+		msleep(2);
+		gpio_direction_output(ts->rst, 0);
+		gpio_direction_output(ts->client->irq, 0);
+		msleep(10);
+		regulator_enable(ts->vcc_reg);
+		dev_dbg(&ts->client->dev, "[FTS]ite7258 resume.\n");
+		msleep(2);
+		gpio_direction_input(ts->client->irq);
+		ts->is_suspend = 0;
+
+		enable_irq(ts->irq);
+		printk("ite7258 resume ---------\n");
+	}
 
 }
 
-static void ite7258_ts_resume(struct early_suspend *handler)
+#if defined(CONFIG_PM)
+static int ite7258_ts_suspend(struct device *dev)
 {
-	printk("ite7258 resume ---------\n");
-	struct ite7258_ts_data *ts = container_of(handler, struct ite7258_ts_data,
-			early_suspend);
-	//mutex_lock(&ts->lock);
-	flush_scheduled_work();
-	gpio_direction_output(ts->rst, 1);
-	msleep(2);
-	gpio_direction_output(ts->rst, 0);
-	gpio_direction_output(ts->client->irq, 0);
-	msleep(10);
-	regulator_enable(ts->vcc_reg);
-	dev_dbg(&ts->client->dev, "[FTS]ite7258 resume.\n");
-	msleep(2);
-	gpio_direction_input(ts->client->irq);
-	//ite7258_idle_mode(ts->client);
-	ts->is_suspend = 0;
+	struct ite7258_ts_data *ts = dev_get_drvdata(dev);
 
-	//msleep(10);
-	enable_irq(ts->irq);
-	printk("ite7258 resume ---------\n");
-	//mutex_unlock(&ts->lock);
-}
-#endif
-
- #ifdef CONFIG_HAS_EARLYSUSPEND
-static void ite7258_early_suspend(struct early_suspend *h)
-{
-	ite7258_ts_suspend(h);
+	ite7258_do_suspend(ts);
+	return 0;
 }
 
-static void ite7258_ts_late_resume(struct early_suspend *h)
+static int ite7258_ts_resume(struct device *dev)
 {
-//	printk("ite7258 late resume ----------\n");
-	ite7258_ts_resume(h);
+	struct ite7258_ts_data *ts = dev_get_drvdata(dev);
+
+	ite7258_do_resume(ts);
+	return 0;
 }
 #endif
 
@@ -883,6 +879,50 @@ static void ite7258_input_set(struct input_dev *input_dev, struct ite7258_ts_dat
 	input_dev->id.version = 10427;
 
 }
+static int tp_notifier_callback(struct notifier_block *self,unsigned long event, void *data)
+{
+	struct ite7258_ts_data *ite7258_ts;
+	struct device *dev;
+	struct fb_event *evdata = data;
+	int mode;
+
+	/* If we aren't interested in this event, skip it immediately ... */
+	switch (event) {
+		case FB_EVENT_BLANK:
+		case FB_EVENT_MODE_CHANGE:
+		case FB_EVENT_MODE_CHANGE_ALL:
+		case FB_EARLY_EVENT_BLANK:
+		case FB_R_EARLY_EVENT_BLANK:
+			break;
+		default:
+			return 0;
+	}
+
+	mode = *(int *)evdata->data;
+	ite7258_ts = container_of(self, struct ite7258_ts_data, tp_notif);
+
+	if(event == FB_EVENT_BLANK){
+		if(mode)
+			ite7258_do_suspend(ite7258_ts);
+		else
+			ite7258_do_resume(ite7258_ts);
+	}
+	return 0;
+}
+
+static void ite7258_register_notifier(struct ite7258_ts_data *ite7258_ts)
+{
+	memset(&ite7258_ts->tp_notif,0,sizeof(ite7258_ts->tp_notif));
+	ite7258_ts->tp_notif.notifier_call = tp_notifier_callback;
+
+	/* register on the fb notifier  and work with fb*/
+	fb_register_client(&ite7258_ts->tp_notif);
+}
+
+static void ite7258_unregister_notifier(struct ite7258_ts_data *ite7258_ts)
+{
+	fb_unregister_client(&ite7258_ts->tp_notif);
+}
 
 static int ite7258_ts_probe(struct i2c_client *client,
                 const struct i2c_device_id *id)
@@ -943,6 +983,8 @@ static int ite7258_ts_probe(struct i2c_client *client,
                 goto exit_input_dev_alloc_failed;
         }
 
+		ite7258_register_notifier(ite7258_ts);
+
         ite7258_ts->input_dev = input_dev;
         ite7258_input_set(input_dev, ite7258_ts);
 
@@ -953,13 +995,6 @@ static int ite7258_ts_probe(struct i2c_client *client,
                                 dev_name(&client->dev));
                 goto exit_input_register_device_failed;
         }
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-        ite7258_ts->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
-        ite7258_ts->early_suspend.suspend = ite7258_early_suspend;
-        ite7258_ts->early_suspend.resume  = ite7258_ts_late_resume;
-        register_early_suspend(&ite7258_ts->early_suspend);
-#endif
 
 #ifdef SYSFS_DEBUG
         ite7258_create_sysfs(client);
@@ -1038,6 +1073,7 @@ static int ite7258_ts_remove(struct i2c_client *client)
         ft_rw_iic_drv_exit();
 #endif
         free_irq(ite7258_ts->irq, ite7258_ts);
+		ite7258_unregister_notifier(ite7258_ts);
         if (!IS_ERR(ite7258_ts->vcc_reg)) {
                 regulator_disable(ite7258_ts->vcc_reg);
                 regulator_put(ite7258_ts->vcc_reg);
@@ -1048,7 +1084,7 @@ static int ite7258_ts_remove(struct i2c_client *client)
         return 0;
 }
 
-#if defined(CONFIG_PM) && defined(CONFIG_HAS_EARLYSUSPEND)
+#if defined(CONFIG_PM)
 static const struct dev_pm_ops ite7258_ts_pm_ops = {
 	.suspend        = ite7258_ts_suspend,
 	.resume		= ite7258_ts_resume,
@@ -1069,7 +1105,7 @@ static struct i2c_driver ite7258_ts_driver = {
         .driver = {
                 .name = ITE7258_NAME,
                 .owner = THIS_MODULE,
-#if defined(CONFIG_PM) && defined(CONFIG_HAS_EARLYSUSPEND)
+#if defined(CONFIG_PM)
 		.pm	= &ite7258_ts_pm_ops,
 #endif
         },

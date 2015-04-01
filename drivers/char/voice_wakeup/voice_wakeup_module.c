@@ -51,6 +51,11 @@ struct wakeup_module_ops {
 	int (*set_dma_channel)(int);
 	int (*voice_wakeup_enable)(int);
 	int (*is_voice_wakeup_enabled)(void);
+
+
+
+	int (*_module_init)(void);
+	int (*_module_exit)(void);
 };
 
 static struct wakeup_module_ops *m_ops;
@@ -78,6 +83,9 @@ static void setup_ops(void)
 	printk("handler:%p\n", m_ops->handler);
 	printk("close:%p\n", m_ops->close);
 	printk("set_handler:%p\n", m_ops->set_handler);
+
+	printk("_module_init:%p", m_ops->_module_init);
+	printk("_module_exit:%p", m_ops->_module_exit);
 	printk("###############ops end##############\n");
 }
 
@@ -183,12 +191,13 @@ static int __init wakeup_module_init(void)
 	memcpy(FIRMWARE_LOAD_ADDRESS, wakeup_firmware, sizeof(wakeup_firmware));
 	setup_ops();
 
+	m_ops->_module_init();
 	m_ops->set_dma_channel(JZDMA_REQ_I2S1 + 1);  /* dma phy id 5 */
 	return 0;
 }
 static void __exit wakeup_module_exit(void)
 {
-
+	m_ops->_module_exit();
 
 }
 

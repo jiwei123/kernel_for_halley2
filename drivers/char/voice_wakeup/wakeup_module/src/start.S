@@ -8,7 +8,6 @@
  *
  */
 
-	.text
 
 	.globl	start
 
@@ -28,7 +27,11 @@
 	.extern set_dma_channel
 	.extern voice_wakeup_enable
 	.extern is_voice_wakeup_enabled
+
+	.extern module_init
+	.extern module_exit
 start:
+	.section .interface
 	.word open
 	.word handler
 	.word close
@@ -44,4 +47,7 @@ start:
 	.word set_dma_channel
 	.word voice_wakeup_enable
 	.word is_voice_wakeup_enabled
+
+	.word module_init
+	.word module_exit
 

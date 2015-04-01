@@ -1,5 +1,5 @@
 /*
- * Platform device support for Jz4780 SoC.
+ * Platform device support for M200 SoC.
  *
  * Copyright 2007, <zpzhong@ingenic.cn>
  *
@@ -95,8 +95,14 @@ struct jz_gpio_func_def platform_devio_array[] = {
 	UART2_PORTC,
 #endif
 #ifdef CONFIG_SERIAL_JZ47XX_UART3
+	UART3_PORTA,
 #endif
 #ifdef CONFIG_SERIAL_JZ47XX_UART4
+#ifdef SERIAL_JZ47XX_UART4_PB
+	UART4_PORTB,
+#else
+	UART4_PORTF,
+#endif
 #endif
 #ifdef CONFIG_NAND_DRIVER
 	NAND_PORTAB_COMMON,
@@ -953,4 +959,3 @@ struct platform_device jz_nand_device = {
 	.resource = jz_nand_res,
 	.num_resources =ARRAY_SIZE(jz_nand_res),
 };
-

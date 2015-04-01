@@ -862,11 +862,12 @@ AllocateMemory:
 #endif
             {
                 /* Create a gcuVIDMEM_NODE from contiguous memory. */
-                status = gckVIDMEM_ConstructVirtual(
+                /*status = gckVIDMEM_ConstructVirtual(
                             Kernel,
                             Flag | gcvALLOC_FLAG_CONTIGUOUS,
                             Bytes,
-                            &node);
+                            &node);*/
+                status = gcvSTATUS_OUT_OF_MEMORY;
             }
 
             if (gcmIS_SUCCESS(status))

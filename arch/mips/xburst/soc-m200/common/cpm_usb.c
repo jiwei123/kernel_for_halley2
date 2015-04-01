@@ -111,7 +111,7 @@ EXPORT_SYMBOL(cpm_stop_ehci);
 void jz_otg_ctr_reset(void)
 {
 	cpm_set_bit(SRBC_USB_SR, CPM_SRBC);
-	mdelay(100);
+	udelay(10);
 	cpm_clear_bit(SRBC_USB_SR, CPM_SRBC);
 }
 

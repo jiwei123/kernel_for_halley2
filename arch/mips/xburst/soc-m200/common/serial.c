@@ -8,6 +8,8 @@
 #include <asm/io.h>
 
 #include <soc/base.h>
+#include <asm/setup.h>
+#include <linux/moduleparam.h>
 
 #define UART_OFF	0x1000
 
@@ -17,6 +19,7 @@
 
 #define LSR_TDRQ	(1 << 5)
 #define LSR_TEMT	(1 << 6)
+
 
 static void check_uart(char c);
 
@@ -71,6 +74,17 @@ void prom_putstr(char *s)
 		s++;
 	}
 }
+
+static int __init early_parse_console(char *p)
+{
+	unsigned char *param = "null";
+
+	if(strstr(p, param)){
+		putchar_f = putchar_dummy;
+	}
+	return 0;
+}
+early_param("console", early_parse_console);
 
 #if 0
 static char pbuffer[4096];

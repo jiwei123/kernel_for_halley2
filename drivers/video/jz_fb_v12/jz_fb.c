@@ -2440,6 +2440,17 @@ void test_pattern(struct jzfb *jzfb)
 	}
 #endif
 }
+
+int lcd_display_inited_by_uboot( void )
+{
+	if (*(unsigned int*)(0xb3050000 + LCDC_CTRL) & LCDC_CTRL_ENA)
+		uboot_inited = 1;
+	else
+		uboot_inited = 0;
+	/* screen init will set this function first */
+	return uboot_inited;
+}
+
 static int jzfb_probe(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -2548,7 +2559,6 @@ static int jzfb_probe(struct platform_device *pdev)
 	clk_enable(jzfb->clk);
 	clk_enable(jzfb->pwcl);
 	clk_enable(jzfb->pclk);
-	uboot_inited = 0;
         /* Android generic FrameBuffer format is A8B8G8R8(B3B2B1B0), so we set A8B8G8R8 as default.
          *
          * If set rgb order as A8B8G8R8, both SLCD cmd_buffer and data_buffer bytes sequence changed.
@@ -2620,7 +2630,7 @@ static int jzfb_probe(struct platform_device *pdev)
 		goto err_free_file;
 	}
 
-	if(jzfb_is_enabled_2(jzfb->fb)) {
+	if (lcd_display_inited_by_uboot()) {
 		printk("#######lcd is enabled by uboot, keep par!!\n");
 		/* remain uboot logo, set blank state, keep clk
 		 * but what if uboot's par is different with kernel's.
@@ -2631,7 +2641,6 @@ static int jzfb_probe(struct platform_device *pdev)
 				jzfb_change_dma_desc(jzfb->fb);
 			}
 		}
-		uboot_inited = 1;
 	} else {
 		/*do init, set blank state*/
 		jzfb_set_par(jzfb->fb);

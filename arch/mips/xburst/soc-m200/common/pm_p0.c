@@ -604,9 +604,9 @@ static noinline void cpu_resume(void)
 
 #define CPM_DRCG			(0xB00000D0)
 
-		*(volatile unsigned int *)CPM_DRCG = 0x13 | (1<<6);
+		*(volatile unsigned int *)CPM_DRCG |= 2;
 		TCSM_DELAY(0x1ff);
-		*(volatile unsigned int *)CPM_DRCG = 0x11 | (1<<6);
+		*(volatile unsigned int *)CPM_DRCG &= (~2);
 		TCSM_DELAY(0x1ff);
 		/**
 		 * for disabled ddr enter power down.
@@ -617,9 +617,9 @@ static noinline void cpu_resume(void)
 		/**
 		 * reset dll of ddr too.
 		 */
-		*(volatile unsigned int *)CPM_DRCG = 0x13 | (1<<6);
+		*(volatile unsigned int *)CPM_DRCG |= 2;
 		TCSM_DELAY(0x1ff);
-		*(volatile unsigned int *)CPM_DRCG = 0x11 | (1<<6);
+		*(volatile unsigned int *)CPM_DRCG &= (~2);
 		TCSM_DELAY(0x1ff);
                 /**
 		 * dll reset item & dll locked.
@@ -790,8 +790,11 @@ static int m200_pm_enter(suspend_state_t state)
 	__write_32bit_c0_register($12, 7, 0);
 	return 0;
 }
+//#define SLEEP_CHANGE_CORE_VCC
 static struct m200_early_sleep_t {
+#ifdef SLEEP_CHANGE_CORE_VCC
 	struct regulator*  core_vcc;
+#endif
 	struct clk *cpu_clk;
 	unsigned int rate_hz;
 	unsigned int real_hz;
@@ -799,7 +802,9 @@ static struct m200_early_sleep_t {
 
 }m200_early_sleep;
 const unsigned int sleep_rate_hz = 120*1000*1000;
+#ifdef SLEEP_CHANGE_CORE_VCC
 const unsigned int sleep_vol_uv = 975 * 1000;
+#endif
 static int m200_prepare(void)
 {
 #ifdef CONFIG_CPU_FREQ
@@ -811,16 +816,20 @@ static int m200_prepare(void)
 		cpufreq_cpu_put(policy);
 	}
 #endif
+#ifdef SLEEP_CHANGE_CORE_VCC
 	if(m200_early_sleep.core_vcc == NULL) {
 		m200_early_sleep.core_vcc = regulator_get(NULL,"cpu_core_slp");
 	}
+#endif
 	m200_early_sleep.rate_hz = clk_get_rate(m200_early_sleep.cpu_clk);
 	clk_set_rate(m200_early_sleep.cpu_clk,sleep_rate_hz);
 	m200_early_sleep.real_hz = clk_get_rate(m200_early_sleep.cpu_clk);
+#ifdef SLEEP_CHANGE_CORE_VCC
 	if(!IS_ERR(m200_early_sleep.core_vcc)) {
 		m200_early_sleep.vol_uv = regulator_get_voltage(m200_early_sleep.core_vcc);
 		regulator_set_voltage(m200_early_sleep.core_vcc,sleep_vol_uv,sleep_vol_uv);
 	}
+#endif
 	return 0;
 }
 static void m200_finish(void)
@@ -834,9 +843,11 @@ static void m200_finish(void)
 		printk("warn! current cpu clk %d is not deep sleep set cpu clk %d!\n",
 		       rate, m200_early_sleep.real_hz);
 	}
+#ifdef SLEEP_CHANGE_CORE_VCC
 	if(!IS_ERR(m200_early_sleep.core_vcc)) {
 		regulator_set_voltage(m200_early_sleep.core_vcc,m200_early_sleep.vol_uv,m200_early_sleep.vol_uv);
 	}
+#endif
 	clk_set_rate(m200_early_sleep.cpu_clk,m200_early_sleep.rate_hz);
 #ifdef CONFIG_CPU_FREQ
 	policy = cpufreq_cpu_get(0);

@@ -36,6 +36,12 @@
 #include <soc/gpio.h>
 #include <jz_notifier.h>
 
+
+/* After report early 10 points, skip report point(1/3). */
+#define DEBUG_SKIP_REPORT_POINT
+#define DEBUG_SKIP_POINT_DIVIDE_RATIO (3) /* only report 1/3 */
+
+
 //#define FTS_CTL_IIC
 //#define SYSFS_DEBUG
 //#define FTS_APK_DEBUG
@@ -71,6 +77,10 @@ struct ft6x06_ts_data {
 	struct work_struct  work;
 	struct workqueue_struct *workqueue;
 	struct regulator *vcc_reg;
+
+#ifdef DEBUG_SKIP_REPORT_POINT
+	unsigned int report_count;
+#endif
 };
 
 #define FTS_POINT_UP		0x01
@@ -154,6 +164,10 @@ int ft6x06_i2c_Write(struct i2c_client *client, char *writebuf, int writelen)
 /*release the point*/
 static void ft6x06_ts_release(struct ft6x06_ts_data *data)
 {
+#ifdef DEBUG_SKIP_REPORT_POINT
+	data->report_count = 0;
+#endif
+
 	input_report_key(data->input_dev, BTN_TOUCH, 0);
 	if(1 == key_menu_status){
 		input_event(data->input_dev,EV_KEY,KEY_MENU,0);
@@ -229,6 +243,14 @@ static void ft6x06_report_value(struct ft6x06_ts_data *data)
 		/* LCD view area */
 		if (event->au16_x[i] < data->va_x_max
 		    && event->au16_y[i] < data->va_y_max) {
+#ifdef DEBUG_SKIP_REPORT_POINT
+			int report_count;
+			report_count = data->report_count;
+			data->report_count++;
+			/* After report early 10 points, skip report point(1/3). */
+			if ( (report_count < 10) || ( report_count % DEBUG_SKIP_POINT_DIVIDE_RATIO == 0) ) {
+#endif	/* DEBUG_SKIP_REPORT_POINT */
+
 #ifdef CONFIG_FT6X06_MULTITOUCH
 			input_report_abs(data->input_dev, ABS_MT_POSITION_X,
 					event->au16_x[i]);
@@ -239,6 +261,7 @@ static void ft6x06_report_value(struct ft6x06_ts_data *data)
 			input_report_abs(data->input_dev,ABS_MT_WIDTH_MAJOR,
 					event->au8_touch_wight[i]);
 			input_mt_sync(data->input_dev);
+
 #else
 			if(0 == i){
 				s16 convert_x = 0;
@@ -257,6 +280,9 @@ static void ft6x06_report_value(struct ft6x06_ts_data *data)
 				input_report_key(data->input_dev, BTN_TOUCH, 1);
 			}
 #endif
+#ifdef DEBUG_SKIP_REPORT_POINT
+			}
+#endif /* DEBUG_SKIP_REPORT_POINT */
 		}
 		/*Virtual key*/
 		else{
@@ -348,6 +374,7 @@ static irqreturn_t ft6x06_ts_interrupt(int irq, void *dev_id)
 
 static void ft6x06_ts_reset(struct ft6x06_ts_data *ts)
 {
+	//printk("[FTS] ft6x06_ts_reset()\n");
 	gpio_set_value(ts->pdata->reset, 1);
 	msleep(5);
 	gpio_set_value(ts->pdata->reset, 0);
@@ -503,6 +530,35 @@ static int ft6x06_ts_probe(struct i2c_client *client,
 	ft6x06_i2c_Read(client, &uc_reg_addr, 1, &uc_reg_value, 1);
 	dev_dbg(&client->dev, "[FTS] report rate is %dHz.\n",
 		uc_reg_value * 10);
+
+	/* Try to slow down point rate, Failed. */
+	if (0) {
+		char write_buf[2];
+		write_buf[0] = FT6x06_REG_POINT_RATE;
+		write_buf[1] = 1;
+		ft6x06_i2c_Write(client, &write_buf[0], 2);
+
+		uc_reg_addr = FT6x06_REG_POINT_RATE;
+		ft6x06_i2c_Read(client, &uc_reg_addr, 1, &uc_reg_value, 1);
+		dev_err(&client->dev, "[FTS] report rate is %dHz.\n",
+			uc_reg_value * 10);
+
+
+		uc_reg_addr = 0x89;
+		ft6x06_i2c_Read(client, &uc_reg_addr, 1, &uc_reg_value, 1);
+		dev_err(&client->dev, "[FTS] report rate 89is %dHz.\n",
+			uc_reg_value * 10);
+
+		write_buf[0] = 0x89;
+		write_buf[1] = 1;
+		ft6x06_i2c_Write(client, &write_buf[0], 2);
+
+		uc_reg_addr = 0x89;
+		ft6x06_i2c_Read(client, &uc_reg_addr, 1, &uc_reg_value, 1);
+		dev_err(&client->dev, "[FTS] report rate 89is %dHz.\n",
+			uc_reg_value * 10);
+	}
+
 
 	uc_reg_addr = FT6x06_REG_THGROUP;
 	ft6x06_i2c_Read(client, &uc_reg_addr, 1, &uc_reg_value, 1);

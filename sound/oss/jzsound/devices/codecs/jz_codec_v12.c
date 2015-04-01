@@ -77,15 +77,15 @@ extern int i2s_register_codec_2(struct codec_info *codec_dev);
 #define	MIXER_REPLAY  0x2
 
 static int g_short_circut_state = 0;
-static int g_codec_sleep_mode = 1;
 static int g_mixer_is_used = 0;
 
-void codec_sleep(struct codec_info *codec_dev, int ms)
+static void codec_delay(int ms)
 {
-	if(!g_codec_sleep_mode)
+	if(ms < 1000/HZ) {
 		mdelay(ms);
-	else
+	} else {
 		msleep(ms);
+	}
 }
 
 static inline void codec_sleep_wait_bitset(struct codec_info *codec_dev, int reg, unsigned bit,
@@ -94,7 +94,7 @@ static inline void codec_sleep_wait_bitset(struct codec_info *codec_dev, int reg
 	int i = 0;
 
         for (i=0; i<3000; i++) {
-                codec_sleep(codec_dev, 1);
+                codec_delay(1);
                 if (__read_codec_reg(codec_dev, reg) & (1 << bit))
                         return;
         }
@@ -448,16 +448,16 @@ static void codec_prepare_ready(struct codec_info * codec_dev, int mode)
 	   g_short_circut_state == 0)
 	{
 		__codec_switch_sb(codec_dev, POWER_ON);
-		codec_sleep(codec_dev, 250);
+		codec_delay(250);
 	}
 	/*wait a typical time 200ms for adc (400ms for dac) to get into normal mode*/
 	if(__codec_get_sb_sleep(codec_dev) == POWER_OFF)
 	{
 		__codec_switch_sb_sleep(codec_dev, POWER_ON);
 		if(mode == CODEC_RMODE)
-			codec_sleep(codec_dev, 200);
+			codec_delay(200);
 		else
-			codec_sleep(codec_dev, 400);
+			codec_delay(400);
 	}
 	if (mode & CODEC_WMODE) {
 		if (__codec_get_dac_interface_state(codec_dev)) {
@@ -812,7 +812,7 @@ static void codec_set_adc(struct codec_info *codec_dev, int mode)
 
 	case ADC_DMIC_ENABLE:
 		__codec_set_dmic_mux(codec_dev, CODEC_DMIC_SEL_DIGITAL_MIC);
-		mdelay(1);
+		codec_delay(1);
 	case ADC_DISABLE:
 		if(__codec_get_sb_adc(codec_dev) == POWER_ON)
 		{
@@ -1165,7 +1165,7 @@ static void codec_set_hp(struct codec_info *codec_dev, int mode)
 	case HP_ENABLE:
 		if (__codec_get_sb_hp(codec_dev) == POWER_OFF) {
 			__codec_enable_hp_mute(codec_dev);
-			mdelay(1);
+			codec_delay(1);
 			if (__codec_get_sb_linein1_bypass(codec_dev) == POWER_ON) {
 				__codec_switch_sb_linein1_bypass(codec_dev, POWER_OFF);
 				linein1_to_bypass_power_on = 1;
@@ -1190,7 +1190,7 @@ static void codec_set_hp(struct codec_info *codec_dev, int mode)
 				codec_set_gain_hp_left(codec_dev, 6);
 			if (curr_hp_right_vol != 6)
 				codec_set_gain_hp_right(codec_dev, 6);
-			mdelay(1);
+			codec_delay(1);
 
 			/* turn on sb_hp */
 			__codec_set_irq_flag(codec_dev, 1 << IFR_DAC_MODE_EVENT);
@@ -1218,7 +1218,7 @@ static void codec_set_hp(struct codec_info *codec_dev, int mode)
 
 	case HP_DISABLE:
 		__codec_disable_hp_mute(codec_dev);
-		mdelay(1);
+		codec_delay(1);
 		if(__codec_get_sb_hp(codec_dev) == POWER_ON)
 		{
 			if(__codec_get_sb_linein1_bypass(codec_dev) == POWER_ON) {
@@ -1245,7 +1245,7 @@ static void codec_set_hp(struct codec_info *codec_dev, int mode)
 				codec_set_gain_hp_left(codec_dev, 6);
 			if (curr_hp_right_vol != 6)
 				codec_set_gain_hp_right(codec_dev, 6);
-			mdelay(1);
+			codec_delay(1);
 
 			/* turn off sb_hp */
 			__codec_set_irq_flag(codec_dev, 1 << IFR_DAC_MODE_EVENT);
@@ -2072,7 +2072,7 @@ static void gpio_enable_spk_en(struct codec_info *codec_dev)
 		if (!__codec_get_hp_mute(codec_dev)) {
 			__codec_enable_hp_mute(codec_dev);
 			hp_unmute_state = 1;
-			mdelay(50);		/*FIXME :Avoid hardware pop maybe the speaker amp have stable time*/
+			codec_delay(50);		/*FIXME :Avoid hardware pop maybe the speaker amp have stable time*/
 		}
 		if (codec_platform_data->gpio_spk_en.active_level) {
 			gpio_direction_output(codec_platform_data->gpio_spk_en.gpio , 1);
@@ -2421,9 +2421,9 @@ static int codec_shutdown(struct codec_info *codec_dev)
 	__codec_disable_dac_interface(codec_dev);
 	__codec_disable_adc_interface(codec_dev);
 
-	codec_sleep(codec_dev, 10);
+	codec_delay(10);
 	__codec_switch_sb(codec_dev, POWER_OFF);
-	codec_sleep(codec_dev, 10);
+	codec_delay(10);
 
 	return 0;
 }
@@ -2462,7 +2462,6 @@ static int codec_suspend(struct codec_info *codec_dev)
 {
 	int ret = 10;
 
-	g_codec_sleep_mode = 0;
 
 	ret = codec_set_route(codec_dev, SND_ROUTE_ALL_CLEAR);
 	if(ret != SND_ROUTE_ALL_CLEAR)
@@ -2472,7 +2471,7 @@ static int codec_suspend(struct codec_info *codec_dev)
 	}
 
 	__codec_switch_sb_sleep(codec_dev, POWER_OFF);
-	codec_sleep(codec_dev, 10);
+	codec_delay(10);
 	__codec_switch_sb(codec_dev, POWER_OFF);
 
 	return 0;
@@ -2491,15 +2490,14 @@ static int codec_resume(struct codec_info *codec_dev)
 		}
 	} else {
 		__codec_switch_sb(codec_dev, POWER_ON);
-		codec_sleep(codec_dev, 250);
+		codec_delay(250);
 		__codec_switch_sb_sleep(codec_dev, POWER_ON);
 		/*
-		 * codec_sleep(codec_dev, 400);
+		 * codec_delay(400);
 		 * this time we ignored becase other device resume waste time
 		 */
 	}
 
-	g_codec_sleep_mode = 1;
 	return 0;
 }
 
@@ -2694,7 +2692,7 @@ static int codec_set_standby(struct codec_info *codec_dev, unsigned int sw)
 		} else {
 			/* clean the relevant route */
 			//__codec_switch_sb(codec_dev, POWER_ON);
-			mdelay(250);
+			codec_delay(250);
 			gpio_enable_spk_en(codec_dev);
 			gpio_disable_hp_mute(codec_dev);
 		}
@@ -2984,7 +2982,7 @@ static inline void codec_short_circut_handler(struct codec_info *codec_dev)
 
 	printk("Short circut volume delay %d ms curr_hp_left_vol=%x curr_hp_right_vol=%x \n",
 	       delay, curr_hp_left_vol, curr_hp_right_vol);
-	codec_sleep(codec_dev, delay);
+	codec_delay(delay);
 
 	/*  turn off sb_hp */
 	g_short_circut_state = 1;
@@ -2998,17 +2996,17 @@ static inline void codec_short_circut_handler(struct codec_info *codec_dev)
 
 		codec_set_hp(codec_dev, HP_DISABLE);
 		__codec_switch_sb_sleep(codec_dev, POWER_OFF);
-		codec_sleep(codec_dev, 10);
+		codec_delay(10);
 		__codec_switch_sb(codec_dev, POWER_OFF);
-		codec_sleep(codec_dev, 10);
+		codec_delay(10);
 		printk("Short circut shutdown codec.\n");
 
 		__codec_set_irq_flag(codec_dev, 1 << IFR_SCLR_EVENT);
-		codec_sleep(codec_dev, 10);
+		codec_delay(10);
 		__codec_switch_sb(codec_dev, POWER_ON);
-		codec_sleep(codec_dev, 250);
+		codec_delay(250);
 		__codec_switch_sb_sleep(codec_dev, POWER_ON);
-		codec_sleep(codec_dev, 400);
+		codec_delay(400);
 		codec_set_hp(codec_dev, HP_ENABLE);
 	}
 
@@ -3017,7 +3015,7 @@ static inline void codec_short_circut_handler(struct codec_info *codec_dev)
 	codec_set_gain_hp_left(codec_dev, curr_hp_left_vol);
 	codec_set_gain_hp_right(codec_dev, curr_hp_right_vol);
 
-	codec_sleep(codec_dev, delay);
+	codec_delay(delay);
 
 #undef VOL_DELAY_BASE
 
@@ -3061,17 +3059,17 @@ static int codec_irq_handle(struct codec_info *codec_dev, struct work_struct *de
 			/* Read status at least 3 times to make sure it is stable. */
 			for (i = 0; i < 3; ++i) {
 				old_status = ((__codec_get_sr(codec_dev) & CODEC_JACK_MASK) != 0);
-				codec_sleep(codec_dev, 50);
+				codec_delay(50);
 			}
 		}
 		__codec_set_irq_flag(codec_dev, codec_ifr);
 
 		codec_ifr = __codec_get_irq_flag(codec_dev);
-		codec_sleep(codec_dev, 10);
+		codec_delay(10);
 
 		/* If the jack status has changed, we have to redo the process. */
 		if (codec_ifr & (1 << IFR_JACK_EVENT)) {
-			codec_sleep(codec_dev, 50);
+			codec_delay(50);
 			new_status = ((__codec_get_sr(codec_dev) & CODEC_JACK_MASK) != 0);
 			if (new_status != old_status) {
 				goto _ensure_stable;
@@ -3121,26 +3119,26 @@ static void codec_debug_default(struct codec_info *codec_dev)
 	while(ret--) {
 		gpio_disable_spk_en(codec_dev);
 		printk("disable %d\n",ret);
-		mdelay(10000);
+		codec_delay(10000);
 		gpio_enable_spk_en(codec_dev);
 		printk("enable %d\n",ret);
-		mdelay(10000);
+		codec_delay(10000);
 	}
 	ret = 4;
 	while(ret--) {
 		printk("============\n");
 		printk("hp disable\n");
 		codec_set_hp(codec_dev, HP_DISABLE);
-		mdelay(10000);
+		codec_delay(10000);
 		printk("spk gpio disable\n");
 		gpio_disable_spk_en(codec_dev);
-		mdelay(10000);
+		codec_delay(10000);
 		printk("hp enable\n");
 		codec_set_hp(codec_dev, HP_ENABLE);
-		mdelay(10000);
+		codec_delay(10000);
 		printk("spk gpio enable\n");
 		gpio_enable_spk_en(codec_dev);
-		mdelay(10000);
+		codec_delay(10000);
 
 	}
 }

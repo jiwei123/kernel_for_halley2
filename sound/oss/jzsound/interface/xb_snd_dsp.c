@@ -1188,11 +1188,12 @@ ssize_t xb_snd_dsp_read(struct file *file,
 			}
 
 			if (!node) {
-				if (wait_event_interruptible_timeout(dp->wq,
-							     (atomic_read(&dp->avialable_couter) >= 1 || dp->force_stop_dma == true), HZ) <= 0) {
-					mutex_unlock(&dp->mutex);
+				mutex_unlock(&dp->mutex);
+				if (wait_event_interruptible(dp->wq,
+							     (atomic_read(&dp->avialable_couter) >= 1 || dp->force_stop_dma == true)) < 0) {
 					return count - mcount;
 				}
+				mutex_lock(&dp->mutex);
 			} else {
 				atomic_dec(&dp->avialable_couter);
 				break;
@@ -1315,9 +1316,12 @@ ssize_t xb_snd_dsp_write(struct file *file,
 				}
 				if (dp->is_non_block == true)
 					goto write_return;
-				if (wait_event_interruptible_timeout(dp->wq, (atomic_read(&dp->avialable_couter) >= 1)
-							     || dp->force_stop_dma == true, HZ) <= 0)
-					goto write_return;
+				mutex_unlock(&dp->mutex);
+				if (wait_event_interruptible(dp->wq, (atomic_read(&dp->avialable_couter) >= 1)
+							     || dp->force_stop_dma == true) < 0) {
+					return count - mcount;
+				}
+				mutex_lock(&dp->mutex);
 			} else {
 				atomic_dec(&dp->avialable_couter);
 				break;
@@ -1978,12 +1982,14 @@ long xb_snd_dsp_ioctl(struct file *file,
 			dp = endpoints->out_endpoint;
 			mutex_lock(&dp->mutex);
 			dp->wait_stop_dma = true;
+			mutex_unlock(&dp->mutex);
 			while (wait_event_interruptible(dp->wq,
 							dp->is_trans == false) && i--);
 			if (!i) {
 				ret = -EFAULT;
 				goto EXIT_IOCTRL;
 			}
+			mutex_lock(&dp->mutex);
 			del_timer_sync(&dp->transfer_watchdog);
 			snd_release_node(dp);
 			mutex_unlock(&dp->mutex);
@@ -2107,132 +2113,6 @@ long xb_snd_dsp_ioctl(struct file *file,
 		break;
 	}
 
-	case SNDCTL_EXT_DIRECT_GETINODE: {
-		/* extention: used to get used input node, used for mmapd mode */
-		struct direct_info info;
-		struct dsp_node *node = NULL;
-
-		if (file->f_mode & FMODE_READ) {
-			dp = endpoints->in_endpoint;
-			mutex_lock(&dp->mutex);
-			while(1) {
-				node = get_use_dsp_node(dp);
-				if (dp->is_trans == false) {
-					ret = snd_prepare_dma_desc(dp);
-					if (!ret) {
-						snd_start_dma_transfer(dp , dp->dma_config.direction);
-					} else if (!node) {
-						ret = -EFAULT;
-						mutex_unlock(&dp->mutex);
-						goto EXIT_IOCTRL;
-					}
-				}
-
-				if (dp->is_non_block) {
-					info.bytes = 0;
-					info.offset = -1;
-					mutex_unlock(&dp->mutex);
-					return copy_to_user((void *)arg, &info, sizeof(info)) ? -EFAULT : 0;
-				}
-
-				if (!node) {
-					wait_event_interruptible(dp->wq, atomic_read(&dp->avialable_couter) >= 1
-								 || dp->force_stop_dma == true);
-					if (dp->force_stop_dma == true) {
-						info.bytes = 0;
-						info.offset = -1;
-						dp->force_stop_dma = false;
-						ret = copy_to_user((void *)arg, &info, sizeof(info)) ? -EFAULT : 0;
-						break;
-					}
-				} else {
-					dp->save_node = node;
-					info.bytes = node->size;
-					info.offset = node->pBuf - dp->vaddr;
-					dma_cache_sync(NULL, (void *)node->pBuf, node->size, dp->dma_config.direction);
-					ret = copy_to_user((void *)arg, &info, sizeof(info)) ? -EFAULT : 0;
-					atomic_dec(&dp->avialable_couter);
-				}
-			}
-			mutex_unlock(&dp->mutex);
-		} else {
-			ret = -EPERM;
-			goto EXIT_IOCTRL;
-		}
-		break;
-	}
-
-	case SNDCTL_EXT_DIRECT_PUTINODE: {
-		/* extention: used to put free input node, used for mmapd mode */
-		if (file->f_mode & FMODE_READ) {
-			dp = endpoints->in_endpoint;
-			put_free_dsp_node(dp, dp->save_node);
-		} else {
-			ret = -EPERM;
-			goto EXIT_IOCTRL;
-		}
-		break;
-	}
-
-	case SNDCTL_EXT_DIRECT_GETONODE: {
-		/* extention: used to get free output node, used for mmapd mode */
-		struct direct_info info;
-		struct dsp_node *node = NULL;
-
-		if (file->f_mode & FMODE_WRITE) {
-			dp = endpoints->out_endpoint;
-			node = get_free_dsp_node(dp);
-			if (node) {
-				atomic_dec(&dp->avialable_couter);
-				dp->save_node = node;
-				info.bytes = node->size;
-				info.offset = node->pBuf - dp->vaddr;
-			} else {
-				info.bytes = 0;
-				info.offset = -1;
-			}
-			ret = copy_to_user((void *)arg, &info, sizeof(info)) ? -EFAULT : 0;
-		} else {
-			ret = -EPERM;
-			goto EXIT_IOCTRL;
-		}
-		break;
-	}
-
-	case SNDCTL_EXT_DIRECT_PUTONODE: {
-		/* extention: used to put used input node, used for mmapd mode */
-		struct direct_info info;
-
-		if (file->f_mode & FMODE_WRITE) {
-			dp = endpoints->out_endpoint;
-			ret = copy_from_user((void *)&info, (void *)arg, sizeof(info)) ? -EFAULT : 0;
-			if (!ret) {
-				mutex_lock(&dp->mutex);
-				/* put node to use list */
-				dma_cache_sync(NULL,
-					       (void *)dp->save_node->pBuf,
-					       info.bytes,
-					       dp->dma_config.direction);
-				put_use_dsp_node(dp, dp->save_node, info.bytes);
-				/* start dma transfer if dma is stopped */
-				if (dp->is_trans == false) {
-					ret = snd_prepare_dma_desc(dp);
-					if (!ret) {
-						snd_start_dma_transfer(dp , dp->dma_config.direction);
-					} else {
-						put_free_dsp_node(dp,dp->save_node);
-						atomic_inc(&dp->avialable_couter);
-						printk(KERN_ERR"audio driver :dma start failed ,drop the audio data.\n");
-					}
-				}
-				mutex_unlock(&dp->mutex);
-			}
-		} else {
-			ret = -EPERM;
-			goto EXIT_IOCTRL;
-		}
-		break;
-	}
 
 	case SNDCTL_EXT_STOP_DMA: {
 		if (file->f_mode & FMODE_READ)
@@ -2240,25 +2120,21 @@ long xb_snd_dsp_ioctl(struct file *file,
 		if (file->f_mode & FMODE_WRITE)
 			dp = endpoints->out_endpoint;
 		if (dp != NULL) {
-			//int i = 0x7ffff;
 
 			mutex_lock(&dp->mutex);
 			del_timer_sync(&dp->transfer_watchdog);
 			dp->force_stop_dma = true;
 			dp->wait_stop_dma = true;
-#if 0
-			while(wait_event_interruptible(dp->wq,dp->is_trans == false) && i--);
-			if (!i) {
-				dmaengine_terminate_all(dp->dma_chan);
-			}
-#else
+			wake_up(&dp->wq);
+			mutex_unlock(&dp->mutex);
+
 			if(wait_event_interruptible_timeout(dp->wq,dp->is_trans == false, HZ) <= 0) {
 				dmaengine_terminate_all(dp->dma_chan);
 			}
-#endif
 
+			mutex_lock(&dp->mutex);
 			if (dp->force_stop_dma == true)
-				mdelay(20);
+				msleep(20);
 			snd_release_node(dp);
 			dp->is_trans = false;
 			dp->wait_stop_dma = false;

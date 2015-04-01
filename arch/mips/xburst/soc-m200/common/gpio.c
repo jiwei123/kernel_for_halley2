@@ -75,6 +75,8 @@ struct jzgpio_chip {
 	void __iomem *reg;
 	void __iomem *shadow_reg;
 	int irq_base;
+	unsigned int resume_flag;
+	unsigned int pin_slp_status;
 	spinlock_t gpio_lock;
 	DECLARE_BITMAP(dev_map, 32);
 	DECLARE_BITMAP(gpio_map, 32);
@@ -279,7 +281,6 @@ int jz_gpio_set_func(int gpio, enum gpio_function func)
 	return 0;
 }
 
-
 int jzgpio_ctrl_pull(enum gpio_port port, int enable_pull,unsigned long pins)
 {
 	struct jzgpio_chip *jz = &jz_gpio_chips[port];
@@ -294,6 +295,7 @@ int jzgpio_ctrl_pull(enum gpio_port port, int enable_pull,unsigned long pins)
 
 	return 0;
 }
+EXPORT_SYMBOL(jzgpio_ctrl_pull);
 
 /* Functions followed for GPIOLIB */
 static int jz_gpio_set_pull(struct gpio_chip *chip,
@@ -336,6 +338,10 @@ static int jz_gpio_get(struct gpio_chip *chip, unsigned offset)
 {
 	struct jzgpio_chip *jz = gpio2jz(chip);
 
+	if(jz->resume_flag & BIT(offset)) {
+		jz->resume_flag &= ~BIT(offset);
+		return !!(jz->pin_slp_status & BIT(offset));
+	}
 	return !!(readl(jz->reg + PXPIN) & BIT(offset));
 }
 
@@ -420,6 +426,24 @@ static void gpio_unmask_irq(struct irq_data *data)
 	int pin  = data->irq - jz->irq_base;
 
 	writel(BIT(pin), jz->reg + PXMSKC);
+}
+
+/* clear irq pending flag and unmask irq */
+static void gpio_unmask_and_ack_irq(struct irq_data *data)
+{
+	unsigned long flags;
+	struct jzgpio_chip *jz = irqdata2jz(data);
+	int pin  = data->irq - jz->irq_base;
+
+	spin_lock_irqsave(&jz->gpio_lock,flags);
+
+	/* clear interrupt pending flag */
+	writel(BIT(pin), jz->reg + PXFLGC);
+	/* unmask interrupt */
+	writel(BIT(pin), jz->reg + PXMSKC);
+
+	spin_unlock_irqrestore(&jz->gpio_lock,flags);
+	return ;
 }
 
 static void gpio_mask_irq(struct irq_data *data)
@@ -529,7 +553,7 @@ static struct jzgpio_chip jz_gpio_chips[] = {
 			.name 	= NAME,					\
 			.irq_startup 	= gpio_startup_irq,		\
 			.irq_shutdown 	= gpio_shutdown_irq,		\
-			.irq_enable	= gpio_unmask_irq,		\
+			.irq_enable	= gpio_unmask_and_ack_irq,	\
 			.irq_disable	= gpio_mask_and_ack_irq,	\
 			.irq_unmask 	= gpio_unmask_irq,		\
 			.irq_mask 	= gpio_mask_irq,		\
@@ -715,8 +739,27 @@ int gpio_suspend(void)
 			}
 		}
 		gpio_suspend_set(jz);
+		jz->resume_flag = 0;
 	}
 	return 0;
+}
+static void check_wakeup_gpio(struct jzgpio_chip *jz)
+{
+	unsigned long pend,mask;
+	unsigned long pint;
+
+	pend = readl(jz->reg + PXFLG);
+	mask = readl(jz->reg + PXMSK);
+
+	pend = pend & ~mask;
+	if(pend) {
+		pint = readl(jz->reg + PXINT);
+		pend = pend & pint;
+		if(pend) {
+			jz->resume_flag = pend;
+			jz->pin_slp_status = readl(jz->reg + PXPAT0) & pend;
+		}
+	}
 }
 void gpio_resume(void)
 {
@@ -725,6 +768,7 @@ void gpio_resume(void)
 
 	for(i = 0; i < GPIO_NR_PORTS; i++) {
 		jz = &jz_gpio_chips[i];
+		check_wakeup_gpio(jz);
 		writel(jz->save[0], jz->reg + PXINT);
 		writel(jz->save[1], jz->reg + PXMSK);
 		writel(jz->save[2], jz->reg + PXPAT1);
@@ -866,6 +910,65 @@ int __init setup_gpio_pins(void)
 }
 
 arch_initcall(setup_gpio_pins);
+
+
+/* -------------------------gpio register----------------------- */
+static int dump_gpio_regs_l(char *buffer, int port)
+{
+	int len = 0;
+	int i, port_end;
+	char * page;
+
+	page = buffer;
+
+	if (port<0 || port >= GPIO_NR_PORTS) {
+		port = 0;
+		port_end = GPIO_NR_PORTS;
+	}
+	else {
+		port_end = port+1;
+	}
+
+#define PRINT(ARGS...) len += sprintf (page + len, ##ARGS)
+	PRINT("\tPIN\t\tFLG\t\tINT\t\tMASK\t\tPAT1\t\tPAT0\n");
+	for(i = port; i < port_end; i++) {
+		PRINT("\t0x%08x\t0x%08x\t0x%08x\t0x%08x\t0x%08x\t0x%08x\n",
+		      readl(jz_gpio_chips[i].reg + PXPIN),
+		      readl(jz_gpio_chips[i].reg + PXFLG),
+		      readl(jz_gpio_chips[i].reg + PXINT),
+		      readl(jz_gpio_chips[i].reg + PXMSK),
+		      readl(jz_gpio_chips[i].reg + PXPAT1),
+		      readl(jz_gpio_chips[i].reg + PXPAT0));
+	}
+
+	return len;
+}
+
+int dump_gpio_regs(char *buffer, int port)
+{
+
+	if (buffer) {
+		return dump_gpio_regs_l(buffer, port);
+	}
+	else {
+		char buffer[1024];
+		int len;
+
+		memset((void*)&buffer[0], 0, 1024);
+
+		len = dump_gpio_regs_l(&buffer[0], port);
+
+		printk("%s() len: %d\n", __FUNCTION__, len);
+		printk("%s\n", &buffer[0]);
+
+		return 0;
+	}
+
+
+
+	return 0;
+}
+
 /* -------------------------gpio proc----------------------- */
 #include <jz_proc.h>
 

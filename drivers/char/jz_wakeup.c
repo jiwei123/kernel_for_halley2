@@ -82,12 +82,10 @@ static int wakeup_open(struct inode *inode, struct file *filp)
 	struct cdev *cdev = inode->i_cdev;
 	struct wakeup_dev *wakeup = container_of(cdev, struct wakeup_dev, cdev);
 
-	printk("wakeup open:!\n");
 	filp->private_data = wakeup;
 
 	wakeup->resource_buf = (unsigned char *)KSEG1ADDR(wakeup_module_get_resource_addr());
 
-	printk("resource_buf:%08x\n", (unsigned int)wakeup->resource_buf);
 
 	return 0;
 }
@@ -110,7 +108,21 @@ static int wakeup_write(struct file *filp, const char *buf, size_t count, loff_t
 }
 static int wakeup_close(struct inode *inode, struct file *filp)
 {
-	//struct wakeup_dev *wakeup = filp->private_data;
+	struct wakeup_dev *wakeup = filp->private_data;
+	unsigned long flags;
+
+	wakeup_module_close(NORMAL_WAKEUP);
+
+	spin_lock_irqsave(&wakeup->wakeup_lock, flags);
+	if(wakeup->wakeup_pending == 1) {
+		wakeup->wakeup_pending = 0;
+		wakeup->wakeup_enable = 0;
+		wake_up(&wakeup->wakeup_wq);
+	}
+	spin_unlock_irqrestore(&wakeup->wakeup_lock, flags);
+
+	wakeup_module_wakeup_enable(0);
+	del_timer_sync(&wakeup->wakeup_timer);
 
 	return 0;
 }
@@ -139,8 +151,9 @@ static void wakeup_timer_handler(unsigned long data)
 {
 	struct wakeup_dev *wakeup = (struct wakeup_dev *)data;
 	unsigned long flags;
+
 	if(wakeup_module_process_data() == SYS_WAKEUP_OK) {
-		printk("########[Kernel: %s], ------------%d\n", __func__, __LINE__);
+		printk("sys wakeup ok!--%s():%d, wakeup_pending:%d\n", __func__, __LINE__, wakeup->wakeup_pending);
 		spin_lock_irqsave(&wakeup->wakeup_lock, flags);
 		if(wakeup->wakeup_pending == 1) {
 			wake_up(&wakeup->wakeup_wq);
@@ -157,14 +170,12 @@ static ssize_t resource_store(struct device *dev,
 		const char *buf, size_t count)
 {
 	/* set wakeup resource */
-	printk("set up resource file!\n");
 	return count;
 }
 static ssize_t resource_show(struct device *dev,
 		struct device_attribute *attr,
 		char *buf)
 {
-	printk("resource file information\n");
 	return 0;
 }
 
@@ -180,7 +191,6 @@ static ssize_t wakeup_store(struct device *dev,
 
 	struct wakeup_dev *wakeup = dev_get_drvdata(dev);
 	/* write: 1 enable wakeup, 0: disable wakeup */
-	printk("wakeup store. :\n");
 
 	rc = strict_strtoul(buf, 0, &ctl);
 	if(rc)
@@ -219,9 +229,6 @@ static ssize_t wakeup_show(struct device *dev,
 	int ret;
 	char *t = buf;
 	unsigned long flags;
-
-	printk("[Voice Wakeup]wait wakeup.:wakeup :%08x\n", (unsigned int)wakeup);
-
 	ret = wait_event_interruptible(wakeup->wakeup_wq, wakeup->wakeup_pending == 0);
 	if(ret && wakeup->wakeup_pending == 1) {
 		/* interrupted by signal , just return .*/
@@ -264,11 +271,15 @@ static int wakeup_suspend(void)
 	struct wakeup_dev * wakeup = g_wakeup;
 	struct sleep_buffer *sleep_buffer = &wakeup->sleep_buffer;
 	int i;
-
+	int ret;
 	if(wakeup->wakeup_enable == 0) {
 		return 0;
 	}
 
+	if(wakeup->wakeup_pending == 0) {
+		/* voice identified during suspend */
+		return -1;
+	}
 	sleep_buffer->nr_buffers = NR_BUFFERS;
 	sleep_buffer->total_len	 = SLEEP_BUFFER_SIZE;
 	for(i = 0; i < sleep_buffer->nr_buffers; i++) {
@@ -277,10 +288,9 @@ static int wakeup_suspend(void)
 			printk("failed to allocate buffer for sleep!!\n");
 			goto _allocate_failed;
 		}
-		printk("sleep_buffer[%d]:----addr:%p\n", i, sleep_buffer->buffer[i]);
 	}
 	dma_cache_wback_inv(&sleep_buffer->buffer[0], sleep_buffer->total_len);
-	wakeup_module_set_sleep_buffer(&wakeup->sleep_buffer);
+	ret = wakeup_module_set_sleep_buffer(&wakeup->sleep_buffer);
 
 	return 0;
 
@@ -306,9 +316,7 @@ static void wakeup_resume(void)
 		}
 	}
 
-	printk("@@@@@@@@wakeup resume:::::::::%d\n", wakeup_module_is_cpu_wakeup_by_dmic());
 	if(wakeup_module_is_cpu_wakeup_by_dmic()) {
-		printk("#############################@@@@@@@@@@@@ complet wakeup !!!\n");
 
 		spin_lock_irqsave(&wakeup->wakeup_lock, flags);
 		if(wakeup->wakeup_pending == 1) {
@@ -317,7 +325,6 @@ static void wakeup_resume(void)
 		}
 		spin_unlock_irqrestore(&wakeup->wakeup_lock, flags);
 	}
-	printk("########wakeup resume!!!!\n");
 }
 struct syscore_ops wakeup_pm_ops = {
 	.suspend = wakeup_suspend,
@@ -374,7 +381,6 @@ static int __init wakeup_init(void)
 
 	dev_set_drvdata(wakeup->dev, wakeup);
 	g_wakeup = wakeup;
-	printk("wakeup :%08x\n", (unsigned int)wakeup);
 
 	return 0;
 

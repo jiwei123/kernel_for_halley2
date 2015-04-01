@@ -291,8 +291,8 @@ static int snd_switch_resume(struct platform_device *pdev)
 		return 0;
 	}
 
-	snd_switch_work(&switch_data->hp_work); // we will enable_irq(switch_data->hp_irq) in this work;
-
+	//snd_switch_work(&switch_data->hp_work); // we will enable_irq(switch_data->hp_irq) in this work;
+	schedule_work(&switch_data->hp_work);
 	if (switch_data->hook_valid_level != -1 && switch_data->hook_irq > 0)
 		enable_irq(switch_data->hook_irq);
 

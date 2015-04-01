@@ -49,9 +49,6 @@ static struct regulator_consumer_supply ricoh619_dc1_supply_0[] = {
 	REGULATOR_SUPPLY(DC1_NAME, NULL),
 };
 
-static struct regulator_consumer_supply ricoh619_dc1_slp_supply_0[] = {
-	REGULATOR_SUPPLY(DC1_SLP_NAME, NULL),
-};
 static struct regulator_consumer_supply ricoh619_dc2_supply_0[] = {
 	REGULATOR_SUPPLY(DC2_NAME, NULL),
 };
@@ -110,7 +107,7 @@ static struct regulator_consumer_supply ricoh619_ldortc2_supply_0[] = {
 };
 
 #define RICOH_PDATA_INIT(_name, _sname, _minmv, _maxmv, _supply_reg, _always_on, \
-	_boot_on, _apply_uv, _init_uV, _init_enable, _init_apply, _flags, \
+	_boot_on, _apply_uv, _init_uV, _sleep_uV, _init_enable, _init_apply, _flags, \
 	_ext_contol, _ds_slots) \
 	static struct ricoh619_regulator_platform_data pdata_##_name##_##_sname = \
 	{								\
@@ -133,6 +130,7 @@ static struct regulator_consumer_supply ricoh619_ldortc2_supply_0[] = {
 			.supply_regulator = _supply_reg,		\
 		},							\
 		.init_uV =  _init_uV * 1000,				\
+		.sleep_uV = _sleep_uV * 1000,				\
 		.init_enable = _init_enable,				\
 		.init_apply = _init_apply,				\
 		.sleep_slots = _ds_slots,				\
@@ -146,41 +144,39 @@ static struct regulator_consumer_supply ricoh619_ldortc2_supply_0[] = {
 /*_name,_sname,_minmv,_maxmv,_supply_reg,_always_on,_boot_on,_apply_uv,_init_uV,_init_enable,_init_apply,
  * _flags,_ext_contol,_ds_slots) */
 RICOH_PDATA_INIT(dc1, 0,	600,   1200, 0, DC1_ALWAYS_ON, DC1_BOOT_ON, 1,
-		 DC1_INIT_UV, DC1_INIT_ENABLE, 1, 0, 0, 0);
-RICOH_PDATA_INIT(dc1_slp, 0,	600,   1200, 0, DC1_ALWAYS_ON, DC1_BOOT_ON, 1,
-		 DC1_INIT_UV, DC1_INIT_ENABLE, 1, 0, 0, 0);
+		 DC1_INIT_UV, DC1_INIT_SLP_UV, DC1_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(dc2, 0,	600,   3500, 0, DC2_ALWAYS_ON, DC2_BOOT_ON, 1,
-		 DC2_INIT_UV, 1, DC1_INIT_ENABLE, 0, 0, 0);
+		 DC2_INIT_UV, DC2_INIT_SLP_UV, DC1_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(dc3, 0,	600,   3500, 0, DC3_ALWAYS_ON, DC3_BOOT_ON, 1,
-		 DC3_INIT_UV, DC3_INIT_ENABLE, 1, 0, 0, 0);
+		 DC3_INIT_UV, DC3_INIT_SLP_UV, DC3_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(dc4, 0,	600,   3500, 0, DC4_ALWAYS_ON, DC4_BOOT_ON, 1,
-		 DC4_INIT_UV, DC4_INIT_ENABLE, 1, 0, 0, 0);
+		 DC4_INIT_UV, DC4_INIT_SLP_UV, DC4_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(dc5, 0,	600,   3500, 0, DC5_ALWAYS_ON, DC5_BOOT_ON, 1,
-		 DC5_INIT_UV, DC5_INIT_ENABLE, 1, 0, 0, 0);
+		 DC5_INIT_UV, DC5_INIT_SLP_UV, DC5_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(ldo1, 0,	900,   3500, 0, LDO1_ALWAYS_ON, LDO1_BOOT_ON, 1,
-		 LDO1_INIT_UV, LDO1_INIT_ENABLE, 1, 0, 0, 0);
+		 LDO1_INIT_UV, LDO1_INIT_SLP_UV, LDO1_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(ldo2, 0,	900,   3500, 0, LDO2_ALWAYS_ON, LDO2_BOOT_ON, 1,
-		 LDO2_INIT_UV, LDO2_INIT_ENABLE, 1, 0, 0, 0);
+		 LDO2_INIT_UV, LDO2_INIT_SLP_UV, LDO2_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(ldo3, 0,	900,   3500, 0, LDO3_ALWAYS_ON, LDO3_BOOT_ON, 1,
-		 LDO3_INIT_UV, LDO3_INIT_ENABLE, 1, 0, 0, 0);
+		 LDO3_INIT_UV, LDO3_INIT_SLP_UV, LDO3_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(ldo4, 0,	900,   3500, 0, LDO4_ALWAYS_ON, LDO4_BOOT_ON, 1,
-		 LDO4_INIT_UV, LDO4_INIT_ENABLE, 1, 0, 0, 0);
+		 LDO4_INIT_UV, LDO4_INIT_SLP_UV, LDO4_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(ldo5, 0,	600,   3500, 0, LDO5_ALWAYS_ON, LDO5_BOOT_ON, 1,
-		 LDO5_INIT_UV, LDO5_INIT_ENABLE, 1, 0, 0, 0);
+		 LDO5_INIT_UV, LDO5_INIT_SLP_UV, LDO5_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(ldo6, 0,	600,   3500, 0, LDO6_ALWAYS_ON, LDO6_BOOT_ON, 1,
-		 LDO6_INIT_UV, LDO6_INIT_ENABLE, 1, 0, 0, 0);
+		 LDO6_INIT_UV, LDO6_INIT_SLP_UV, LDO6_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(ldo7, 0,	900,   3500, 0, LDO7_ALWAYS_ON, LDO7_BOOT_ON, 1,
-		 LDO7_INIT_UV, LDO7_INIT_ENABLE, 1, 0, 0, 0);
+		 LDO7_INIT_UV, LDO7_INIT_SLP_UV, LDO7_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(ldo8, 0,	900,   3500, 0, LDO8_ALWAYS_ON, LDO8_BOOT_ON, 1,
-		 LDO8_INIT_UV, LDO8_INIT_ENABLE, 1, 0, 0, 0);
+		 LDO8_INIT_UV, LDO8_INIT_SLP_UV, LDO8_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(ldo9, 0,	900,   3500, 0, LDO9_ALWAYS_ON, LDO9_BOOT_ON, 1,
-		 LDO9_INIT_UV, LDO9_INIT_ENABLE, 1, 0, 0, 0);
+		 LDO9_INIT_UV, LDO9_INIT_SLP_UV, LDO9_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(ldo10, 0,	900,   3500, 0, LDO10_ALWAYS_ON, LDO10_BOOT_ON, 1,
-		 LDO10_INIT_UV, LDO10_INIT_ENABLE, 1, 0, 0, 0);
+		 LDO10_INIT_UV, LDO10_INIT_SLP_UV, LDO10_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(ldortc1, 0,	1700,  3500, 0, LDORTC1_ALWAYS_ON, LDORTC1_BOOT_ON, 1,
-		 LDORTC1_INIT_UV, LDORTC1_INIT_ENABLE, 1, -1, -1, -1);
+		 LDORTC1_INIT_UV, LDORTC1_INIT_SLP_UV, LDORTC1_INIT_ENABLE, 1, -1, -1, -1);
 RICOH_PDATA_INIT(ldortc2, 0,	900,   3500, 0, LDORTC2_ALWAYS_ON, LDORTC2_BOOT_ON, 1,
-		 LDORTC2_INIT_UV, LDORTC2_INIT_ENABLE, 1, -1, -1, -1);
+		 LDORTC2_INIT_UV, LDORTC2_INIT_SLP_UV, LDORTC2_INIT_ENABLE, 1, -1, -1, -1);
 
 /*-------- if Ricoh RTC exists -----------*/
 #ifdef CONFIG_RTC_DRV_R5T619
@@ -331,7 +327,6 @@ static struct ricoh619_battery_platform_data ricoh619_battery_data = {
 
 #define RICOH619_DEV_REG 		\
 	RICOH_REG(DC1, dc1, 0),		\
-        RICOH_REG(DC1_SLP, dc1_slp, 0),	\
 	RICOH_REG(DC2, dc2, 0),		\
 	RICOH_REG(DC3, dc3, 0),		\
 	RICOH_REG(DC4, dc4, 0),		\
