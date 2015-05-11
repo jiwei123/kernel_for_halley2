@@ -661,6 +661,7 @@ DEF_I2C(3);
  * sound devices, include i2s,pcm, mixer0 - 1(mixer is used for debug) and an internal codec
  * note, the internal codec can only access by i2s0
  **/
+#if defined(CONFIG_SOUND_PRIME)
 static u64 jz_i2s_dmamask = ~(u32) 0;
 static struct resource jz_i2s_resources[] = {
 	[0] = {
@@ -774,7 +775,116 @@ DEF_MIXER(3);
 struct platform_device jz_codec_device = {
 	.name = "jz_codec",
 };
+#endif
 
+#if defined(CONFIG_SND) && IS_ENABLED(CONFIG_SND_ASOC_INGENIC)
+static u64 jz_asoc_dmamask =  ~(u64)0;
+#if IS_ENABLED(CONFIG_SND_ASOC_JZ_AIC)
+static struct resource jz_aic_dma_resources[] = {
+	[0] = {
+		.start          = JZDMA_REQ_I2S0,
+		.end		= JZDMA_REQ_I2S0,
+		.flags          = IORESOURCE_DMA,
+	},
+};
+struct platform_device jz_aic_dma_device = {
+	.name		= "jz-asoc-aic-dma",
+	.id		= -1,
+	.dev = {
+		.dma_mask               = &jz_asoc_dmamask,
+		.coherent_dma_mask      = 0xffffffff,
+	},
+	.resource       = jz_aic_dma_resources,
+	.num_resources  = ARRAY_SIZE(jz_aic_dma_resources),
+};
+
+static struct resource jz_aic_resources[] = {
+	[0] = {
+		.start          = AIC0_IOBASE,
+		.end            = AIC0_IOBASE + 0xA0 -1,
+		.flags          = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start		= IRQ_AIC0,
+		.end		= IRQ_AIC0,
+		.flags		= (IORESOURCE_IRQ| IORESOURCE_IRQ_SHAREABLE),
+	},
+};
+struct platform_device jz_aic_device = {
+	.name		= "jz-asoc-aic",
+	.id		= -1,
+	.resource       = jz_aic_resources,
+	.num_resources  = ARRAY_SIZE(jz_aic_resources),
+};
+#endif
+#if IS_ENABLED(CONFIG_SND_ASOC_JZ_PCM)
+static struct resource jz_pcm_dma_resources[] = {
+	[0] = {
+		.start          = JZDMA_REQ_PCM0,
+		.end		= JZDMA_REQ_PCM0,
+		.flags          = IORESOURCE_DMA,
+	},
+};
+struct platform_device jz_pcm_dma_device = {
+	.name		= "jz-asoc-pcm-dma",
+	.id		= -1,
+	.dev = {
+		.dma_mask               = &jz_asoc_dmamask,
+		.coherent_dma_mask      = 0xffffffff,
+	},
+	.resource       = jz_pcm_dma_resources,
+	.num_resources  = ARRAY_SIZE(jz_pcm_dma_resources),
+};
+
+static struct resource jz_pcm_resources[] = {
+	[0] = {
+		.start          = PCM0_IOBASE,
+		.end            = PCM0_IOBASE + 0x18 -1,
+		.flags          = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start		= IRQ_PCM0,
+		.end		= IRQ_PCM0,
+		.flags		= IORESOURCE_IRQ,
+	},
+};
+struct platform_device jz_pcm_device = {
+	.name		= "jz-asoc-pcm",
+	.id		= -1,
+	.resource       = jz_pcm_resources,
+	.num_resources  = ARRAY_SIZE(jz_pcm_resources),
+};
+#endif
+
+#if IS_ENABLED(CONFIG_SND_ASOC_JZ_ICDC_D1)
+static struct resource jz_icdc_resources[] = {
+	[0] = {
+		.start          = AIC0_IOBASE + 0xA0,
+		.end            = AIC0_IOBASE + 0xAA -1,
+		.flags          = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start		= IRQ_AIC0,
+		.end		= IRQ_AIC0,
+		.flags		= (IORESOURCE_IRQ | IORESOURCE_IRQ_SHAREABLE),
+	},
+};
+
+struct platform_device jz_icdc_device = {	/*jz internal codec*/
+	.name		= "icdc-d1",
+	.id		= -1,
+	.resource	= jz_icdc_resources,
+	.num_resources	= ARRAY_SIZE(jz_icdc_resources),
+};
+#endif
+
+#if IS_ENABLED(CONFIG_SND_ASOC_JZ_DUMP_CDC)
+struct platform_device jz_dump_cdc_device = {	/*jz dump codec*/
+	.name		= "dump",
+	.id		= -1,
+};
+#endif
+#endif /* CONFIG_SND && (CONFIG_SND_ASOC_INGENIC || CONFIG_SND_ASOC_INGENIC_MODULE) */
 
 static u64 jz_ssi_dmamask =  ~(u32)0;
 #define DEF_SSI(NO)							\
@@ -884,10 +994,10 @@ struct platform_device jz_rtc_device = {
 };
 #endif
 
-#ifdef CONFIG_JZ_EFUSE_V12
+#if IS_ENABLED(CONFIG_JZ_EFUSE_V12)
 /* efuse */
 struct platform_device jz_efuse_device = {
-       .name = "jz-efuse-v12",
+       .name = "efuse",
 };
 #endif
 

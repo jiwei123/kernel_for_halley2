@@ -27,34 +27,35 @@
 
 /* device IO define array */
 struct jz_gpio_func_def platform_devio_array[] = {
-#ifdef CONFIG_MMC0_JZ4775_PA_4BIT
+#ifdef CONFIG_JZMMC_V11_MMC0_PA_4BIT
 	MSC0_PORTA_4BIT,
 #endif
-#ifdef CONFIG_MMC0_JZ4775_PA_8BIT
+#ifdef CONFIG_JZMMC_V11_MMC0_PA_8BIT
 	MSC0_PORTA_8BIT,
 #endif
-#ifdef CONFIG_MMC0_JZ4775_PE_4BIT
+#ifdef CONFIG_JZMMC_V11_MMC0_PE_4BIT
 	MSC0_PORTE,
 #endif
-#ifdef CONFIG_MMC1_JZ4775_PD_4BIT
+#ifdef CONFIG_JZMMC_V11_MMC1_PD_4BIT
 	MSC1_PORTD,
 #endif
-#ifdef CONFIG_MMC1_JZ4775_PE_4BIT
+#ifdef CONFIG_JZMMC_V11_MMC1_PE_4BIT
 	MSC1_PORTE,
 #endif
-#ifdef CONFIG_MMC2_JZ4775_PB_4BIT
+#ifdef CONFIG_JZMMC_V11_MMC2_PB_4BIT
 	MSC2_PORTB,
 #endif
-#ifdef CONFIG_MMC2_JZ4775_PE_4BIT
+#ifdef CONFIG_JZMMC_V11_MMC2_PE_4BIT
 	MSC2_PORTE,
 #endif
-#if	(defined(CONFIG_I2C0_JZ4775) || defined(CONFIG_I2C0_DMA_JZ4775))
+
+#ifdef CONFIG_I2C0_V12_JZ
 	I2C0_PORTD,
 #endif
-#if	(defined(CONFIG_I2C1_JZ4775) || defined(CONFIG_I2C1_DMA_JZ4775))
+#ifdef CONFIG_I2C1_V12_JZ
 	I2C1_PORTE,
 #endif
-#if	(defined(CONFIG_I2C2_JZ4775) || defined(CONFIG_I2C2_DMA_JZ4775))
+#ifdef CONFIG_I2C2_V12_JZ
 	I2C2_PORTE,
 #endif
 #ifdef CONFIG_SERIAL_JZ47XX_UART0
@@ -63,9 +64,15 @@ struct jz_gpio_func_def platform_devio_array[] = {
 #ifdef CONFIG_SERIAL_JZ47XX_UART1
 	UART1_PORTD,
 #endif
+
+#ifndef CONFIG_JZ_IRDA_V11
 #ifdef CONFIG_SERIAL_JZ47XX_UART2
-	UART2_PORTC,
+	//UART2_PORTC,
+	UART2_PORTF,
 #endif
+#else
+	UART2_PORTF,
+#endif//irda
 #ifdef CONFIG_SERIAL_JZ47XX_UART3
 #endif
 #ifdef CONFIG_SERIAL_JZ47XX_UART4
@@ -88,10 +95,14 @@ struct jz_gpio_func_def platform_devio_array[] = {
 #ifdef CONFIG_NAND_CS6
 #endif
 
-#ifdef	CONFIG_SOUND_I2S_JZ4780
-#ifndef CONFIG_JZ_INTERNAL_CODEC
+#ifdef CONFIG_SOUND_JZ_I2S_V12
+	I2S_PORTEF,
 #endif
+
+#ifdef CONFIG_HALLEY_INTERNAL_CODEC_V11
+	DMIC_PORTF,
 #endif
+
 #ifdef CONFIG_SOUND_PCM_JZ47XX
 	PCM_PORTD,
 #endif
@@ -285,9 +296,9 @@ DEF_MSC(0);
 DEF_MSC(1);
 DEF_MSC(2);
 
+#if (defined(CONFIG_I2C0_V12_JZ) || defined(CONFIG_I2C1_V12_JZ) ||	\
+		defined(CONFIG_I2C2_V12_JZ))
 static u64 jz_i2c_dmamask =  ~(u32)0;
-#if (defined(CONFIG_I2C0_JZ4775) || defined(CONFIG_I2C1_JZ4775) ||	\
-		defined(CONFIG_I2C2_JZ4775))
 
 #define DEF_I2C(NO)								\
 	static struct resource jz_i2c##NO##_resources[] = {			\
@@ -320,19 +331,20 @@ struct platform_device jz_i2c##NO##_device = {					\
 	.num_resources  = ARRAY_SIZE(jz_i2c##NO##_resources),			\
 	.resource       = jz_i2c##NO##_resources,				\
 };
-#ifdef CONFIG_I2C0_JZ4775
+#ifdef CONFIG_I2C0_V12_JZ
 DEF_I2C(0);
 #endif
-#ifdef CONFIG_I2C1_JZ4775
+#ifdef CONFIG_I2C1_V12_JZ
 DEF_I2C(1);
 #endif
-#ifdef CONFIG_I2C2_JZ4775
+#ifdef CONFIG_I2C2_V12_JZ
 DEF_I2C(2);
 #endif
 #endif
 
 #if (defined(CONFIG_I2C0_DMA_JZ4775) || defined(CONFIG_I2C1_DMA_JZ4775) ||	\
 		defined(CONFIG_I2C2_DMA_JZ4775))
+static u64 jz_i2c_dmamask =  ~(u32)0;
 
 #define DEF_I2C_DMA(NO)								\
 	static struct resource jz_i2c##NO##_dma_resources[] = {			\
@@ -1003,14 +1015,14 @@ static struct resource jz_dwc_otg_resources[] = {
 };
 
 struct platform_device  jz_dwc_otg_device = {
-	.name = "jz4780-dwc2",
+	.name = "jz-dwc2",
 	.id = -1,
 	.num_resources	= ARRAY_SIZE(jz_dwc_otg_resources),
 	.resource	= jz_dwc_otg_resources,
 };
-#ifdef CONFIG_JZ4775_EFUSE
+#ifdef CONFIG_JZ_EFUSE_V11
 /* efuse */
 struct platform_device jz_efuse_device = {
-       .name = "jz4780-efuse",
+       .name = "jz-efuse",
 };
 #endif

@@ -16,12 +16,13 @@
 #include <linux/syscore_ops.h>
 #include <linux/delay.h>
 #include <irq.h>
+#include <linux/seq_file.h>
 
 #include <soc/base.h>
 #include <soc/gpio.h>
 #include <soc/irq.h>
 
-#if !defined CONFIG_GPIOLIB || !defined CONFIG_GENERIC_GPIO
+#if !defined CONFIG_GPIOLIB
 #error  "Need GPIOLIB !!!"
 #endif
 
@@ -155,7 +156,7 @@ int jzgpio_set_func(enum gpio_port port,
 {
 	struct jzgpio_chip *jz = &jz_gpio_chips[port];
 
-	if (~jz->dev_map[0] & pins)
+	if (jz->dev_map[0] & pins)
 		return -EINVAL;
 
 	gpio_set_func(jz,func,pins);
@@ -190,7 +191,7 @@ int jzgpio_ctrl_pull(enum gpio_port port, int enable_pull,unsigned long pins)
 {
 	struct jzgpio_chip *jz = &jz_gpio_chips[port];
 
-	if (~jz->dev_map[0] & pins)
+	if (jz->dev_map[0] & pins)
 		return -EINVAL;
 
 	if (enable_pull)
@@ -777,36 +778,41 @@ int __init setup_gpio_pins(void)
 
 arch_initcall(setup_gpio_pins);
 
-static int gpio_read_proc(char *page, char **start, off_t off,
-		int count, int *eof, void *data)
+static int gpio_proc_show(struct seq_file *m, void *v)
 {
-	int len = 0;
-	int i;
-#define PRINT(ARGS...) len += sprintf (page+len, ##ARGS)
-	PRINT("INT\t\tMASK\t\tPAT1\t\tPAT0\n");
+	int i=0;
+	seq_printf(m,"INT\t\tMASK\t\tPAT1\t\tPAT0\n");
 	for(i = 0; i < GPIO_NR_PORTS; i++) {
-		PRINT("0x%08x\t0x%08x\t0x%08x\t0x%08x\n",
+		seq_printf(m,"0x%08x\t0x%08x\t0x%08x\t0x%08x\n",
 				readl(jz_gpio_chips[i].reg + PXINT),
 				readl(jz_gpio_chips[i].reg + PXMSK),
 				readl(jz_gpio_chips[i].reg + PXPAT1),
 				readl(jz_gpio_chips[i].reg + PXPAT0));
 	}
-
-	return len;
+	return 0;
 }
 
-static struct file_operations *proc_file_fops ={
-	.read	 = gpio_read_proc;
+
+static int gpio_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, gpio_proc_show, PDE_DATA(inode));
+}
+static const struct file_operations gpios_proc_fops ={
+	.read = seq_read,
+	.open = gpio_open,
+	.llseek = seq_lseek,
+	.release = single_release,
 };
+
 
 static int __init init_gpio_proc(void)
 {
 	struct proc_dir_entry *res;
 
-	res = proc_create("gpios",0444,NULL,proc_file_fops);
+	res = proc_create("gpios",0444,NULL,&gpios_proc_fops);
 
 	if(!res){
-		PRINT("proc create error");
+		pr_err("gpios proc create error");
 		return -1;
 	}
 	return 0;

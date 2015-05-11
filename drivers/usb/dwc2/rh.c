@@ -210,7 +210,7 @@ static void dwc2_port_suspend(struct dwc2 *dwc, bool do_suspend) {
 
 	DWC2_RH_DEBUG_MSG("%s:%d: do_suspend = %d\n", __func__, __LINE__, do_suspend);
 
-	if (unlikely(dwc2_is_device_mode(dwc) || dwc->extern_vbus_mode))
+	if (unlikely(dwc2_is_device_mode(dwc)))
 		return;
 
 	if (do_suspend) {

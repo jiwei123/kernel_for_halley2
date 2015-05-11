@@ -51,6 +51,14 @@ config AD525X_DPOT_SPI
 	  To compile this driver as a module, choose M here: the
 	  module will be called ad525x_dpot-spi.
 
+config JZ_SPI_NOR
+	  tristate "Support SPI NOR at Ingenic"
+	  depends on JZRISC
+	  default n
+	  help
+		  Support SPI NOR Flash to JZ SOC.
+
+
 config ATMEL_PWM
 	tristate "Atmel AT32/AT91 PWM support"
 	depends on HAVE_CLK
@@ -532,6 +540,15 @@ config BCM_PM_CORE
 	---help---
 	The driver is for power management of BCM chips, NFC, BT, WiFi.
 
+config BCM_RFKILL
+	tristate "Bluetooth power control driver for BCM-xxxx module"
+	depends on RFKILL
+	default n
+	---help---
+	Creates an rfkill entry in sysfs for power control of Bluetooth
+	bcm-xxxx chips.
+
+
 config GPS_RFKILL
 	tristate "GPS power control driver"
 	depends on RFKILL
@@ -560,6 +577,15 @@ config SRAM
 	  the genalloc API. It is supposed to be used for small on-chip SRAM
 	  areas found on many SoCs.
 
+config JZ_EFUSE_V11
+	  bool "JZ V11 EFUSE Driver"
+	  default n
+
+config JZ_IRDA_V11
+	  bool "JZ V11_IRDA Driver"
+	  default n
+
+source "drivers/misc/efuse/Kconfig"
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"

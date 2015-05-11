@@ -14,12 +14,16 @@
 #include <linux/err.h>
 #include <linux/proc_fs.h>
 #include <linux/clk.h>
+#include <linux/vmalloc.h>
+#include <linux/slab.h>
 #include <linux/delay.h>
+#include <linux/seq_file.h>
 #include <linux/syscore_ops.h>
 
 #include <soc/cpm.h>
 #include <soc/base.h>
 #include <soc/extal.h>
+#include <jz_proc.h>
 
 static DEFINE_SPINLOCK(clkgr_lock);
 
@@ -94,7 +98,7 @@ enum {
 	CLK_ID_I2C2,
 #define CLK_NAME_I2C2		"i2c2"
 	CLK_ID_AIC,
-#define CLK_NAME_AIC		"aic0"
+#define CLK_NAME_AIC		"aic"//"aic0"
 	CLK_ID_X2D,
 #define CLK_NAME_X2D		"x2d"
 	CLK_ID_AHB_MON,
@@ -146,7 +150,7 @@ enum {
 	CLK_ID_CGU_VPU,
 #define CLK_NAME_CGU_VPU	"cgu_vpu"
 	CLK_ID_CGU_AIC,
-#define CLK_NAME_CGU_AIC	"cgu_aic"
+#define CLK_NAME_CGU_AIC	"cgu_i2s" /*cgu_aic*/
 	CLK_ID_CGU_LCD,
 #define CLK_NAME_CGU_LCD	"lcd_pclk0"
 	CLK_ID_MSC_MUX,
@@ -258,6 +262,19 @@ enum {
 #undef PARENT
 #undef DEF_CLK
 	};
+
+int get_clk_sources_size(void){
+	    return ARRAY_SIZE(clk_srcs);
+}
+struct clk *get_clk_from_id(int clk_id)
+{
+	    return &clk_srcs[clk_id];
+}
+int get_clk_id(struct clk *clk)
+{
+	    return (clk - &clk_srcs[0]);
+}
+
 
 static void __init init_ext_pll(void)
 {
@@ -1067,29 +1084,36 @@ int cpm_stop_ehci(void)
 }
 EXPORT_SYMBOL(cpm_stop_ehci);
 
-
-static int clk_read_proc(char *page, char **start, off_t off,
-		int count, int *eof, void *data)
+static int clocks_show(struct seq_file *m, void *v)
 {
-	int len = 0;
-	int i;
-#define PRINT(ARGS...) len += sprintf (page+len, ##ARGS)
-	PRINT("ID NAME       FRE        stat       count     parent\n");
-	for(i=0; i<ARRAY_SIZE(clk_srcs); i++) {
-		unsigned int mhz = clk_srcs[i].rate / 10000;
-		PRINT("%2d %-10s %4d.%02dMHz %3sable   %d %s\n",i,clk_srcs[i].name
-				, mhz/100, mhz%100
-				, clk_srcs[i].flags & CLK_FLG_ENABLE? "en": "dis"
-				, clk_srcs[i].count
-				, clk_srcs[i].parent? clk_srcs[i].parent->name: "root");
+	int i,len=0;
+	struct clk *clk_srcs = get_clk_from_id(0);
+	if(m->private != NULL) {
+		len += seq_printf(m ,"CLKGR\t: %08x\n",cpm_inl(CPM_CLKGR));
+		//len += seq_printf(m ,"CLKGR1\t: %08x\n",cpm_inl(CPM_CLKGR1));
+		//len += seq_printf(m ,"LCR1\t: %08x\n",cpm_inl(CPM_LCR));
+		//len += seq_printf(m ,"PGR\t: %08x\n",cpm_inl(CPM_PGR));
+		//len += seq_printf(m ,"SPCR0\t: %08x\n",cpm_inl(CPM_SPCR0));
+	} else {
+		len += seq_printf(m,"ID NAME       FRE        stat       count     parent\n");
+		for(i = 0; i < get_clk_sources_size(); i++) {
+			if (clk_srcs[i].name == NULL) {
+				len += seq_printf(m ,"--------------------------------------------------------\n");
+			} else {
+				unsigned int mhz = clk_srcs[i].rate / 10000;
+				len += seq_printf(m,"%2d %-10s %4d.%02dMHz %3sable   %d %s\n",i,clk_srcs[i].name
+						, mhz/100, mhz%100
+						, clk_srcs[i].flags & CLK_FLG_ENABLE? "en": "dis"
+						, clk_srcs[i].count
+						, clk_srcs[i].parent? clk_srcs[i].parent->name: "root");
+			}
+		}
 	}
-	PRINT("CLKGR\t: %08x\n",
-			cpm_inl(CPM_CLKGR));
 	return len;
 }
 
-static int clk_write_proc(struct file *file, const char __user *buffer,
-		unsigned long count, void *data)
+static int clk_write(struct file *file, const char __user *buffer,
+		size_t count, loff_t *data)
 {
 	int ret;
 	char buf[32];
@@ -1107,16 +1131,32 @@ static int clk_write_proc(struct file *file, const char __user *buffer,
 	return count;
 }
 
+static int clocks_open(struct inode *inode, struct file *file)
+{
+	return single_open_size(file, clocks_show, PDE_DATA(inode),8192);
+}
+
+static const struct file_operations clocks_proc_fops ={
+	.read = seq_read,
+	.open = clocks_open,
+	.write = clk_write,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+
+
 static int __init init_clk_proc(void)
 {
-	struct proc_dir_entry *res;
+#if 0
+	struct proc_dir_entry *p;
 
-	res = create_proc_entry("clocks", 0444, NULL);
-	if (res) {
-		res->read_proc = clk_read_proc;
-		res->write_proc = clk_write_proc;
-		res->data = NULL;
+	p = jz_proc_mkdir("clock");
+	if (!p) {
+		pr_warning("create_proc_entry for common clock failed.\n");
+		return -ENODEV;
 	}
+#endif
+	proc_create_data("clocks", 0600,NULL,&clocks_proc_fops,0);
 	return 0;
 }
 

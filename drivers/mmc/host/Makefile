@@ -3,12 +3,10 @@
 #
 
 obj-$(CONFIG_JZMMC_V12)		+= jzmmc_v12.o
+obj-$(CONFIG_JZMMC_V11)		+= jzmmc_v11.o
 obj-$(CONFIG_MMC0_JZ4780)	+= jz4780_mmc.o
 obj-$(CONFIG_MMC1_JZ4780)	+= jz4780_mmc.o
 obj-$(CONFIG_MMC2_JZ4780)	+= jz4780_mmc.o
-obj-$(CONFIG_MMC0_JZ4775)	+= jz4775_mmc.o
-obj-$(CONFIG_MMC1_JZ4775)	+= jz4775_mmc.o
-obj-$(CONFIG_MMC2_JZ4775)	+= jz4775_mmc.o
 
 obj-$(CONFIG_MMC_ARMMMCI)	+= mmci.o
 obj-$(CONFIG_MMC_PXA)		+= pxamci.o

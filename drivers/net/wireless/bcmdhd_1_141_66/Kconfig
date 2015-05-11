@@ -31,14 +31,14 @@ config BCM4354
 config BCMDHD_1_141_66_FW_PATH
 	depends on BCMDHD_1_141_66
 	string "Firmware path"
-	default "/system/lib/firmware/wifi/fw_bcm43438.bin"
+	default "/firmware/fw_bcm43438.bin"
 	---help---
 	  Path to the firmware file.
 
 config BCMDHD_1_141_66_NVRAM_PATH
 	depends on BCMDHD_1_141_66
 	string "NVRAM path"
-	default "/system/lib/firmware/wifi/bcm43438.cal"
+	default "/firmware/bcm43438.cal"
 	---help---
 	  Path to the calibration file.
 

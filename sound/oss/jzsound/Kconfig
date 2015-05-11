@@ -37,8 +37,8 @@ if JZ_INTERNAL_CODEC_V12
 	help
 		Say "Y" to enable jz4780 internal codec.
 
-	config JZ4775_INTERNAL_CODEC
-	bool "jz4775 internal codec"
+	config HALLEY_INTERNAL_CODEC_V11
+	bool "halley internal codec"
 	depends on SOC_4775
 	help
 		Say "Y" to enable jz4775 internal codec.

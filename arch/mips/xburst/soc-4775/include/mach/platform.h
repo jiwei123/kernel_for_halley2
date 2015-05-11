@@ -11,6 +11,19 @@
 
 /* devio define list */
 
+#define I2S_PORTEF                                                      \
+		{ .name = "i2s-sysclk",         .port = GPIO_PORT_E, .func = GPIO_FUNC_2, .pins = 0x1<<3, },    \
+		{ .name = "i2s-bitclk",         .port = GPIO_PORT_F, .func = GPIO_FUNC_1, .pins = 0x1<<0,},    \
+		{ .name = "i2s-sync",           .port = GPIO_PORT_F, .func = GPIO_FUNC_1, .pins = 0x1<<1,},    \
+		{ .name = "i2s-data-in",        .port = GPIO_PORT_F, .func = GPIO_FUNC_1, .pins = 0x1<<2, },	\
+		{ .name = "i2s-data-out",       .port = GPIO_PORT_F, .func = GPIO_FUNC_1, .pins = 0x1<<3, }
+
+#define SPDIF_PORTF                                                \
+	    { .name = "spdif-data-out",     .port = GPIO_PORT_F, .func = GPIO_FUNC_1, .pins = 0x1<<3,}
+#define DMIC_PORTF                          \
+	    { .name = "dmic",           .port = GPIO_PORT_F, .func = GPIO_FUNC_1, .pins = 0x3 << 10,}
+
+
 #define PCM_PORTF							\
 	{ .name = "pcm",			.port = GPIO_PORT_F, .func = GPIO_FUNC_0, .pins = 0xf << 12}
 /*******************************************************************************************************************/
@@ -20,6 +33,8 @@
 	{ .name = "uart1", .port = GPIO_PORT_D, .func = GPIO_FUNC_0, .pins = 0xf<<26, }
 #define UART2_PORTC							\
 	{ .name = "uart2", .port = GPIO_PORT_C, .func = GPIO_FUNC_2, .pins = 1<<10 | 1<<20, }
+#define UART2_PORTF							\
+	{ .name = "uart2", .port = GPIO_PORT_F, .func = GPIO_FUNC_1, .pins = 0x3 << 4, }
 /*******************************************************************************************************************/
 
 #define MSC0_PORTA_4BIT							\
@@ -164,7 +179,13 @@ extern struct platform_device jz_vpu_device;
 extern struct platform_device jz_x2d_device;
 extern struct platform_device jz_dwc_otg_device;
 
-#ifdef CONFIG_JZ4775_EFUSE
+#ifdef CONFIG_KEYBOARD_GPIO
+extern struct platform_device jz_button_device;
+#endif
+#ifdef CONFIG_JZ_IRDA_V11
+extern struct platform_device jz_irda_device;
+#endif
+#ifdef CONFIG_JZ_EFUSE_V11
 extern struct platform_device jz_efuse_device;
 #endif
 #ifdef CONFIG_I2C_GPIO /*CONFIG_I2C_GPIO*/

@@ -115,15 +115,6 @@ void jz_otg_ctr_reset(void)
 	cpm_clear_bit(SRBC_USB_SR, CPM_SRBC);
 }
 
-void jz_otg_phy_reset(void)
-{
-
-	cpm_set_bit(USBPCR_POR, CPM_USBPCR);
-	mdelay(1);
-	cpm_clear_bit(USBPCR_POR, CPM_USBPCR);
-	mdelay(1);
-}
-
 void jz_otg_phy_init(otg_mode_t mode)
 {
 	unsigned int ref_clk_div = CONFIG_EXTAL_CLOCK / 24;
@@ -139,6 +130,11 @@ void jz_otg_phy_init(otg_mode_t mode)
 	usbpcr1 &= ~(0x3 << 24 | 1 << 30);
 	usbpcr1 |= (ref_clk_div << 24);
 	cpm_outl(usbpcr1, CPM_USBPCR1);
+
+	/*unsuspend*/
+	cpm_set_bit(7, CPM_OPCR);
+	udelay(45);
+	cpm_clear_bit(USBPCR_SIDDQ, CPM_USBPCR);
 
 	/* fil */
 	cpm_outl(0, CPM_USBVBFIL);
@@ -166,6 +162,7 @@ void jz_otg_phy_init(otg_mode_t mode)
 		cpm_clear_bit(USBPCR_USB_MODE, CPM_USBPCR);
 		cpm_clear_bit(USBPCR_OTG_DISABLE, CPM_USBPCR);
 		cpm_clear_bit(USBPCR_SIDDQ, CPM_USBPCR);
+		cpm_set_bit(USBPCR_COMMONONN, CPM_USBPCR);
 	} else {
 		unsigned int tmp;
 		pr_info("DWC IN OTG MODE\n");
@@ -195,9 +192,11 @@ void jz_otg_phy_suspend(int suspend)
 	if (!suspend && jz_otg_phy_is_suspend()) {
 		printk("EN PHY\n");
 		cpm_set_bit(7, CPM_OPCR);
+		udelay(45);
 	} else if (suspend && !jz_otg_phy_is_suspend()) {
 		printk("DIS PHY\n");
 		cpm_clear_bit(7, CPM_OPCR);
+		udelay(5);
 	}
 }
 EXPORT_SYMBOL(jz_otg_phy_suspend);

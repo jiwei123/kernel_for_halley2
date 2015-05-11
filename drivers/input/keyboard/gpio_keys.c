@@ -29,6 +29,7 @@
 #include <linux/of_platform.h>
 #include <linux/of_gpio.h>
 #include <linux/spinlock.h>
+#include <soc/gpio.h>
 
 struct gpio_button_data {
 	const struct gpio_keys_button *button;
@@ -507,6 +508,11 @@ static int gpio_keys_setup_key(struct platform_device *pdev,
 		dev_err(dev, "Unable to claim irq %d; error %d\n",
 			bdata->irq, error);
 		goto fail;
+	}
+	if(button->gpio_pullup){/* need gpio inter pull up*/
+		error = jzgpio_ctrl_pull(button->gpio / 32,1,BIT(button->gpio % 32));
+		if(error < 0)
+			dev_err(dev, "Failed to set gpio pull ! GPIO %d, error %d\n",button->gpio,error);
 	}
 
 	return 0;

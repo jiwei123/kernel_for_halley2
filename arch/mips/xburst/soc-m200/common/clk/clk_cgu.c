@@ -147,8 +147,16 @@ static int cgu_enable(struct clk *clk,int on)
 			reg_val &= ~(1 << 26);
 		else
 			reg_val |= (1 << 26);
+		if (no == CGU_USB && !(reg_val >> 31)) {
+			reg_val |= (1 << ce);
+			reg_val |= ( 1<< stop);
+			cpm_outl(reg_val,cgu_clks[no].off);
+			cpm_clear_bit(ce,cgu_clks[no].off);
+			clk->rate = clk->parent->rate;
+			goto cgu_enable_finish;
+		}
 	}
-	if(on){
+	if(on) {
 		if(cgu_clks[no].cache && ((cgu_clks[no].cache & mask) != (reg_val & mask))) {
 			unsigned int x = cgu_clks[no].cache;
 			x = (x & ~(0x1 << stop)) | (0x1 << ce);
@@ -190,7 +198,7 @@ static int cgu_set_rate(struct clk *clk, unsigned long rate)
 	//if(clk->parent == get_clk_from_id(CLK_ID_EXT1) && (clk->CLK_ID != CLK_ID_CGU_I2S))
 	//    //return -1;
 	//
-	if(no == CGU_MSC_MUX)
+	if (no == CGU_MSC_MUX)
 		return -1;
 	spin_lock_irqsave(&cpm_cgu_lock,flags);
 	mask = (1 << cgu_clks[no].div) - 1;
@@ -200,21 +208,27 @@ static int cgu_set_rate(struct clk *clk, unsigned long rate)
 			break;
 	}
 	i--;
-	if(i > mask)
+	if (i > mask)
 		i = mask;
 	reg_val = cpm_inl(cgu_clks[no].off);
+	if (no == CGU_USB && !(reg_val >> 31)) {
+		clk->rate = clk->parent->rate;
+		spin_unlock_irqrestore(&cpm_cgu_lock,flags);
+		return 0;
+	} else if (no == CGU_UHC && (reg_val >> 30) == 0x2) {
+		i = 0;
+	}
 	x = reg_val & ~mask;
 	x |= i;
 	stop = cgu_clks[no].ce_busy_stop;
 	busy = stop + 1;
 	ce = stop + 2;
-	if(x & (1 << stop)) {
+	if (x & (0x1 << stop)) {
 		cgu_clks[no].cache = x;
 		clk->rate = tmp  / (i + 1);
-	}
-	else if((mask & reg_val) != i){
+	} else if((mask & reg_val) != i) {
 
-		x = (x & ~(0x1 << stop)) | (0x1 << ce);
+		x |= (0x1 << ce);
 		cpm_outl(x, cgu_clks[no].off);
 		while(cpm_test_bit(busy,cgu_clks[no].off))
 			printk("wait stable.[%d][%s]\n",__LINE__,clk->name);

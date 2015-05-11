@@ -229,38 +229,38 @@ config MMC2_PIO_MODE
 	  If unsure, say N.
 
 
-config MMC_JZ4775
-	tristate "Ingenic(XBurst) JZ4775 MMC/SD Card Controller(MSC) support"
+config JZMMC_V11
+	tristate "Ingenic(XBurst) Halley MMC/SD Card Controller(MSC) support"
 	depends on SOC_4775
 	help
 	  This selects the Ingenic XBurst SD/MMC Card Controller
-	  for JZ4775 support. If you have an JZ4775
+	  for Halley support. If you have an Halley
 	  platform with a SD/Multimedia Card slot, say Y or M here.
 
 	  If unsure, say N.
 
-config MMC0_JZ4775
+config JZMMC_V11_MMC0
 	bool "MSC0"
-	depends on MMC_JZ4775
+	depends on JZMMC_V11
 	help
 	  If you want enable MSC0, say Y or M here.
 
 	  If unsure, say N.
 choice
-	prompt "JZ4775 MSC0 function pins select"
-	depends on MMC0_JZ4775
-	default MMC0_JZ4775_PA_4BIT
-config MMC0_JZ4775_PA_4BIT
+	prompt "Halley MSC0 function pins select"
+	depends on JZMMC_V11_MMC0
+	default JZMMC_V11_MMC0_PA_4BIT
+config JZMMC_V11_MMC0_PA_4BIT
 	bool "GPIO A, Data width 4 bit"
-config MMC0_JZ4775_PA_8BIT
+config JZMMC_V11_MMC0_PA_8BIT
 	bool "GPIO A, Data width 8 bit"
-config MMC0_JZ4775_PE_4BIT
+config JZMMC_V11_MMC0_PE_4BIT
 	bool "GPIO E, Data width 4 bit"
 endchoice
 
 config MMC0_MAX_FREQ
 	int "MSC0 max frequency"
-	depends on MMC0_JZ4775
+	depends on JZMMC_V11_MMC0
 	default 24000000
 	help
 	  The max frequency of msc0, it should NOT be higher than 50mHz.
@@ -269,33 +269,33 @@ config MMC0_MAX_FREQ
 
 config MMC0_PIO_MODE
 	bool "Use PIO mode for MSC0"
-	depends on MMC0_JZ4775 && MMC_BLOCK_BOUNCE
+	depends on JZMMC_V11_MMC0 && MMC_BLOCK_BOUNCE
 	default n
 	help
 	  Use PIO mode to transfer data for MSC0, say Y or N here.
 
 	  If unsure, say N.
 
-config MMC1_JZ4775
+config JZMMC_V11_MMC1
 	bool "MSC1"
-	depends on MMC_JZ4775
+	depends on JZMMC_V11
 	help
 	  If you want enable MSC1, say Y or M here.
 
 	  If unsure, say N.
 choice
-	prompt "JZ4775 MSC1 function pins select"
-	depends on MMC1_JZ4775
-	default MMC1_JZ4775_PD_4BIT
-config MMC1_JZ4775_PD_4BIT
+	prompt "Halley MSC1 function pins select"
+	depends on JZMMC_V11_MMC1
+	default JZMMC_V11_MMC1_PD_4BIT
+config JZMMC_V11_MMC1_PD_4BIT
 	bool "GPIO D, Data width 4 bit"
-config MMC1_JZ4775_PE_4BIT
+config JZMMC_V11_MMC1_PE_4BIT
 	bool "GPIO E, Data width 4 bit"
 endchoice
 
 config MMC1_MAX_FREQ
 	int "MSC1 max frequency"
-	depends on MMC1_JZ4775
+	depends on JZMMC_V11_MMC1
 	default 24000000
 	help
 	  The max frequency of msc1, it should NOT be higher than 50mHz.
@@ -304,33 +304,33 @@ config MMC1_MAX_FREQ
 
 config MMC1_PIO_MODE
 	bool "Use PIO mode for MSC1"
-	depends on MMC1_JZ4775 && MMC_BLOCK_BOUNCE
+	depends on JZMMC_V11_MMC1 && MMC_BLOCK_BOUNCE
 	default n
 	help
 	  Use PIO mode to transfer data for MSC1, say Y or N here.
 
 	  If unsure, say N.
 
-config MMC2_JZ4775
+config JZMMC_V11_MMC2
 	bool "MSC2"
-	depends on MMC_JZ4775
+	depends on JZMMC_V11
 	help
 	  If you want enable MSC2, say Y or M here.
 
 	  If unsure, say N.
 choice
-	prompt "JZ4775 MSC2 function pins select"
-	depends on MMC2_JZ4775
-	default MMC2_JZ4775_PB_4BIT
-config MMC2_JZ4775_PB_4BIT
+	prompt "Halley MSC2 function pins select"
+	depends on JZMMC_V11_MMC2
+	default JZMMC_V11_MMC2_PB_4BIT
+config JZMMC_V11_MMC2_PB_4BIT
 	bool "GPIO B, Data width 4 bit"
-config MMC2_JZ4775_PE_4BIT
+config JZMMC_V11_MMC2_PE_4BIT
 	bool "GPIO E, Data width 4 bit"
 endchoice
 
 config MMC2_MAX_FREQ
 	int "MSC2 max frequency"
-	depends on MMC2_JZ4775
+	depends on JZMMC_V11_MMC2
 	default 24000000
 	help
 	  The max frequency of msc2, it should NOT be higher than 50mHz.
@@ -339,7 +339,7 @@ config MMC2_MAX_FREQ
 
 config MMC2_PIO_MODE
 	bool "Use PIO mode for MSC2"
-	depends on MMC2_JZ4775 && MMC_BLOCK_BOUNCE
+	depends on JZMMC_V11_MMC2 && MMC_BLOCK_BOUNCE
 	default n
 	help
 	  Use PIO mode to transfer data for MSC2, say Y or N here.

@@ -30,7 +30,6 @@
 #include <linux/sysctl.h>
 #include <linux/delay.h>
 #include <asm/cacheops.h>
-#include <asm/rjzcache.h>
 #include <asm/fpu.h>
 #include <linux/syscore_ops.h>
 #include <linux/regulator/consumer.h>
@@ -39,6 +38,7 @@
 #include <soc/base.h>
 #include <soc/cpm.h>
 
+#include <rjzcache.h>
 #include <tcsm.h>
 
 //#define TEST 1

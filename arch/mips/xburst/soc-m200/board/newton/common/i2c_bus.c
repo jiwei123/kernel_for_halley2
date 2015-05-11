@@ -68,7 +68,7 @@ static struct jztsc_platform_data ite7258_tsc_pdata = {
 	.gpio           = ite7258_tsc_gpio,
 	.x_max          = 320,
 	.y_max          = 320,
-	.irqflags = IRQF_TRIGGER_FALLING | IRQF_DISABLED,
+	.irqflags = IRQF_TRIGGER_LOW | IRQF_DISABLED,
 	.vcc_name = VCC_TOUCHSCREEN,
 #ifdef CONFIG_WATCH_ACRAB
 	.vccio_name = VIO_TOUCHSCREEN,

@@ -2,11 +2,11 @@
 
 ## WARNING! DO NOT change this lists order because power sleep order depends on it!! ##
 
-obj-y += setup.o 
-obj-y += reset.o 
+obj-y += setup.o
+obj-y += reset.o
 obj-y += timer.o
-#maintimer.o cpu0timer.o cpu1timer.o 
-obj-y += serial.o 
+#maintimer.o cpu0timer.o cpu1timer.o
+obj-y += serial.o
 obj-y += tcu.o
 obj-y += jzcpm_pwc.o
 
@@ -16,10 +16,11 @@ else
 obj-y += clk.o
 endif
 
-obj-y += gpio.o 
+obj-y += gpio.o
 # only for debug
-#obj-y += pmmon.o 
-obj-y += irq.o 
+#obj-y += pmmon.o
+obj-y += irq.o
+obj-y += cpm_usb.o
 
 obj-y += platform.o
 
@@ -33,7 +34,7 @@ obj-$(CONFIG_CPU_FREQ) += cpufreq.o
 
 obj-$(CONFIG_DWC_LM_INTERFACE)  += lm.o lm-device.o
 
-obj-y += ahbm.o 
+obj-y += ahbm.o
 
 ifeq ($(CONFIG_MTD_NAND_JZ4775), y)
 obj-y += gpemc.o

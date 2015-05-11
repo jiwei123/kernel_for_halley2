@@ -375,7 +375,6 @@ void dwc2_host_mode_init(struct dwc2 *dwc) {
 	}
 
 	dwc2_enable_host_interrupts(dwc);
-	dwc2_enable_global_interrupts(dwc);
 }
 
 static int dwc2_channel_pool_init(struct dwc2 *dwc) {

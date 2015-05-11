@@ -97,11 +97,11 @@
 #define GPIO_TP_INT		GPIO_PB(0)
 #define GPIO_TP_WAKE		GPIO_PE(10)
 #endif
-#ifdef CONFIG_TOUCHSCREEN_FT6X06
+#if defined(CONFIG_TOUCHSCREEN_FT6X06) || defined(CONFIG_TOUCHSCREEN_FT6X06_MODULE)
 #define GPIO_TP_INT		GPIO_PD(27)
 #define GPIO_TP_RESET		PCA9539_EXT_GPIO(10)
 #endif
-#ifdef CONFIG_TOUCHSCREEN_FT5336
+#if defined(CONFIG_TOUCHSCREEN_FT5336) || defined(CONFIG_TOUCHSCREEN_FT5336_MODULE)
 #define GPIO_TP_INT		GPIO_PD(27)
 #define GPIO_TP_RESET		PCA9539_EXT_GPIO(10)
 #endif
@@ -147,6 +147,7 @@
 
 /* ****************************GPIO EFUSE START****************************** */
 #define GPIO_EFUSE_VDDQ      PCA9539_EXT_GPIO(6)
+#define GPIO_EFUSE_VDDQ_EN_LEVEL 0
 /* ****************************GPIO EFUSE END******************************** */
 
 /* ****************************GPIO LI ION START***************************** */

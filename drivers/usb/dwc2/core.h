@@ -431,6 +431,7 @@ struct dwc2_platform_data {
 struct dwc2 {
 	spinlock_t			 lock;
 	atomic_t			 in_irq;
+	int				 irq;
 	int				 owner_cpu;
 	int				 do_reset_core;
 
@@ -509,8 +510,6 @@ struct dwc2 {
 	unsigned			 phy_status:1; /* 0: suspend, 1: on */
 	unsigned			 sftdiscon:1;
 	unsigned			 plug_status:1;
-	/* host mode still charge from the usb cable*/
-	unsigned			 extern_vbus_mode:1;
 
 	unsigned int			 gintmsk;
 #ifdef CONFIG_USB_DWC2_ALLOW_WAKEUP
@@ -671,16 +670,12 @@ struct dwc2 {
 #define dwc2_spin_lock(__dwc)						\
 	do {								\
 		struct dwc2 *_dwc = (__dwc);				\
-		if (unlikely(!irqs_disabled()))				\
-			panic("dwc2_spin_lock must called from interrupt handler!\n"); \
 		spin_lock(&_dwc->lock);					\
 	} while(0)
 
 #define dwc2_spin_unlock(__dwc)						\
 	do {								\
 		struct dwc2 *_dwc = (__dwc);				\
-		if (unlikely(!irqs_disabled()))				\
-			panic("dwc2_spin_unlock must called from interrupt handler!\n"); \
 		spin_unlock(&_dwc->lock);				\
 	} while(0)
 
@@ -695,9 +690,6 @@ int dwc2_gadget_init(struct dwc2 *dwc);
 void dwc2_gadget_exit(struct dwc2 *dwc);
 
 #ifndef CONFIG_USB_CHARGER_SOFTWARE_JUDGE
-static void __attribute__((unused))
-dwc2_notifier_call_chain_sync(int state) {  }
-
 static void __attribute__((unused))
 dwc2_notifier_call_chain_async(struct dwc2 *dwc) {  }
 
@@ -732,5 +724,4 @@ void dwc2_flush_rx_fifo(struct dwc2 *dwc);
 
 void dwc2_enable_global_interrupts(struct dwc2 *dwc);
 void dwc2_disable_global_interrupts(struct dwc2 *dwc);
-
 #endif /* __DRIVERS_USB_DWC2_CORE_H */

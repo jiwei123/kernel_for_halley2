@@ -912,7 +912,7 @@ static void dwc2_handle_otg_intr(struct dwc2 *dwc) {
 		}
 		/* close PHY */
 		dctl.d32 = dwc_readl(&dwc->dev_if.dev_global_regs->dctl);
-		if (likely((!dwc->keep_phy_on) && (dctl.b.sftdiscon || !dwc->plugin)))
+		if (likely((!dwc->keep_phy_on || dwc->suspended) && (dctl.b.sftdiscon || (!dwc->plugin))))
 			jz_otg_phy_suspend(1);
 
 #ifdef CONFIG_BOARD_HAS_NO_DETE_FACILITY
@@ -1005,6 +1005,8 @@ static void dwc2_conn_id_status_change_work(struct work_struct *work)
 	gotgctl_data_t	 gotgctl;
 	unsigned long	 flags;
 
+	dwc2_disable_global_interrupts(dwc);
+	synchronize_irq(dwc->irq);
 	gotgctl.d32 = dwc_readl(&dwc->core_global_regs->gotgctl);
 
 	DWC2_CORE_DEBUG_MSG("id status change, gotgctl = 0x%08x\n", gotgctl.d32);
@@ -1085,12 +1087,13 @@ static void dwc2_conn_id_status_change_work(struct work_struct *work)
 		set_bit(HCD_FLAG_POLL_RH, &dwc->hcd->flags);
 #endif	/* DWC2_HOST_MODE_ENABLE */
 	}
+	dwc2_enable_global_interrupts(dwc);
 }
 
 static void dwc2_handle_conn_id_status_change_intr(struct dwc2 *dwc) {
 	gintsts_data_t gintsts;
 
-	dev_dbg(dwc->dev, "ID PIN CHANGED!\n");
+	dev_info(dwc->dev, "ID PIN CHANGED!\n");
 
 	schedule_work(&dwc->otg_id_work);
 
@@ -1342,6 +1345,7 @@ static int dwc2_do_reset_device_core(struct dwc2 *dwc) {
 	mdelay(1);
 	dwc->op_state = DWC2_B_PERIPHERAL;
 	dwc2_device_mode_init(dwc);
+	dwc2_enable_global_interrupts(dwc);
 
 	mdelay(1);
 
@@ -1457,10 +1461,17 @@ static irqreturn_t dwc2_interrupt(int irq, void *_dwc) {
 	}
 
 out:
-	if (unlikely((!dwc->plugin) && jz_otg_phy_is_suspend() && dwc2_is_device_mode(dwc))) {
-		dwc2_suspend_controller(dwc , 0);
+#if DWC2_DEVICE_MODE_ENABLE
+	if (unlikely(((!dwc->plugin) || dwc->suspended) && jz_otg_phy_is_suspend() && dwc2_is_device_mode(dwc))) {
+		dwc2_suspend_controller(dwc);
 	}
-
+#ifdef CONFIG_USB_DWC2_SAVING_POWER
+	else if (jz_otg_phy_is_suspend() && !dwc2_clk_is_enabled(dwc)) {
+		dev_warn(dwc->dev, "unsuspend but jz otg phy is suspend\n");
+		jz_otg_phy_suspend(0);
+	}
+#endif
+#endif
 	dwc_unlock(dwc);
 	spin_unlock(&dwc->lock);
 
@@ -1579,14 +1590,13 @@ static int dwc2_probe(struct platform_device *pdev)
 			irq, ret);
 		goto fail_req_irq;
 	}
+	dwc->irq = irq;
 
 	/* TODO: if enable ADP support, start ADP here instead of enable global interrupts */
-	dwc2_enable_global_interrupts(dwc);
-	if (!dwc->keep_phy_on) {
-		dwc2_suspend_controller(dwc , 0);
-	} else {
-		dwc2_resume_controller(dwc , 0);
-	}
+	if (!dwc->keep_phy_on)
+		dwc2_suspend_controller(dwc);
+	else
+		dwc2_enable_global_interrupts(dwc);
 
 	ret = dwc2_debugfs_init(dwc);
 	if (ret) {
@@ -1736,7 +1746,7 @@ static int dwc2_resume(struct platform_device *pdev) {
 	dwc2_core_debug_en = 0;
 	dwc2_spin_unlock_irqrestore(dwc, flags);
 
-	if (dwc2_is_host_mode(dwc) && (dwc2_get_id_level(dwc) == 0) && !dwc->extern_vbus_mode) {
+	if (dwc2_is_host_mode(dwc) && (dwc2_get_id_level(dwc) == 0)) {
 		jz_set_vbus(dwc, 1);
 	}
 

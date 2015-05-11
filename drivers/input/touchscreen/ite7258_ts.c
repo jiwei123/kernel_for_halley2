@@ -435,41 +435,46 @@ static int ite7258_check_update_fw(unsigned char *target_fw, unsigned char *targ
 		fw_buf = CTP_FW;
 		fw_size = sizeof(CTP_FW);
 
-		for(i = 0; i < 4; i++)
+		for(i = 4; i > 0; i--)
 		{
+			printk("[%d] tar %x  fw %x \n",i,target_fw[i],fw_buf[8 + i]);
 			if(target_fw[i] < fw_buf[8 + i])
 			{
 				fw_need_update = 1;
-			} else {
+				printk("need = 1\n");
+			} else if (target_fw[i] > fw_buf[8 + i]){
 				fw_need_update = 0;
+				printk("need = 0\n");
 			}
 		}
+		printk("fw need update  = %d \n",fw_need_update);
 
+				fw_need_update = 1;
 
 		update->conf_length = sizeof(CTP_CFG);
         update->conf_buf    = CTP_CFG;
         config_buf = CTP_CFG;
 		config_size = sizeof(CTP_CFG);
 
-		for(i = 0; i < 4; i++)
+		for(i = 4; i > 0; i--)
 		{
+			printk("cfg tar =  %d  cfg = %d\n",target_config[i],config_buf[config_size - 8 - i]);
 			if(target_config[i] < config_buf[config_size - 8 - i])
 			{
 				cfg_need_update = 1;
-			} else {
+			} else if( target_config[i] > config_buf[config_size - 8 - i] ) {
 				cfg_need_update = 0;
 			}
 		}
+		printk("cfg need updata = %d\n",cfg_need_update);
+				cfg_need_update = 1;
 
 		if(fw_need_update) {
 			printk("device:fw_ver : %d,%d,%d,%d\n",target_fw[0], target_fw[1], target_fw[2], target_fw[3]);
 			printk("update:fw_ver : %d,%d,%d,%d\n",fw_buf[8], fw_buf[9], fw_buf[10], fw_buf[11]);
 
 			printk("device:cfg_ver : %d,%d,%d,%d\n",target_config[0], target_config[1], target_config[2], target_config[3]);
-			printk("update:cfg_ver : %d,%d,%d,%d\n",config_buf[config_size-8],
-					config_buf[config_size-7],
-					config_buf[config_size-6],
-					config_buf[config_size-5]);
+			printk("update:cfg_ver : %d,%d,%d,%d\n",config_buf[config_size-8], config_buf[config_size-7], config_buf[config_size-6], config_buf[config_size-5]);
 			if(ite7258_firmware_down() == true) {
 				printk("touch panel firmware update ok!, system will restart!\n");
 			} else {
@@ -692,7 +697,7 @@ static int ite7258_print_version(struct i2c_client *client)
         printk("[mtk-tpd] ITE7258 Touch irq %x, %x \n",rbuffer[0], rbuffer[1]);
 #endif
 
-		ite7258_check_update_fw(target_fw, target_config);
+		//ite7258_check_update_fw(target_fw, target_config);
 
         /* vendor ID && Device ID */
         ite7258_wait_command_done(client);

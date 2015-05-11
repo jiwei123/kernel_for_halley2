@@ -893,9 +893,6 @@ config I2C4_JZ4780_PF
 	bool "gpf24 & gpf25"
 endchoice
 
-comment "Xburst soc M200 internal i2c controller"
-    depends on SOC_M200
-
 config I2C_V12_JZ
         tristate "Ingenic SoC based on Xburst arch's I2C controler Driver support"
 	depends on MACH_XBURST

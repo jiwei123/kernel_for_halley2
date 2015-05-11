@@ -14,9 +14,13 @@ enum snd_codec_route_t {
 	ROUTE_ALL_CLEAR,
 	ROUTE_REPLAY_CLEAR,
 	ROUTE_RECORD_CLEAR,
-	RECORD_MIC1_MONO_DIFF_WITH_BIAS,
+
+	ROUTE_RECORD_ROUTE_START,
+	RECORD_MIC1_MONO_DIFF_WITH_BIAS = ROUTE_RECORD_ROUTE_START,
 	RECORD_MIC2_MONO_DIFF_WITH_BIAS,
-	RECORD_LININL_AND_LININR,
+	RECORD_DMIC,
+	ROUTE_RECORD_ROUTE_END = RECORD_DMIC,
+
 	REPLAY_HP_STEREO_CAP_LESS,
 	REPLAY_HP_STEREO_WITH_CAP,
 	REPLAY_HP_STEREO_CAP_LESS_AND_LINEOUT,
@@ -26,10 +30,14 @@ enum snd_codec_route_t {
 	BYPASS_MIC1_DIFF_WITH_BIAS_TO_LINEOUT,
 	BYPASS_MIC2_DIFF_WITH_BIAS_TO_HP_CAP_LESS,
 	BYPASS_MIC2_DIFF_WITH_BIAS_TO_LINEOUT,
-	BYPASS_LINEIN_TO_HP_CAP_LESS,
+	BYPASS_LINEIN_TO_HP_WITH_CAP,
 	BYPASS_LINEIN_TO_LINEOUT,
 	RECORD_STEREO_MIC_DIFF_WITH_BIAS_BYPASS_MIXER_MIC2_TO_HP_CAP_LESS,
 	RECORD_STEREO_MIC_DIFF_WITH_BIAS_BYPASS_MIXER_MIC2_TO_LINEOUT,
+
+	SND_ROUTE_MIC2_AN3_TO_AD_AND_DA_TO_LO,
+	SND_ROUTE_MIC2_AN3_TO_AD_AND_DA_TO_HP,
+	SND_ROUTE_DMIC_TO_AD_AND_DA_TO_LO,
 	ROUTE_COUNT
 };
 
@@ -38,6 +46,13 @@ typedef enum {
 	STATE_DISABLE,
 	STATE_ENABLE,
 } audio_gpio_state_t;
+
+typedef enum {
+	NONE_INSERTED = 0,
+	USB_INSERTED,
+	HEADSET_INSERTED,
+	LOW_POWER,
+} board_switch_t;
 
 struct snd_board_route {
 	enum snd_codec_route_t route;
@@ -52,6 +67,9 @@ struct snd_board_route {
 	audio_gpio_state_t gpio_spk_en_stat;
 	audio_gpio_state_t gpio_handset_en_stat;
 	audio_gpio_state_t gpio_buildin_mic_en_stat;
+	audio_gpio_state_t gpio_usb_sel_en_stat;
+	audio_gpio_state_t gpio_alp_sel_en_stat;
+	audio_gpio_state_t gpio_adc_en_stat;
 };
 
 struct snd_board_gpio {
@@ -81,13 +99,21 @@ struct snd_codec_data {
 	struct snd_board_route record_headset_mic_route;
 	struct snd_board_route record_buildin_mic_route;
 
+	struct snd_board_route record_linein_route;
+	struct snd_board_route record_linein1_route;
+	struct snd_board_route record_linein2_route;
+	struct snd_board_route record_linein3_route;
+    struct snd_board_route record_linein4_route;
+
 	/* device <-> route map replay*/
 	struct snd_board_route replay_headset_route;
+	struct snd_board_route replay_headphone_route;
 	struct snd_board_route replay_speaker_route;
 	struct snd_board_route replay_headset_and_speaker_route;
 	struct snd_board_route fm_speaker_route;
 	struct snd_board_route fm_headset_route;
 	struct snd_board_route bt_route;
+	struct snd_board_route bt_hp_route;
 	struct snd_board_route call_handset_route;
 	struct snd_board_route call_headset_route;
 	struct snd_board_route call_speaker_route;
@@ -103,14 +129,20 @@ struct snd_codec_data {
 	struct snd_board_gpio gpio_mic_detect;
 	struct snd_board_gpio gpio_mic_detect_en;
 	struct snd_board_gpio gpio_buildin_mic_select;
+	struct snd_board_gpio gpio_adc_en;
+    struct snd_board_gpio gpio_usb_detect;
 
 	/* other */
 	int hpsense_active_level;		//no use for the moment ,use menuconfig
-    int hook_active_level;   /* -1: no hook detect,
-								 0: hook low level available,
-                                 1: hook high level available,
-                                 2: hook adc enable
-								 */
+	/*	-1: no hook detect,
+		0: hook low level available,
+		1: hook high level available,
+		2: hook adc enable
+	*/
+	int hook_active_level;
+	void (*board_switch_callback)(board_switch_t state);
+	void (*board_pa_control)(bool enable);
+	void (*board_dmic_control)(bool enable);
 };
 
 
@@ -153,10 +185,16 @@ struct snd_codec_data {
 struct snd_dev_data {
 	struct list_head list;
 	struct device *dev;
+	struct platform_device *pdev;
 	void *ext_data;
+	void *priv_data;
+
 	int minor;
 	bool is_suspend;
 	long (*dev_ioctl) (unsigned int cmd, unsigned long arg);
+	long (*dev_ioctl_2)(struct snd_dev_data *dev_data, unsigned int cmd, unsigned long arg);
+	struct dsp_endpoints * (*get_endpoints)(struct snd_dev_data *dev_data);
+
 	int (*init)(struct platform_device *pdev);
 	void (*shutdown)(struct platform_device *pdev);
 	int (*suspend)(struct platform_device *pdev, pm_message_t state);

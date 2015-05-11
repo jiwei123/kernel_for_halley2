@@ -160,8 +160,7 @@ extern int jzmmc_manual_detect(int index, int on);
 extern int jzmmc_clk_ctrl(int index, int on);
 extern int bcm_power_on(void);
 extern int bcm_power_down(void);
-
-#ifdef CONFIG_BCM43341
+#if IS_ENABLED(CONFIG_BCM43341)
 static struct resource wlan_resources[] = {
 	[0] = {
 		.start = WL_WAKE_HOST,
@@ -266,7 +265,6 @@ start:
 	pr_debug("wlan power on:%d\n", flag);
 	wifi_le_restore_io();
 	bcm_power_on();
-
 	msleep(200);
 
 	switch(flag) {
