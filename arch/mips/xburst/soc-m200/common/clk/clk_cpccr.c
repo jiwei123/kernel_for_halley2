@@ -90,7 +90,7 @@ static int get_cpccr_div(unsigned int prate,unsigned int rate)
 {
 	unsigned int div = prate / rate;
 	if((prate % rate) && (div > 1))
-		div--;
+		div++;
 	if(div >= 15)
 		div = 15;
 	return div;
