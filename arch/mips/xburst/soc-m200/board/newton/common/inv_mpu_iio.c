@@ -132,8 +132,8 @@ struct mpu_platform_data mpu9250_platform_data = {
         .int_config  = 0x90,
 		.level_shifter = 0,
 		.orientation = {
-			0, -1,  0,
-			-1,  0,  0,
+			-1, 0,  0,
+			0,  1,  0,
 			0,  0, -1,
 		},
         .key = { 0xec, 0x5c, 0xa6, 0x17, 0x54, 0x3, 0x42, 0x90, 0x74, 0x7e,
