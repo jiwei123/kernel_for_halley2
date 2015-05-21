@@ -63,6 +63,8 @@ struct dsi_config {
 	unsigned short max_bta_cycles;
 	int color_mode_polarity;
 	int shut_down_polarity;
+	int te_gpio;
+	int te_irq_level;
 
 };
 

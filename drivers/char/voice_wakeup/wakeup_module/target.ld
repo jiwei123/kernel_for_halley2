@@ -11,12 +11,23 @@ MEMORY{
 
 SECTIONS
 {
+
 	.voice_mem : {
 		. = ALIGN(4);
+			*(.interface*)
 			*(.text)
-			/**(.data)*/
+			*(.data)
+			*(.rodata)
+	} > voice_mem
 
-			/**(.bss)*/
+	.bss : {
+		. = ALIGN(4);
+			__bss_start = .;
+			*(.sbss.*)
+			*(.bss.*)
+			*(COMMON)
+		. = ALIGN(4);
+			__bss_end = .;
 	} > voice_mem
 
 	.voice_res : {

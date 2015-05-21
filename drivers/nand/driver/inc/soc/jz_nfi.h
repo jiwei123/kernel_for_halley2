@@ -1,7 +1,7 @@
 /*
  * linux/include/asm-mips/mach-jz4780/jz4780nfi.h
  *
- * JZ4785 nfi register definition.
+ * M200 nfi register definition.
  *
  * Copyright (C) 2012 Ingenic Semiconductor Co., Ltd.
  */
@@ -140,6 +140,8 @@
 
 #define NAND_NFCR_INIT			(0x1 << 1)		 /* inital NFI, the bit is wrote 1 only,when soft reset */
 #define NAND_NFCR_EN			(0x1 << 0)		 /* NFI enable */
+
+#define NAND_NFCR_EDO_EN		(0x1 << 2)      /* nfi enable edo mode */
 
 /* NAND PN Control Register */
 // PN(bit 0):0-disable, 1-enable

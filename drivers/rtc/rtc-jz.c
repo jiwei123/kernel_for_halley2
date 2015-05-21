@@ -425,14 +425,14 @@ static int jz_rtc_probe(struct platform_device *pdev)
 		goto err_unregister_rtc;
 	}
 
+	tasklet_init(&rtc->tasklet, jzrtc_irq_tasklet,(unsigned long)rtc);
+
 	ret = request_irq(rtc->irq, jz_rtc_interrupt, IRQF_TRIGGER_LOW | IRQF_DISABLED,
 			"rtc 1Hz and alarm", rtc);
 	if (ret) {
 		pr_debug("IRQ %d already in use.\n", rtc->irq);
 		goto err_unregister_rtc;
 	}
-
-	tasklet_init(&rtc->tasklet, jzrtc_irq_tasklet,(unsigned long)rtc);
 
 	jz_rtc_enable(rtc);
 

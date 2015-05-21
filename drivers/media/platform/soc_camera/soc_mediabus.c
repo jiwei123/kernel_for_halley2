@@ -48,15 +48,24 @@ static const struct soc_mbus_lookup mbus_fmt[] = {
 	},
 }, {
 	.code = V4L2_MBUS_FMT_VYUY8_2X8,
+		.fmt = {
+			.fourcc			= V4L2_PIX_FMT_VYUY,
+			.name			= "VYUY",
+			.bits_per_sample	= 8,
+			.packing		= SOC_MBUS_PACKING_2X8_PADHI,
+			.order			= SOC_MBUS_ORDER_LE,
+			.layout			= SOC_MBUS_LAYOUT_PACKED,
+		},
+},{
+	.code = V4L2_MBUS_FMT_JZYUYV8_1_5X8,
 	.fmt = {
-		.fourcc			= V4L2_PIX_FMT_VYUY,
-		.name			= "VYUY",
-		.bits_per_sample	= 8,
-		.packing		= SOC_MBUS_PACKING_2X8_PADHI,
-		.order			= SOC_MBUS_ORDER_LE,
-		.layout			= SOC_MBUS_LAYOUT_PACKED,
+		.fourcc         = V4L2_PIX_FMT_JZ420B,
+		.name           = "JZ 4:2:0:B",
+		.bits_per_sample    = 8,
+		.packing        = SOC_MBUS_PACKING_1_5X8,
+		.order          = SOC_MBUS_ORDER_LE,
 	},
-}, {
+},{
 	.code = V4L2_MBUS_FMT_RGB555_2X8_PADHI_LE,
 	.fmt = {
 		.fourcc			= V4L2_PIX_FMT_RGB555,

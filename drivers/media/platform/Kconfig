@@ -78,7 +78,15 @@ config MIPI_CAMERA
 	depends on VIDEO_OVISP && SOC_M200
 	---help---
 	USE a camera of mipi interface.
-
+choice
+	depends on MIPI_CAMERA
+		prompt "select mclk gpio"
+	default MCLK_GPIO_PE02
+config MCLK_GPIO_PE02
+	bool "select pe02 as mclk pin."
+config MCLK_GPIO_PC24
+	bool "select pc24 as mclk pin."
+endchoice
 
 config VIDEO_TIMBERDALE
 	tristate "Support for timberdale Video In/LogiWIN"

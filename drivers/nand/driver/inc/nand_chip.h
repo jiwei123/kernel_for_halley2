@@ -44,6 +44,10 @@ enum hynix_retry_mode {
 	HY_RR_F1Y_64G_MLC,
 };
 
+enum Micron_retry_mode{
+	MT_RR_29F_32G_MLC_ADA,
+};
+
 enum micron_timing_mode {
 	MR_TIMING_MODE0 = 0x00,
 	MR_TIMING_MODE1 = 0x01,
@@ -155,7 +159,8 @@ struct nand_basic_info {
 typedef struct __nand_sharing_params {
 	unsigned int magic;
 	struct nand_basic_info nandinfo;
-        unsigned int kernel_offset;
+	unsigned int kernel_offset;
+	unsigned int nand_manager_version;
 } nand_sharing_params;
 const nand_flash *get_nand_flash(nand_flash_id *fid);
 

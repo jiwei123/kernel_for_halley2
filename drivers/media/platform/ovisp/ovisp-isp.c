@@ -37,7 +37,7 @@
 #define ISP_CLK_ALL		(0xffffffff)
 
 /* CCLK divider. */
-#define ISP_CCLK_DIVIDER	(0x04)
+#define ISP_CCLK_DIVIDER	(0x03)
 void isp_setting_init(struct isp_device *isp);
 static int isp_s_tlb_base(struct isp_device *isp, unsigned int tlb_base);
 static int isp_mipi_init(struct isp_device *isp);
@@ -2431,8 +2431,8 @@ static int isp_s_tlb_base(struct isp_device *isp, unsigned int tlb_base)
 	int tlb_en = 1;
 	int mipi_sel = 1;
 	int tlb_invld = 1;
-	int tlb_gcn = DMMU_PTE_CHECK_PAGE_VALID;
-	int tlb_cnm = DMMU_PTE_CHECK_PAGE_VALID;
+	int tlb_gcn = _PAGE_PRESENT;
+	int tlb_cnm = _PAGE_PRESENT;
 	int tlb_ridx = 0;  /*6 bits TLB entry read-index*/
 	ISP_PRINT(ISP_INFO," Read ISP TLB CTRL : 0x%x\n", isp_reg_readl(isp, 0xF0004));
 	ISP_PRINT(ISP_INFO,"Read ISP TLB BASE : 0x%x\n", isp_reg_readl(isp, 0xF0008));
@@ -2458,7 +2458,7 @@ static int isp_tlb_map_one_vaddr(struct isp_device *isp, unsigned int vaddr, uns
 {
 	int ret = 0;
 
-	ret = dmmu_map(vaddr, size);
+	ret = dmmu_map(isp->dev,vaddr, size);
 	if(isp->tlb_flag == 0){
 		if(ret){
 			isp_s_tlb_base(isp,ret);
@@ -2471,7 +2471,7 @@ static int isp_tlb_map_one_vaddr(struct isp_device *isp, unsigned int vaddr, uns
 }
 static int isp_tlb_unmap_all_vaddr(struct isp_device *isp)
 {
-	dmmu_unmap_all();
+	dmmu_unmap_all(isp->dev);
 	isp->tlb_flag = 0;
 	return 0;
 }

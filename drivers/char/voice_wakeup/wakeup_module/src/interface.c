@@ -22,6 +22,9 @@
 
 #define TAG	"[voice_wakeup]"
 
+char __bss_start[0] __attribute__((section(".__bss_start")));
+char __bss_end[0] __attribute__((section(".__bss_end")));
+
 int (*h_handler)(const char *fmt, ...);
 
 enum wakeup_source {
@@ -42,6 +45,7 @@ static int dmic_record_enabled = 0;
 
 
 
+
 void dump_voice_wakeup(void)
 {
 	printk("###########dump voice wakeup status#######\n");
@@ -54,6 +58,30 @@ void dump_voice_wakeup(void)
 	printk("dmic_current_state:	%d\n", dmic_current_state);
 
 	printk("###########dump voice wakeup status#######\n");
+
+}
+int module_init(void)
+{
+	int i;
+	/*clear bss*/
+	unsigned char *p = __bss_start;
+	for(i=0; i<((char*)&__bss_end - __bss_start); i++) {
+		*p++ = 0;
+	}
+
+	/*global init*/
+	_dma_channel = 5;
+	tcu_channel = 5;
+	cpu_wakeup_by = 0;
+	open_cnt = 0;
+	current_mode = 0;
+	g_sleep_buffer = NULL;
+	voice_wakeup_enabled = 0;
+	dmic_record_enabled = 0;
+}
+
+int module_exit(void)
+{
 
 }
 int open(int mode)

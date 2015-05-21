@@ -134,13 +134,14 @@
 	{ .name = "otg-drvvbus", .port = GPIO_PORT_E, .func = GPIO_FUNC_0, .pins = 1 << 10, }
 
 /*******************************************************************************************************************/
-
 #define ISP_PORTD							\
 	{ .name = "isp", .port = GPIO_PORT_D, .func = GPIO_FUNC_2, .pins = 0x000003ff, }
 
 #define ISP_I2C							\
 	{ .name = "isp-i2c",    .port = GPIO_PORT_B,  .func = GPIO_FUNC_2, .pins = 3 << 7, }
 
+#define ISP_PORTC							\
+	{ .name = "isp-clk", .port = GPIO_PORT_C, .func = GPIO_FUNC_2, .pins = 1 << 24, }
 /*******************************************************************************************************************/
 
 #define CIM_PORTC							\
@@ -209,6 +210,12 @@ extern struct platform_device jz_mixer3_device;
 extern struct platform_device jz_rtc_device;
 extern struct platform_device jz_efuse_device;
 extern struct platform_device jz_pwm_device;
+extern struct platform_device jz_aic_dma_device;
+extern struct platform_device jz_aic_device;
+extern struct platform_device jz_icdc_device;
+extern struct platform_device jz_pcm_dma_device;
+extern struct platform_device jz_pcm_device;
+extern struct platform_device jz_dump_cdc_device;
 int jz_device_register(struct platform_device *pdev,void *pdata);
 
 #ifdef CONFIG_ANDROID_PMEM

@@ -21,13 +21,13 @@
 #include "nand_ops.h"
 #include "errptinfo.h"
 
-
 //#define COMPAT_OLD_USB_BURN
 
 /* global */
 nand_data *nddata = NULL;
 extern int nd_raw_boundary;
 extern int g_have_wp;
+
 void (*__clear_rb_state)(rb_item *);
 int (*__wait_rb_timeout) (rb_item *, int);
 int (*__try_wait_rb) (rb_item *, int);
@@ -35,6 +35,10 @@ void (*__wp_enable) (int);
 void (*__wp_disable) (int);
 int (*__gpio_irq_request)(unsigned short, unsigned short *, void **);
 int (*__ndd_gpio_request)(unsigned int, const char *);
+
+int (*nand_auto_adapt_edo)(int , chip_info *, rb_item *);
+int (*nand_adjust_to_toggle)(int , chip_info *);
+int (*nand_adjust_to_onfi)(int, chip_info *);
 
 extern int os_clib_init(os_clib *clib);
 
@@ -109,16 +113,20 @@ static int single_page_write(void *ppartition, int pageid, int offsetbyte, int b
 
 	return ret;
 }
+
 static int multi_page_read(void *ppartition, PageList *pl)
 {
 	int ret;
 	PPartition *ppt = (PPartition *)ppartition;
 	ndpartition *npt = (ndpartition *)ppt->prData;
+
 	speed_dug_begin(NDD_READ, pl);
 	ret = nandops_read(nddata->ops_context, npt, pl);
 	speed_dug_end(NDD_READ);
+
 	if (ret == ECC_ERROR)
 		ndd_dump_uncorrect_err(nddata, ppt, pl);
+
 	return ret;
 }
 
@@ -533,6 +541,13 @@ unsigned int get_nandflash_maxvalidblocks(void)
 	return ((nand_flash *)(nddata->cinfo->flash))->maxvalidblocks;
 }
 
+unsigned int get_nandflash_pagesize(void)
+{
+	if(!nddata && !(nddata->cinfo) && !(nddata->cinfo->flash))
+		return 0;
+	return ((nand_flash *)(nddata->cinfo->flash))->pagesize;
+}
+
 static inline int next_platpt_connected(unsigned int plat_index,
 					plat_ptitem *plat_pt, unsigned int plat_ptcount)
 {
@@ -731,9 +746,9 @@ static pt_info* get_ptinfo(chip_info *cinfo, unsigned short totalchips,
 					pt[pt_index].vblockpgroup * pt[pt_index].groupspzone;
 				unsigned int zonecount = pt[pt_index].totalblocks / zoneblocks;
 				if (zonecount < ZONE_COUNT_LIMIT) {
-					if (pt[pt_index].vblockpgroup > 1)
+					if (pt[pt_index].vblockpgroup > 2)
 						pt[pt_index].vblockpgroup /= 2;
-					else if (pt[pt_index].blockpvblock > 1) {
+					else if (pt[pt_index].blockpvblock > 2) {
 						pt[pt_index].blockpvblock /= 2;
 						pt[pt_index].planes /=2;
 					} else {
@@ -865,7 +880,7 @@ static int fill_cinfo(nand_data *nddata, const nand_flash *ndflash)
 			RETURN_ERR(ENAND, "can not alloc memory for retryparms");
 
 		cinfo->retryparms->mode = READ_RETRY_MODE(cinfo);
-		if (get_retry_parms(base, 0, nddata->rbinfo, cinfo->retryparms)) {
+		if (get_retry_parms(base,cinfo,0, nddata->rbinfo, cinfo->retryparms)) {
 			ndd_free(cinfo->retryparms);
 			RETURN_ERR(ENAND, "get retry data error");
 		}
@@ -984,6 +999,7 @@ static int get_platinfo_from_errpt(nand_data *nddata, struct nand_api_platdepend
 
 	/* init operations of errpt */
 	nand_errpt_init(ndflash);
+
 	/* get rbinfo and nandflash parameters */
 	ret = get_errpt_head(nddata, platdep);
 	if (ret < 0)
@@ -1067,6 +1083,46 @@ static struct nand_api_platdependent* alloc_platdep_memory(void) {
 static void free_platdep_memory(struct nand_api_platdependent **platdep) {
 	ndd_free(*platdep);
 	*platdep = NULL;
+}
+
+static int  nand_func_auto_adjust(nand_data *nddata)
+{
+	int context;
+	nfi_base *base = &(nddata->base->nfi);
+	chip_info *cinfo = nddata->cinfo;
+	unsigned short totalchips = nddata->csinfo->totalchips;
+	cs_item *csinfo_table = nddata->csinfo->csinfo_table;
+	rb_item *rbitem;
+	int cs_index;
+	int cs_id;
+	int ret;
+
+	for(cs_index = 0; cs_index < totalchips; cs_index++){
+		cs_id = csinfo_table[cs_index].id;
+		rbitem = csinfo_table[cs_index].rbitem;
+
+		context = nand_io_open(base,cinfo);
+		if (!context)
+			RETURN_ERR(ENAND, "nand io open error");
+
+		ret = nand_io_chip_select(context, cs_id);
+		if (ret)
+			RETURN_ERR(ENAND, "nand io chip select error, cs = [%d]", cs_id);
+
+		if(nand_auto_adapt_edo)
+			nand_auto_adapt_edo(context,cinfo,rbitem);
+
+		if(nand_adjust_to_toggle)
+			nand_adjust_to_toggle(context,cinfo);
+
+		if(nand_adjust_to_onfi)
+			nand_adjust_to_onfi(context,cinfo);
+
+		nand_io_chip_deselect(context, cs_id);
+		nand_io_close(context);
+	}
+
+	return 0;
 }
 
 int nand_api_init(struct nand_api_osdependent *osdep)
@@ -1154,6 +1210,8 @@ int nand_api_init(struct nand_api_osdependent *osdep)
 		if (ret)
 			ndd_print(NDD_ERROR,"WARNING:nand set feature failed!\n");
 
+		nand_func_auto_adjust(nddata);
+
 		ndd_debug("\nget ppainfo from errpt:\n");
 		ret = get_ppainfo_from_errpt(nddata, nddata->platdep);
 		if (ret < 0)
@@ -1240,6 +1298,7 @@ int nand_api_reinit(struct nand_api_platdependent *platdep)
 	ret = nandflash_setup(&(nddata->base->nfi), nddata->csinfo, nddata->rbinfo, nddata->cinfo);
 	if (ret)
 		ndd_print(NDD_ERROR,"WARNING:nand set feature failed!\n");
+	nand_func_auto_adjust(nddata);
 
 	if (platdep->erasemode) {
 		/* init operations of errpt */

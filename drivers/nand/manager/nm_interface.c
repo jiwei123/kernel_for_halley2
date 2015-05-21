@@ -352,10 +352,6 @@ int NM_open(void)
 			return 0;
 		}
 		nm_intf->heap = (void*)kmalloc(HEAP_SIZE, GFP_KERNEL);
-		if (!nm_intf->heap) {
-			printk("ERROR: %s, Init NandManger faild!\n", __func__);
-			return 0;
-		}
 		nm_intf->handler = NandManger_Init(nm_intf->heap, HEAP_SIZE, 0);
 		if (!nm_intf->handler) {
 			printk("ERROR: %s, Init NandManger faild!\n", __func__);

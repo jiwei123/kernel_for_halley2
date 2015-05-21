@@ -459,7 +459,7 @@ static void jz_mipi_update_cfg(struct dsi_device *dsi)
 {
 	int ret;
 	int st_mask = 0;
-	int retry = 20;
+	int retry = 25;
 	dsi->state = NOT_INITIALIZED;
 	ret = jz_dsi_phy_open(dsi);
 	if (ret) {
@@ -483,7 +483,7 @@ static void jz_mipi_update_cfg(struct dsi_device *dsi)
 		pr_err("phy configigure failed!\n");
 	}
 
-	pr_debug("wait for phy config ready\n");
+#if 0
 	if (dsi->video_config->no_of_lanes == 2)
 		st_mask = 0x95;
 	else
@@ -491,13 +491,14 @@ static void jz_mipi_update_cfg(struct dsi_device *dsi)
 
 	/*checkout phy clk lock and  clklane, datalane stopstate  */
 	while ((mipi_dsih_read_word(dsi, R_DSI_HOST_PHY_STATUS) & st_mask) !=
-	       st_mask && retry--) {
-			pr_info("phy status = %08x\n", mipi_dsih_read_word(dsi, R_DSI_HOST_PHY_STATUS));
+			st_mask && retry--) {
+		pr_info("phy status = %08x\n", mipi_dsih_read_word(dsi, R_DSI_HOST_PHY_STATUS));
 	}
 
 	if (!retry){
 		pr_err("wait for phy config failed!\n");
 	}
+#endif
 
 	mipi_dsih_dphy_enable_hs_clk(dsi, 0);
 	dsi->state = INITIALIZED;
@@ -552,7 +553,6 @@ static int jz_mipi_dsi_set_blank(struct dsi_device *dsi, int blank_mode)
 			client_drv->power_on(client_dev, 1);
 
 		jz_mipi_update_cfg(dsi);
-
 		/* set lcd panel sequence commands. */
 		if (client_drv && client_drv->set_sequence)
 			client_drv->set_sequence(client_dev);
@@ -745,12 +745,12 @@ struct dsi_device * jzdsi_init(struct jzdsi_data *pdata)
 	dsi->video_config->h_polarity = pdata->modes->sync & FB_SYNC_HOR_HIGH_ACT;
 	dsi->video_config->h_active_pixels = pdata->modes->xres;
 	dsi->video_config->h_sync_pixels = pdata->modes->hsync_len;
-	dsi->video_config->h_back_porch_pixels = pdata->modes->right_margin;
+	dsi->video_config->h_back_porch_pixels = pdata->modes->left_margin;
 	dsi->video_config->h_total_pixels = pdata->modes->xres + pdata->modes->hsync_len + pdata->modes->left_margin + pdata->modes->right_margin;
 	dsi->video_config->v_active_lines = pdata->modes->yres;
 	dsi->video_config->v_polarity =  pdata->modes->sync & FB_SYNC_VERT_HIGH_ACT;
 	dsi->video_config->v_sync_lines = pdata->modes->vsync_len;
-	dsi->video_config->v_back_porch_lines = pdata->modes->lower_margin;
+	dsi->video_config->v_back_porch_lines = pdata->modes->upper_margin;
 	dsi->video_config->v_total_lines = pdata->modes->yres + pdata->modes->upper_margin + pdata->modes->lower_margin + pdata->modes->vsync_len;
 	dsi->master_ops = &jz_master_ops;
 
@@ -790,7 +790,9 @@ struct dsi_device * jzdsi_init(struct jzdsi_data *pdata)
 		 * dsi->state = INITIALIZED. the lcd display abnormal.
 		 *
 		 * */
-		//dsi->state = INITIALIZED; /*must be here for set_sequence function*/
+#ifdef CONFIG_JZ_MIPI_DBI
+		dsi->state = INITIALIZED; /*must be here for set_sequence function*/
+#endif
 	} else {
 
 		if (dsim_ddi->dsim_lcd_drv && dsim_ddi->dsim_lcd_drv->power_on)
@@ -823,7 +825,8 @@ struct dsi_device * jzdsi_init(struct jzdsi_data *pdata)
 
 		/*checkout phy clk lock and  clklane, datalane stopstate  */
 		while ((mipi_dsih_read_word(dsi, R_DSI_HOST_PHY_STATUS) & st_mask) !=
-				st_mask && retry--) {
+				st_mask && retry) {
+			retry--;
 			pr_info("phy status = %08x\n", mipi_dsih_read_word(dsi, R_DSI_HOST_PHY_STATUS));
 		}
 

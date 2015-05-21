@@ -1528,7 +1528,11 @@ struct snd_switch_data switch_data = {
 	.set_device	= NULL,
 	.codec_get_state_2 = jz_get_hp_switch_state_2,
 	.set_device_2 = i2s_set_device_2,
+#if defined(CONFIG_JZ_HP_DETECT_CODEC_V12)
 	.type	=	SND_SWITCH_TYPE_CODEC,
+#elif defined(CONFIG_JZ_HP_DETECT_GPIO_V12)
+	.type	=	SND_SWITCH_TYPE_GPIO,
+#endif
 };
 
 static struct platform_device xb47xx_i2s_switch = {

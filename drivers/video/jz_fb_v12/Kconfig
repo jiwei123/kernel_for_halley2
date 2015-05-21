@@ -14,6 +14,12 @@ config JZ_MIPI_DSI
     depends on FB_JZ_V12
 	default n
 
+
+config JZ_MIPI_DBI
+	bool "jz mipi dbi support mipi slcd"
+    depends on JZ_MIPI_DSI
+	default n
+
 config DEFAULT_DATALANE_BPS
 	int "set default datalane Mbps"
 	range 90 1000

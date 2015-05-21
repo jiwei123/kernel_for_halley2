@@ -3,7 +3,7 @@
 #define __XB_SND_PCM_H__
 
 #include <asm/io.h>
-#include "../interface/xb_snd_dsp_v12.h"
+#include "../interface/xb_snd_dsp.h"
 
 /**
  * global variable

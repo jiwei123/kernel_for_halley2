@@ -22,7 +22,6 @@
 #include <linux/switch.h>
 #include <linux/dma-mapping.h>
 #include <linux/soundcard.h>
-#include <linux/earlysuspend.h>
 #include <mach/jzdma.h>
 #include <mach/jzsnd.h>
 #include <soc/irq.h>

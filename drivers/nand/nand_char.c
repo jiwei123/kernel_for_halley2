@@ -29,6 +29,7 @@ static struct __nand_char {
 } nand_char;
 
 extern unsigned int get_nandflash_maxvalidblocks(void);
+extern unsigned int get_nandflash_pagesize(void);
 static int update_error_pt(NM_ppt *ppt)
 {
 	return NM_UpdateErrorPartition(ppt);
@@ -210,6 +211,12 @@ static long nand_char_unlocked_ioctl(struct file *fd, unsigned int cmd, unsigned
 	case CMD_GET_NANDFLASH_MAXVALIDBLCOKS: {
 		ret = get_nandflash_maxvalidblocks();
 		return ret;
+	}
+	case CMD_GET_NAND_PAGESIZE:{
+		unsigned int pagesize;
+		pagesize=get_nandflash_pagesize();
+		copy_to_user((unsigned int *)arg,&pagesize,sizeof(unsigned int));
+		break;
 	}
 	case CMD_SET_SPL_SIZE: {
 		int spl_size;

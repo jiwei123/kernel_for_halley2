@@ -11,6 +11,7 @@ const struct isp_reg_t isp_mipi_regs_init[] = {
 	{0x63041, 0xf8},//dma clock
 	/* frame out : use mipi 1 */
 	/*{0x63108, 0x04},*/
+	{0X63023, 0X33},
 	/* system initial */
 #if 1
 	{0x65000, 0x3f},

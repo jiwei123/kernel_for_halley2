@@ -1330,7 +1330,7 @@ static long ipu_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				ret = -EFAULT;
 				break;
 			}
-			return dmmu_map(di.addr,di.len);
+			return dmmu_map(dev->this_device,di.addr,di.len);
 		}
 		break;
 	case IOCTL_IPU_DMMU_UNMAP:
@@ -1340,11 +1340,11 @@ static long ipu_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				ret = -EFAULT;
 				break;
 			}
-			return dmmu_unmap(di.addr,di.len);
+			return dmmu_unmap(dev->this_device,di.addr,di.len);
 		}
 		break;
 	case IOCTL_IPU_DMMU_UNMAP_ALL:
-		dmmu_unmap_all();
+		dmmu_unmap_all(dev->this_device);
 		break;
 #endif
 	default:

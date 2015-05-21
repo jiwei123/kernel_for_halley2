@@ -198,6 +198,29 @@ ssize_t xb_snd_mixer_write(struct file *file,
 			mode = 3;
 			ddata->dev_ioctl(SND_DSP_SET_MIC_VOL,(unsigned long)mode);*/
 			break;
+		case 'l':
+			printk(" \"l\" set line in route\n");
+			if(copy_from_user((void *)buf_vol, buffer, 3)) {
+				return -EFAULT;
+			}
+			devices = SND_DEVICE_LINEIN_RECORD;
+			if(buf_vol[1] == '1') {
+				printk("set linein route :%c\n", buf_vol[1]);
+				devices = SND_DEVICE_LINEIN1_RECORD;
+			} else if(buf_vol[1] == '2') {
+				printk("set linein route :%c\n", buf_vol[1]);
+				devices = SND_DEVICE_LINEIN2_RECORD;
+			} else {
+				printk("line in route not support:%c, default to linein 0\n", buf_vol[1]);
+				devices = SND_DEVICE_LINEIN_RECORD;
+			}
+
+			if(ddata->dev_ioctl) {
+				ddata->dev_ioctl(SND_DSP_SET_DEVICE,(unsigned long)&devices);
+			} else if(ddata->dev_ioctl_2) {
+				ddata->dev_ioctl_2(ddata, SND_DSP_SET_DEVICE,(unsigned long)&devices);
+			}
+			break;
 		case 'm':
 			printk(" \"m\" set mic volume 0 ~ 20db\n");
 			if(copy_from_user((void *)buf_vol, buffer, 3)) {

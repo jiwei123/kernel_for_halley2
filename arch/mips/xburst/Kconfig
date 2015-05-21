@@ -1,35 +1,35 @@
 
+menuconfig SOC_TYPE
+	tristate "SOC type"
+	depends on MACH_XBURST
+	default y
+	help
+	  This selects MultiMediaCard, Secure Digital and Secure
+	  Digital I/O support.
+
+	  If you want MMC/SD/SDIO support, you should say Y here and
+	  also to your specific host controller driver.
+
+if SOC_TYPE
 choice
-	prompt "SOC type"
+	prompt "SOC types"
 	depends on MACH_XBURST
 	default SOC_M200
 
 config SOC_4780
 	bool "4780"
 	select JZRISC
-	select TRACEPOINTS
-	select SYS_SUPPORTS_HIGHMEM
+
 	select NR_CPUS_DEFAULT_2
 	select SYS_SUPPORTS_SMP
-	select GENERIC_CLOCKEVENTS_BROADCAST
-	select USB_ARCH_HAS_HCD
 
 config SOC_4775
 	bool "4775"
 	select JZRISC
-	select TRACEPOINTS
-	select SYS_SUPPORTS_HIGHMEM
-	select GENERIC_CLOCKEVENTS_BROADCAST
-	select USB_ARCH_HAS_HCD
 
 config SOC_M200
 	bool "m200"
 	select JZRISC
-	select TRACEPOINTS
-	select SYS_SUPPORTS_HIGHMEM
-	select GENERIC_CLOCKEVENTS_BROADCAST
-	select JZ_CPU_SCACHE
-	select USB_ARCH_HAS_HCD
 
 endchoice
 
@@ -195,3 +195,4 @@ config JZ_IMEM
 	  Register two nodes:/proc/jz/imem and /proc/jz/imem1,
 	  The two node will take 16M and 8M memory space,
 	  Which is used such as by mplayer to encode and decode video and audio
+endif

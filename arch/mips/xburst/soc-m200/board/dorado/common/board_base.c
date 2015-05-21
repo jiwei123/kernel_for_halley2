@@ -108,7 +108,7 @@ static struct jz_platform_device platform_devices_array[] __initdata = {
 	DEF_DEVICE(&bt_power_device, 0, 0),
 	DEF_DEVICE(&bluesleep_device, 0, 0),
 #endif
-#ifdef CONFIG_BCM43341
+#if IS_ENABLED(CONFIG_BCM43341)
 	DEF_DEVICE(&wlan_device, 0, 0),
 #endif /* CONFIG_BCM43341 */
 #ifdef CONFIG_JZ_IPU_V12
@@ -178,7 +178,6 @@ static struct jz_platform_device platform_devices_array[] __initdata = {
 	DEF_DEVICE(&jz_nand_device, NULL,0),
 #endif
 
-
 #ifdef CONFIG_SOUND_JZ_PCM_V12
 	DEF_DEVICE(&jz_pcm_device, &pcm_data, sizeof(struct snd_dev_data)),
 	DEF_DEVICE(&jz_mixer1_device, &snd_mixer1_data, sizeof(struct snd_dev_data)),
@@ -189,20 +188,37 @@ static struct jz_platform_device platform_devices_array[] __initdata = {
 #ifdef CONFIG_VIDEO_OVISP
 	DEF_DEVICE(&ovisp_device_camera, &ovisp_camera_info, sizeof(struct ovisp_camera_platform_data)),
 #endif
-#ifdef CONFIG_JZ_EFUSE_V12
+#if IS_ENABLED(CONFIG_JZ_EFUSE_V12)
 	DEF_DEVICE(&jz_efuse_device, &jz_efuse_pdata, sizeof(struct jz_efuse_platform_data)),
 #endif
 #ifdef CONFIG_JZ_BATTERY
-	DEF_DEVICE(&jz_adc_device, &adc_platform_data, sizeof(struct jz_adc_platform_data));
+	DEF_DEVICE(&jz_adc_device, &adc_platform_data, sizeof(struct jz_adc_platform_data)),
 #endif
 #ifdef CONFIG_SPI0_V12_JZ
-       DEF_DEVICE(&jz_spi0_device, &spi0_info_cfg, sizeof(struct jz_spi_info));
+       DEF_DEVICE(&jz_spi0_device, &spi0_info_cfg, sizeof(struct jz_spi_info)),
 #endif
 #ifdef CONFIG_SPI1_V12_JZ
-       DEF_DEVICE(&jz_spi1_device, &spi1_info_cfg, sizeof(struct jz_spi_info));
+       DEF_DEVICE(&jz_spi1_device, &spi1_info_cfg, sizeof(struct jz_spi_info)),
 #endif
 #ifdef CONFIG_JZ_PWM
        DEF_DEVICE(&jz_pwm_device, 0, 0),
+#endif
+#if IS_ENABLED(CONFIG_SND_ASOC_JZ_AIC)
+       DEF_DEVICE(&jz_aic_device, NULL, 0),
+       DEF_DEVICE(&jz_aic_dma_device, NULL, 0),
+#endif
+#if IS_ENABLED(CONFIG_SND_ASOC_JZ_ICDC_D1)
+       DEF_DEVICE(&jz_icdc_device, NULL, 0),
+#endif
+#if IS_ENABLED(CONFIG_SND_ASOC_JZ_PCM)
+       DEF_DEVICE(&jz_pcm_device, NULL, 0),
+       DEF_DEVICE(&jz_pcm_dma_device, NULL, 0),
+#endif
+#if IS_ENABLED(CONFIG_SND_ASOC_JZ_DUMP_CDC)
+       DEF_DEVICE(&jz_dump_cdc_device, NULL, 0),
+#endif
+#if IS_ENABLED(CONFIG_SND_ASOC_INGENIC_DORADO_ICDC)
+       DEF_DEVICE(&snd_dorado_device, NULL, 0),
 #endif
 };
 

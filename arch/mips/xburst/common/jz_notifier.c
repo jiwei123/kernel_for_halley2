@@ -45,6 +45,7 @@ int jz_notifier_register(struct jz_notifier *notify, unsigned int priority)
 		printk("not support\n");
 	return ret;
 }
+EXPORT_SYMBOL(jz_notifier_register);
 
 int jz_notifier_unregister(struct jz_notifier *notify, unsigned int priority)
 {
@@ -58,6 +59,8 @@ int jz_notifier_unregister(struct jz_notifier *notify, unsigned int priority)
 		printk("not support\n");
 	return ret;
 }
+EXPORT_SYMBOL(jz_notifier_unregister);
+
 int jz_notifier_call(unsigned int priority, unsigned long val, void *v)
 {
 	unsigned int ret = 0;
@@ -70,3 +73,4 @@ int jz_notifier_call(unsigned int priority, unsigned long val, void *v)
 		printk("not support\n");
 	return ret;
 }
+EXPORT_SYMBOL(jz_notifier_call);

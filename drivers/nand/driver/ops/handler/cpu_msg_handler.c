@@ -24,8 +24,8 @@ struct cpu_msg_ops {
 	int par_offset;
         int par_size;
 	int eccblock_cnt;
-	unsigned int bitmap;
-	unsigned int bitmap_mask;
+	unsigned long long bitmap;
+	unsigned long long bitmap_mask;
 	int oobsize;
 	int free_oobsize;
 	unsigned char eccpos;
@@ -98,6 +98,7 @@ static int nand_prepare(struct cpu_msg_ops *cpu_msg, struct task_msg *msg)
 	cpu_msg->msg_cnt = msg->msgdata.prepare.totaltasknum;
 	cpu_msg->eccbit = msg->msgdata.prepare.eccbit;
 	cpu_msg->par_size = get_parity_size(cpu_msg->eccbit);
+	cpu_msg->par_size = (cpu_msg->par_size + 3 ) / 4 * 4;
 	cpu_msg->free_oobsize = cpu_msg->oobsize - (cpu_msg->eccblock_cnt * cpu_msg->par_size);
 	if (cpu_msg->free_oobsize < FF_BUF_SIZE)
 		RETURN_ERR(ENAND, "free oobsize [%d] is less than badblock flag size\n", cpu_msg->free_oobsize);
@@ -246,37 +247,41 @@ static inline void fill_ff(struct cpu_msg_ops *cpu_msg)
 
 static int pipe_is_full(struct cpu_msg_ops *cpu_msg, int offset, int bytes, int eccsize)
 {
+#ifdef CHECK_PIPE_DATA
 	int i, ret = 0;
-	int bitmap = cpu_msg->bitmap;
-	int bitmap_mask = cpu_msg->bitmap_mask;
+	unsigned long long bitmap = cpu_msg->bitmap;
+	unsigned long long bitmap_mask = cpu_msg->bitmap_mask;
 	int sector_cnt = bytes / NDD_SECTOR_SIZE;
 	int sector_offset = offset / NDD_SECTOR_SIZE;
-	int check_mask = ~(0xffffffff << (eccsize / NDD_SECTOR_SIZE));
+	unsigned long long check_mask = (1LL << (eccsize / NDD_SECTOR_SIZE)) - 1;
 	int check_offset = (offset / eccsize) * (eccsize / NDD_SECTOR_SIZE);
 
 	if (bitmap == bitmap_mask)
-		bitmap = 0;
+		bitmap = 0LL;
 
 	for (i = 0; i < sector_cnt; i++) {
-		if (bitmap & (1 << (sector_offset + i))) {
-			ndd_print(NDD_ERROR, "ERROR: page data is repeat, page data bitmap = 0x%08x, offset = %d\n",
+		if (bitmap & (1LL << (sector_offset + i))) {
+			ndd_print(NDD_ERROR, "ERROR: page data is repeat, page data bitmap = %x, offset = %d\n",
 				  bitmap, offset);
 			while (1);
 		} else
-			bitmap |= 1 << (sector_offset + i);
+			bitmap |= 1LL << (sector_offset + i);
 	}
 
-	if ((bitmap >> check_offset) == check_mask)
+	if ((unsigned int)(bitmap >> check_offset) == check_mask)
 		ret = 1;
-	else if ((bitmap >> check_offset) > check_mask) {
-		ndd_print(NDD_ERROR, "ERROR: page data is not in rules, page data bitmap = 0x%08x, offset = %d\n",
-			  bitmap, offset);
+	else if ((unsigned int)(bitmap >> check_offset) < check_mask) {
+		ndd_print(NDD_ERROR, "ERROR: page data is not in rules, page data bitmap >> %d = 0x%x, offset = %d\n",check_offset,
+			  (int)(bitmap >> check_offset), offset);
 		while (1);
 	}
 
 	cpu_msg->bitmap = bitmap;
 
 	return ret;
+#else
+	return 1;
+#endif
 }
 
 static int nand_write_data(struct cpu_msg_ops *cpu_msg, struct task_msg *msg)
@@ -292,7 +297,6 @@ static int nand_write_data(struct cpu_msg_ops *cpu_msg, struct task_msg *msg)
 	void *pdata = (void *)get_vaddr(msg->msgdata.data.pdata);
 	PipeNode *pipe = &cpu_msg->pipe;
 
-	cpu_msg->par_size = (cpu_msg->par_size + 3)/4 * 4;
 #ifdef WRITE_NOT_USE_COPY
 	if (bytes == eccsize)
 		pipe->data = pdata;
@@ -339,7 +343,7 @@ static int nand_read_data(struct cpu_msg_ops *cpu_msg, struct task_msg *msg)
 	int bytes = msg->msgdata.data.bytes;
 	int eccbit = cpu_msg->eccbit;
 	int eccsize = cpu_msg->eccsize;
-	int unitsize = eccsize + ((cpu_msg->par_size + 3)/4 * 4);
+	int unitsize = eccsize + cpu_msg->par_size;
 	int cs_index = msg->ops.bits.chipsel;
 	int io_context = cpu_msg->io_context;
 	int bch_context = cpu_msg->bch_context;
@@ -694,9 +698,8 @@ int cpu_msg_handle_init(nand_data *data, Nand_Task *nandtask, int id)
 	cpu_msg->eccsize = data->eccsize;
 	cpu_msg->oobsize = cinfo->oobsize;
 	cpu_msg->eccblock_cnt = cinfo->pagesize / cpu_msg->eccsize;
-	cpu_msg->bitmap = 0;
-	cpu_msg->bitmap_mask = (cinfo->pagesize == 16 * 1024) ?
-		0xffffffff : ~(0xffffffff << (cinfo->pagesize / NDD_SECTOR_SIZE));
+	cpu_msg->bitmap = 0LL;
+	cpu_msg->bitmap_mask = (1LL << (cinfo->pagesize / NDD_SECTOR_SIZE)) - 1;
 	cpu_msg->bch_buf = ndd_alloc(get_parity_size(MAX_BCHSEL));
 	if (!cpu_msg->bch_buf)
 		GOTO_ERR(alloc_bchbuf);

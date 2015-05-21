@@ -1,14 +1,13 @@
 #ifndef __BOARD_BASE_H__
 #define __BOARD_BASE_H__
 #include <linux/i2c.h>
-
+#include <mach/jz_efuse.h>
 #include <board.h>
-
+#if IS_ENABLED(CONFIG_JZ_EFUSE_V12)
+extern struct jz_efuse_platform_data jz_efuse_pdata;
+#endif
 #ifdef CONFIG_KEYBOARD_GPIO
 extern struct platform_device jz_button_device;
-#endif
-#ifdef CONFIG_TOUCHSCREEN_FT6X06
-extern struct ft6x06_platform_data ft6x06_tsc_pdata;
 #endif
 #ifdef CONFIG_VIDEO_OVISP
 extern struct ovisp_camera_platform_data ovisp_camera_info;
@@ -53,7 +52,7 @@ extern struct platform_device bcm_power_platform_device;
 extern struct platform_device bt_power_device;
 extern struct platform_device bluesleep_device;
 #endif
-#ifdef CONFIG_BCM43341
+#if IS_ENABLED(CONFIG_BCM43341)
 extern struct platform_device wlan_device;
 #endif
 #ifdef CONFIG_BCM2079X_NFC
@@ -113,5 +112,7 @@ extern struct platform_device truly_tft240240_device;
 #ifdef CONFIG_JZ_BATTERY
 extern struct jz_adc_platform_data adc_platform_data;
 #endif
-
+#if IS_ENABLED(CONFIG_SND_ASOC_INGENIC_DORADO_ICDC)
+extern struct platform_device snd_dorado_device;
+#endif
 #endif	/* __BOARD_BASE_H__ */

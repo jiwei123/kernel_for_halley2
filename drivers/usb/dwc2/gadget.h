@@ -67,10 +67,9 @@ void dwc2_delayed_status_watchdog(unsigned long _dwc);
 void dwc2_handle_device_mode_interrupt(struct dwc2 *dwc, gintsts_data_t *gintr_status);
 void dwc2_gadget_handle_session_end(struct dwc2 *dwc);
 
-#ifdef CONFIG_USB_DWC2_DISABLE_CLOCK
-int dwc2_has_ep_enabled(struct dwc2 *dwc);
+#ifdef CONFIG_USB_DWC2_HOST_ONLY
+static inline int dwc2_has_ep_enabled(struct dwc2 *dwc) { return 0; };
 #else
-#define dwc2_has_ep_enabled(dwc)	1
+int dwc2_has_ep_enabled(struct dwc2 *dwc);
 #endif
-
 #endif /* __DRIVERS_USB_DWC3_GADGET_H */
