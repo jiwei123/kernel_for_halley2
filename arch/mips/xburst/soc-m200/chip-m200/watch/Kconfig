@@ -1,0 +1,17 @@
+choice
+	prompt "BOARD type"
+	depends on BOARD_WATCH
+	default BOARD_NEWTON2
+
+
+config BOARD_NEWTON2
+       bool "board newton2"
+       depends on BOARD_WATCH
+
+endchoice
+
+config BOARD_NAME
+	string "BOARD_NAME"
+	default "newton2" if BOARD_NEWTON2
+
+
