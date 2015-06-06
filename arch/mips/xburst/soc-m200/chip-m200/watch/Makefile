@@ -3,3 +3,4 @@ CFLAGS_KERNEL	+= -I$(srctree)/arch/mips/xburst/soc-m200/chip-m200/$(CONFIG_PRODU
 
 obj-y		+= common/
 obj-$(CONFIG_BOARD_NEWTON2)		+= $(CONFIG_BOARD_NAME)/
+obj-$(CONFIG_BOARD_AW808)		+= $(CONFIG_BOARD_NAME)/
