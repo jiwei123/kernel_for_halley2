@@ -76,9 +76,7 @@ struct auo_x163_platform_data auo_x163_pdata = {
 	.lcd_pdata = &auo_x163_data,
 	.vcc_lcd_1v8_name = VCC_LCD_1V8_NAME,
 	.vcc_lcd_3v0_name = VCC_LCD_3V0_NAME,
-#ifdef CONFIG_WATCH_ACRAB
 	.vcc_lcd_blk_name = VCC_LCD_BLK_NAME,
-#endif
 };
 
 
