@@ -70,7 +70,7 @@ static struct jztsc_platform_data ite7258_tsc_pdata = {
 	.y_max          = 320,
 	.irqflags = IRQF_TRIGGER_LOW | IRQF_DISABLED,
 	.vcc_name = VCC_TOUCHSCREEN,
-#ifdef CONFIG_WATCH_ACRAB
+#if (defined(CONFIG_WATCH_ACRAB) || defined(CONFIG_WATCH_AW808))
 	.vccio_name = VIO_TOUCHSCREEN,
 #endif
 };
@@ -153,6 +153,12 @@ struct i2c_board_info jz_i2c1_devs[] __initdata = {
 	{
 		I2C_BOARD_INFO("pca9539",0x74),
 		.platform_data  = &dorado_pca953x_pdata,
+	},
+#endif
+#ifdef CONFIG_TOUCHSCREEN_ITE7258
+	{
+		I2C_BOARD_INFO("ite7258_ts", 0x46),
+		.platform_data = &ite7258_tsc_pdata,
 	},
 #endif
 };

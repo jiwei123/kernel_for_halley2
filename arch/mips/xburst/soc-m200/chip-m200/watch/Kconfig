@@ -1,21 +1,21 @@
 choice
 	prompt "BOARD type"
 	depends on BOARD_WATCH
-	default BOARD_NEWTON2
+	default WATCH_NEWTON2
 
 
-config BOARD_NEWTON2
-       bool "board newton2"
+config WATCH_NEWTON2
+       bool "watch newton2"
        depends on BOARD_WATCH
 
-config BOARD_AW808
-       bool "board aw808"
+config WATCH_AW808
+       bool "watch aw808"
        depends on BOARD_WATCH
 endchoice
 
 config BOARD_NAME
 	string "BOARD_NAME"
-	default "newton2" if BOARD_NEWTON2
-	default "aw808" if BOARD_AW808
+	default "newton2" if WATCH_NEWTON2
+	default "aw808" if WATCH_AW808
 
 
