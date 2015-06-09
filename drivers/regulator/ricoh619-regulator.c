@@ -40,6 +40,7 @@ struct ricoh61x_regulator {
 	int		id;
 	int		sleep_id;
 	/* Regulator register address.*/
+	u8      slot_reg;
 	u8		reg_en_reg;
 	u8		en_bit;
 	u8		reg_disc_reg;
@@ -176,6 +177,10 @@ static int __ricoh61x_set_voltage(struct device *parent,
 
 	vout_val = (ri->vout_reg_cache & ~ri->vout_mask) |
 				(vsel & ri->vout_mask);
+//	if(ri->id != RICOH619_ID_DC1)
+	ret = ricoh61x_write(parent, ri->sleep_reg, vout_val);
+	if(ret < 0)
+		dev_err(ri->dev, "Error in writing the Sleep Voltage register\n");
 	ret = ricoh61x_write(parent, ri->vout_reg, vout_val);
 	if (ret < 0)
 		dev_err(ri->dev, "Error in writing the Voltage register\n");
@@ -194,7 +199,10 @@ static int ricoh61x_set_voltage(struct regulator_dev *rdev,
 	if (ricoh61x_suspend_status)
 		return -EBUSY;
 
-	return __ricoh61x_set_voltage(parent, ri, min_uV, max_uV, selector);
+	if(ri->id != RICOH619_ID_DC1_SLP)
+		return __ricoh61x_set_voltage(parent, ri, min_uV, max_uV, selector);
+	else
+		return __ricoh61x_set_s_voltage(parent, ri, min_uV, max_uV);
 }
 
 static int ricoh61x_get_voltage(struct regulator_dev *rdev)
@@ -275,11 +283,12 @@ static struct regulator_ops ricoh61x_ops = {
 	.enable_time	= ricoh61x_regulator_enable_time,
 };
 
-#define RICOH61x_REG(_id, _en_reg, _en_bit, _disc_reg, _disc_bit, _vout_reg, \
+#define RICOH61x_REG(_id, slt_reg, _en_reg, _en_bit, _disc_reg, _disc_bit, _vout_reg, \
 		_vout_mask, _ds_reg, _min_mv, _max_mv, _step_uV, _nsteps,    \
 		_ops, _delay, _eco_reg, _eco_bit, _eco_slp_reg, _eco_slp_bit) \
 {								\
 	.reg_en_reg	= _en_reg,				\
+	.slot_reg   = slt_reg,              \
 	.en_bit		= _en_bit,				\
 	.reg_disc_reg	= _disc_reg,				\
 	.disc_bit	= _disc_bit,				\
@@ -308,71 +317,75 @@ static struct regulator_ops ricoh61x_ops = {
 }
 
 static struct ricoh61x_regulator ricoh61x_regulator[] = {
-	RICOH61x_REG(DC1, 0x2C, 0, 0x2C, 1, 0x36, 0xFF, 0x3B,
+	RICOH61x_REG(DC1, 0x16, 0x2C, 0, 0x2C, 1, 0x36, 0xFF, 0x3B,
 			600, 3500, 12500, 0xE8, ricoh61x_ops, 500,
 			0x00, 0, 0x00, 0),
 
-	RICOH61x_REG(DC2, 0x2E, 0, 0x2E, 1, 0x37, 0xFF, 0x3C,
+	RICOH61x_REG(DC1_SLP, 0x16, 0x2C, 0, 0x2C, 1, 0x36, 0xFF, 0x3B,
 			600, 3500, 12500, 0xE8, ricoh61x_ops, 500,
 			0x00, 0, 0x00, 0),
 
-	RICOH61x_REG(DC3, 0x30, 0, 0x30, 1, 0x38, 0xFF, 0x3D,
+	RICOH61x_REG(DC2, 0x17, 0x2E, 0, 0x2E, 1, 0x37, 0xFF, 0x3C,
 			600, 3500, 12500, 0xE8, ricoh61x_ops, 500,
 			0x00, 0, 0x00, 0),
 
-	RICOH61x_REG(DC4, 0x32, 0, 0x32, 1, 0x39, 0xFF, 0x3E,
+	RICOH61x_REG(DC3, 0x18, 0x30, 0, 0x30, 1, 0x38, 0xFF, 0x3D,
 			600, 3500, 12500, 0xE8, ricoh61x_ops, 500,
 			0x00, 0, 0x00, 0),
 
-	RICOH61x_REG(DC5, 0x34, 0, 0x34, 1, 0x3A, 0xFF, 0x3F,
+	RICOH61x_REG(DC4, 0x19, 0x32, 0, 0x32, 1, 0x39, 0xFF, 0x3E,
 			600, 3500, 12500, 0xE8, ricoh61x_ops, 500,
 			0x00, 0, 0x00, 0),
 
-	RICOH61x_REG(LDO1, 0x44, 0, 0x46, 0, 0x4C, 0x7F, 0x58,
+	RICOH61x_REG(DC5, 0x1A, 0x34, 0, 0x34, 1, 0x3A, 0xFF, 0x3F,
+			600, 3500, 12500, 0xE8, ricoh61x_ops, 500,
+			0x00, 0, 0x00, 0),
+
+	RICOH61x_REG(LDO1, 0x1B, 0x44, 0, 0x46, 0, 0x4C, 0x7F, 0x58,
 			900, 3500, 25000, 0x68, ricoh61x_ops, 500,
 			0x48, 0, 0x4A, 0),
 
-	RICOH61x_REG(LDO2, 0x44, 1, 0x46, 1, 0x4D, 0x7F, 0x59,
+	RICOH61x_REG(LDO2, 0x1C, 0x44, 1, 0x46, 1, 0x4D, 0x7F, 0x59,
 			900, 3500, 25000, 0x68, ricoh61x_ops, 500,
 			0x48, 1, 0x4A, 1),
 
-	RICOH61x_REG(LDO3, 0x44, 2, 0x46, 2, 0x4E, 0x7F, 0x5A,
+	RICOH61x_REG(LDO3, 0x1D, 0x44, 2, 0x46, 2, 0x4E, 0x7F, 0x5A,
 			900, 3500, 25000, 0x68, ricoh61x_ops, 500,
 			0x48, 2, 0x4A, 2),
 
-	RICOH61x_REG(LDO4, 0x44, 3, 0x46, 3, 0x4F, 0x7F, 0x5B,
+	RICOH61x_REG(LDO4, 0x1E, 0x44, 3, 0x46, 3, 0x4F, 0x7F, 0x5B,
 			900, 3500, 25000, 0x68, ricoh61x_ops, 500,
 			0x48, 3, 0x4A, 3),
 
-	RICOH61x_REG(LDO5, 0x44, 4, 0x46, 4, 0x50, 0x7F, 0x5C,
+	RICOH61x_REG(LDO5, 0x1F, 0x44, 4, 0x46, 4, 0x50, 0x7F, 0x5C,
 			600, 3500, 25000, 0x74, ricoh61x_ops, 500,
 			0x48, 4, 0x4A, 4),
 
-	RICOH61x_REG(LDO6, 0x44, 5, 0x46, 5, 0x51, 0x7F, 0x5D,
+	RICOH61x_REG(LDO6, 0x20, 0x44, 5, 0x46, 5, 0x51, 0x7F, 0x5D,
 			600, 3500, 25000, 0x74, ricoh61x_ops, 500,
 			0x48, 5, 0x4A, 5),
 
-	RICOH61x_REG(LDO7, 0x44, 6, 0x46, 6, 0x52, 0x7F, 0x5E,
+	RICOH61x_REG(LDO7, 0x21, 0x44, 6, 0x46, 6, 0x52, 0x7F, 0x5E,
 			900, 3500, 25000, 0x68, ricoh61x_ops, 500,
 			0x00, 0, 0x00, 0),
 
-	RICOH61x_REG(LDO8, 0x44, 7, 0x46, 7, 0x53, 0x7F, 0x5F,
+	RICOH61x_REG(LDO8, 0x22, 0x44, 7, 0x46, 7, 0x53, 0x7F, 0x5F,
 			900, 3500, 25000, 0x68, ricoh61x_ops, 500,
 			0x00, 0, 0x00, 0),
 
-	RICOH61x_REG(LDO9, 0x45, 0, 0x47, 0, 0x54, 0x7F, 0x60,
+	RICOH61x_REG(LDO9, 0x23, 0x45, 0, 0x47, 0, 0x54, 0x7F, 0x60,
 			900, 3500, 25000, 0x68, ricoh61x_ops, 500,
 			0x00, 0, 0x00, 0),
 
-	RICOH61x_REG(LDO10, 0x45, 1, 0x47, 1, 0x55, 0x7F, 0x61,
+	RICOH61x_REG(LDO10, 0x24, 0x45, 1, 0x47, 1, 0x55, 0x7F, 0x61,
 			900, 3500, 25000, 0x68, ricoh61x_ops, 500,
 			0x00, 0, 0x00, 0),
 
-	RICOH61x_REG(LDORTC1, 0x45, 4, 0x00, 0, 0x56, 0x7F, 0x00,
+	RICOH61x_REG(LDORTC1, 0x2A, 0x45, 4, 0x00, 0, 0x56, 0x7F, 0x00,
 			1700, 3500, 25000, 0x48, ricoh61x_ops, 500,
 			0x00, 0, 0x00, 0),
 
-	RICOH61x_REG(LDORTC2, 0x45, 5, 0x00, 0, 0x57, 0x7F, 0x00,
+	RICOH61x_REG(LDORTC2, 0x2A, 0x45, 5, 0x00, 0, 0x57, 0x7F, 0x00,
 			900, 3500, 25000, 0x68, ricoh61x_ops, 500,
 			0x00, 0, 0x00, 0),
 };
@@ -399,15 +412,6 @@ static int ricoh61x_regulator_preinit(struct device *parent,
 		return 0;
 
 	if (ricoh61x_pdata->init_uV >= 0) {
-		ret = __ricoh61x_set_s_voltage(parent, ri,
-				ricoh61x_pdata->sleep_uV,
-				ricoh61x_pdata->sleep_uV);
-		if (ret < 0) {
-			dev_err(ri->dev, "Not able to initialize voltage %d "
-				"for rail %d err %d\n", ricoh61x_pdata->sleep_uV,
-				ri->desc.id, ret);
-			return ret;
-		}
 		ret = __ricoh61x_set_voltage(parent, ri,
 				ricoh61x_pdata->init_uV,
 				ricoh61x_pdata->init_uV, 0);
@@ -429,6 +433,13 @@ static int ricoh61x_regulator_preinit(struct device *parent,
 		dev_err(ri->dev, "Not able to %s rail %d err %d\n",
 			(ricoh61x_pdata->init_enable) ? "enable" : "disable",
 			ri->desc.id, ret);
+//if no always_on , shut it down when pmu enter sleep-mode.
+	if(!ricoh61x_pdata->regulator.constraints.always_on) {
+		ret = ricoh61x_write(parent, ri->slot_reg, 0xf0);
+		if(ret < 0) {
+			dev_err(ri->dev, "Unable to set %d, reg[%d] sleep slot, err: %d \n", ri->desc.id, ri->slot_reg, ret);
+		}
+	}
 
 	return ret;
 }

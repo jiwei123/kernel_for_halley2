@@ -34,6 +34,7 @@
 /* RICHOH Regulator IDs */
 enum regulator_id {
 	RICOH619_ID_DC1,
+	RICOH619_ID_DC1_SLP,
 	RICOH619_ID_DC2,
 	RICOH619_ID_DC3,
 	RICOH619_ID_DC4,

@@ -44,6 +44,11 @@
 int g_soc;
 int g_fg_on_mode;
 #endif
+
+#ifdef CONFIG_BATTERY_JZM200
+	struct device *bat_jzm200;
+#endif
+
 #if 0
 struct sleep_control_data {
 	u8 reg_add;
@@ -771,8 +776,107 @@ static void ricoh61x_set_dcdc_ldo_in_psm_eco(struct i2c_client *client)
 	reg_val = 0x3f;
 	__ricoh61x_write(client, RICOH61x_LDOECO_SLP, reg_val);
 //	ret = ricoh61x_read(client, RICOH61x_LDOECO_SLP, &read_back);
-
 }
+
+static u8 reg_addr = 0;
+
+static ssize_t attr_reg_set(struct device *dev, struct device_attribute *attr,
+		const char *buf, size_t size)
+{
+	int ret;
+	unsigned long val;
+	uint8_t data;
+	struct ricoh61x *ricoh61x = dev_get_drvdata(dev);
+
+	if (!ricoh61x) {
+		printk("%s --> Get driver data failed!\n",__func__);
+		return -EINVAL;
+	}
+
+	if (strict_strtoul(buf, 16, &val))
+	return -EINVAL;
+	data = val;
+	ret = ricoh61x_write(dev, reg_addr, data);
+	if (ret < 0) {
+		printk("%s --> Write reg failed!\n",__func__);
+		return -EIO;
+	}
+
+	return size;
+};
+
+static ssize_t attr_reg_get(struct device *dev, struct device_attribute *attr,
+		char *buf)
+{
+	ssize_t ret;
+	struct ricoh61x *ricoh61x = dev_get_drvdata(dev);
+	uint8_t data;
+
+	ret = ricoh61x_read(dev, reg_addr, &data);
+	if (ret < 0) {
+		printk("%s --> Read reg failed!\n",__func__);
+		return -EIO;
+	}
+
+	ret = sprintf(buf, "0x%02x\n", data);
+	return ret;
+};
+
+static ssize_t attr_addr_get(struct device *dev, struct device_attribute *attr,
+		const char *buf, size_t size)
+{
+	ssize_t ret = sprintf(buf, "0x%02x\n", reg_addr);
+	return ret;
+};
+
+static ssize_t attr_addr_set(struct device *dev, struct device_attribute *attr,
+		const char *buf, size_t size)
+{
+	struct ricoh61x *ricoh61x = dev_get_drvdata(dev);
+	unsigned long val;
+
+	if (!ricoh61x) {
+		printk("%s --> Get driver data failed!\n",__func__);
+		return -EINVAL;
+	}
+
+	if (strict_strtoul(buf, 16, &val))
+		return -EINVAL;
+
+	reg_addr = val;
+
+	return size;
+};
+
+static struct device_attribute attributes[] = {
+
+	__ATTR(reg_value, 0600, attr_reg_get, attr_reg_set),
+	__ATTR(reg_addr, 0600, attr_addr_get, attr_addr_set),
+};
+
+static int create_sysfs_interfaces(struct device *dev)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(attributes); i++)
+		if (device_create_file(dev, attributes + i))
+			goto error;
+	return 0;
+
+error:
+	for ( ; i >= 0; i--)
+		device_remove_file(dev, attributes + i);
+	dev_err(dev, "%s:Unable to create interface\n", __func__);
+	return -1;
+}
+
+static int remove_sysfs_interfaces(struct device *dev)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(attributes); i++)
+		device_remove_file(dev, attributes + i);
+	return 0;
+}
+
 static int ricoh61x_i2c_probe(struct i2c_client *client,
 			      const struct i2c_device_id *id)
 {
@@ -787,6 +891,10 @@ static int ricoh61x_i2c_probe(struct i2c_client *client,
 	ricoh61x->client = client;
 	ricoh61x->dev = &client->dev;
 	i2c_set_clientdata(client, ricoh61x);
+
+#ifdef CONFIG_BATTERY_JZM200
+	bat_jzm200 = &client->dev;
+#endif
 
 	mutex_init(&ricoh61x->io_lock);
 
@@ -827,6 +935,8 @@ static int ricoh61x_i2c_probe(struct i2c_client *client,
 
 	ricoh61x_set_dcdc_ldo_in_psm_eco(client);
 
+	create_sysfs_interfaces(ricoh61x->dev);
+
 	return 0;
 
 err_add_notifier:
@@ -859,7 +969,6 @@ static int  ricoh61x_i2c_remove(struct i2c_client *client)
 #ifdef CONFIG_PM
 static int ricoh61x_i2c_suspend(struct i2c_client *client, pm_message_t state)
 {
-	printk(KERN_INFO "PMU: %s:\n", __func__);
 #if 0
 	if (client->irq)
 		disable_irq(client->irq);
@@ -921,6 +1030,8 @@ static struct i2c_driver ricoh61x_i2c_driver = {
 static int __init ricoh61x_i2c_init(void)
 {
 	int ret = -ENODEV;
+
+	printk(KERN_INFO "PMU: %s:\n", __func__);
 
 	ret = i2c_add_driver(&ricoh61x_i2c_driver);
 	if (ret != 0)
