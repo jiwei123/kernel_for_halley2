@@ -77,7 +77,6 @@ static int pmu_richoh619_init(void)
 
 	 ret = platform_add_devices(fixed_regulator_devices,
 				    ARRAY_SIZE(fixed_regulator_devices));
-	printk("pmu_richoh619_init -------------------------- ret = %d\n", ret);
 	 return 0;
 }
 

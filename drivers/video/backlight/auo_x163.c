@@ -86,6 +86,15 @@ static void auo_x163_regulator_enable(struct auo_x163 *lcd)
 			("+++++++++++++++++++auo_x163 vcc_lcd_1v8 enable ERROR!!!+++++++++++\n");
 		goto out;
 	}
+	if (lcd->vcc_lcd_blk_reg) {
+		ret = regulator_enable(lcd->vcc_lcd_blk_reg);
+		if (ret) {
+			printk
+			    ("+++++++++++++++++=can't enable auo_x163 lcd_blk_reg ++++++++++\n");
+			goto out;
+		}
+	}
+
 out:
 	mutex_unlock(&lcd->lock);
 
@@ -371,9 +380,7 @@ static int auo_x163_regulator_get(struct auo_x163 *lcd)
 		err = regulator_enable(lcd->vcc_lcd_3v0_reg);
 	}
 	if (lcd->vcc_lcd_blk_reg) {
-		if(!regulator_is_enabled(lcd->vcc_lcd_blk_reg)) {
 			err = regulator_enable(lcd->vcc_lcd_blk_reg);
-		}
 	}
 	goto return_err;
 error_get_vcc_lcd_blk:
