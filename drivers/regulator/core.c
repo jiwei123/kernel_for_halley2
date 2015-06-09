@@ -103,6 +103,8 @@ struct regulator {
 
 static int _regulator_is_enabled(struct regulator_dev *rdev);
 static int _regulator_disable(struct regulator_dev *rdev);
+static int _regulator_do_disable(struct regulator_dev *rdev);
+static int _regulator_enable(struct regulator_dev *rdev);
 static int _regulator_get_voltage(struct regulator_dev *rdev);
 static int _regulator_get_current_limit(struct regulator_dev *rdev);
 static unsigned int _regulator_get_mode(struct regulator_dev *rdev);
@@ -365,6 +367,24 @@ static ssize_t regulator_print_state(char *buf, int state)
 		return sprintf(buf, "unknown\n");
 }
 
+static ssize_t regulator_state_store(struct device *dev,
+				struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct regulator_dev *rdev = dev_get_drvdata(dev);
+	long val;
+	char *endp;
+
+	val = simple_strtol(buf, &endp, 10);
+	if (*endp != '\n' && *endp)
+		return -EINVAL;
+	if (val)
+		_regulator_enable(rdev);
+	else
+		_regulator_do_disable(rdev);
+
+	return count;
+}
+
 static ssize_t regulator_state_show(struct device *dev,
 				   struct device_attribute *attr, char *buf)
 {
@@ -377,7 +397,7 @@ static ssize_t regulator_state_show(struct device *dev,
 
 	return ret;
 }
-static DEVICE_ATTR(state, 0444, regulator_state_show, NULL);
+static DEVICE_ATTR(state, 0644, regulator_state_show, regulator_state_store);
 
 static ssize_t regulator_status_show(struct device *dev,
 				   struct device_attribute *attr, char *buf)
@@ -1722,8 +1742,10 @@ static int _regulator_disable(struct regulator_dev *rdev)
 	int ret = 0;
 
 	if (WARN(rdev->use_count <= 0,
-		 "unbalanced disables for %s\n", rdev_get_name(rdev)))
-		return -EIO;
+		 "unbalanced disables for %s\n", rdev_get_name(rdev))) {
+	printk("rdev->use_count = %d\n", rdev->use_count);	
+	return -EIO;
+	}
 
 	/* are we the last user and permitted to disable ? */
 	if (rdev->use_count == 1 &&
