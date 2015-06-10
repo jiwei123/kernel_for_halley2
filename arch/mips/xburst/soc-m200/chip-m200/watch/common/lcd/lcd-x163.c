@@ -27,6 +27,8 @@ struct auo_x163_platform_data{
 	char *vcc_lcd_1v8_name;
 	char *vcc_lcd_3v0_name;
 	char *vcc_lcd_blk_name;
+	int swire_gpio;
+	int swire_active_level;
 };
 
 struct fb_videomode jzfb_videomode = {
@@ -57,11 +59,12 @@ int auo_x163_reset(struct lcd_device *lcd)
 	}
 
 	gpio_direction_output(GPIO_LCD_RST, 1);
-	mdelay(30);
 	gpio_direction_output(GPIO_LCD_RST, 0);  //reset active low
-	mdelay(10);
+	/* This loading is done every time when there is H/W reset complete time (tREST)
+	within 5ms after a rising edge of RESX */
+	mdelay(1);
 	gpio_direction_output(GPIO_LCD_RST, 1);
-
+	mdelay(5);
 	gpio_free(GPIO_LCD_RST);
 
 	return 0;
@@ -70,13 +73,16 @@ int auo_x163_reset(struct lcd_device *lcd)
 
 struct lcd_platform_data auo_x163_data = {
 	.reset = auo_x163_reset,
+	.lcd_enabled = 1, // lcd panel was enabled from uboot
 };
 
 struct auo_x163_platform_data auo_x163_pdata = {
-	.lcd_pdata = &auo_x163_data,
-	.vcc_lcd_1v8_name = VCC_LCD_1V8_NAME,
-	.vcc_lcd_3v0_name = VCC_LCD_3V0_NAME,
-	.vcc_lcd_blk_name = VCC_LCD_BLK_NAME,
+	.lcd_pdata          = &auo_x163_data,
+	.vcc_lcd_1v8_name   = VCC_LCD_1V8_NAME,
+	.vcc_lcd_3v0_name   = VCC_LCD_3V0_NAME,
+	.vcc_lcd_blk_name   = VCC_LCD_BLK_NAME,
+	.swire_gpio         = GPIO_LCD_SWIRE,
+	.swire_active_level = GPIO_LCD_SWIRE_ACTIVE_LEVEL,
 };
 
 

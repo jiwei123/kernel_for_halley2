@@ -1152,6 +1152,11 @@ static int jzfb_blank(int blank_mode, struct fb_info *info)
 			clk_enable(jzfb->clk);
 
 			jzfb_enable_2(jzfb->fb);
+#ifdef CONFIG_JZ_MIPI_DSI
+			if (jzfb->dsi->master_ops->ioctl)
+				jzfb->dsi->master_ops->ioctl(jzfb->dsi, CMD_MIPI_DISPLAY_ON);
+#endif
+
 			break;
 		default:
 

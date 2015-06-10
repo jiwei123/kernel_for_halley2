@@ -24,6 +24,7 @@
 #include <linux/fb.h>
 #include <linux/backlight.h>
 #include <linux/regulator/consumer.h>
+#include <linux/gpio.h>
 
 #include <video/mipi_display.h>
 #include <mach/jz_dsim.h>
@@ -43,6 +44,8 @@ struct auo_x163_platform_data {
 	char *vcc_lcd_1v8_name;
 	char *vcc_lcd_3v0_name;
 	char *vcc_lcd_blk_name;
+	int swire_gpio;
+	int swire_active_level;
 };
 
 struct auo_x163 {
@@ -67,36 +70,34 @@ struct auo_x163 {
 	bool enabled;
 };
 
+static inline int bl_regulator(struct auo_x163 *lcd, int en)
+{
+    struct regulator *reg;
+
+    if (!lcd || !lcd->vcc_lcd_blk_reg)
+        return 0;
+
+    reg = lcd->vcc_lcd_blk_reg;
+
+    return (en ? regulator_enable(reg) : regulator_disable(reg));
+}
+
 static void auo_x163_regulator_enable(struct auo_x163 *lcd)
 {
 	int ret = 0;
 	struct auo_x163_platform_data *pd = NULL;
 
 	pd = lcd->ddi_pd;
-	mutex_lock(&lcd->lock);
 	ret = regulator_enable(lcd->vcc_lcd_3v0_reg);
 	if (ret) {
-		printk
-			("+++++++++++++++++++auo_x163 vcc_lcd_3v0 enable ERROR!!!+++++++++++\n");
-		goto out;
+		printk("+++++++++++++++++++auo_x163 vcc_lcd_3v0 enable ERROR!!!+++++++++++\n");
+		return;
 	}
 	ret = regulator_enable(lcd->vcc_lcd_1v8_reg);
 	if (ret) {
-		printk
-			("+++++++++++++++++++auo_x163 vcc_lcd_1v8 enable ERROR!!!+++++++++++\n");
-		goto out;
+		printk("+++++++++++++++++++auo_x163 vcc_lcd_1v8 enable ERROR!!!+++++++++++\n");
+		return;
 	}
-	if (lcd->vcc_lcd_blk_reg) {
-		ret = regulator_enable(lcd->vcc_lcd_blk_reg);
-		if (ret) {
-			printk
-			    ("+++++++++++++++++=can't enable auo_x163 lcd_blk_reg ++++++++++\n");
-			goto out;
-		}
-	}
-
-out:
-	mutex_unlock(&lcd->lock);
 
 }
 
@@ -104,30 +105,22 @@ static void auo_x163_regulator_disable(struct auo_x163 *lcd)
 {
 	int ret = 0;
 
-	mutex_lock(&lcd->lock);
-		ret = regulator_disable(lcd->vcc_lcd_1v8_reg);
-		if (ret) {
-			printk
-			    ("+++++++++++++++++=can't disable auo_x163 vcc_1v8_reg ++++++++++\n");
-			goto out;
-		}
-		ret = regulator_disable(lcd->vcc_lcd_3v0_reg);
-		if (ret) {
-			printk
-			    ("+++++++++++++++++=can't disable auo_x163 vcc_3v0_reg ++++++++++\n");
-			goto out;
-		}
-		if (lcd->vcc_lcd_blk_reg) {
-			ret = regulator_disable(lcd->vcc_lcd_blk_reg);
-			if (ret) {
-				printk
-				    ("+++++++++++++++++=can't disable auo_x163 lcd_blk_reg ++++++++++\n");
-				goto out;
-			}
-		}
-		mutex_unlock(&lcd->lock);
-out:
-	mutex_unlock(&lcd->lock);
+	/* quick action buttons to lcd display abnormal */
+	ret = bl_regulator(lcd, 0);
+	if (ret < 0)
+		pr_err("auo_x163: disable bl regulator err\n");
+
+	/* next arrival operation mast delay >120ms */
+	msleep(120);
+
+	ret = regulator_disable(lcd->vcc_lcd_1v8_reg);
+	if (ret)
+		printk("+++++++++++++++++=can't disable auo_x163 vcc_1v8_reg ++++++++++\n");
+
+	ret = regulator_disable(lcd->vcc_lcd_3v0_reg);
+	if (ret)
+		printk("+++++++++++++++++=can't disable auo_x163 vcc_3v0_reg ++++++++++\n");
+
 }
 
 static void auo_x163_sleep_in(struct auo_x163 *lcd)
@@ -214,7 +207,7 @@ struct dsi_cmd_packet auo_x163_cmd_list1[] = {
 	{0x39, 0x04, 0x00, {0xba, 0x03, 0x03, 0x03}},
 	{0x39, 0x04, 0x00, {0xbe, 0x32, 0x30, 0x70}},
 	{0x39, 0x08, 0x00, {0xcf, 0xff, 0xd4, 0x95, 0xe8, 0x4f, 0x00, 0x04}},
-	                        /*  ^ set backlight to black in the initialization, if "0xff" will be max brightness*/
+/*  ^ set backlight to black in the initialization, if "0xff" will be max brightness*/
 
 	{0x39, 0x02, 0x00, {0x35, 0x00}},
 #ifdef CONFIG_AUO_X163_ROTATION_180
@@ -333,14 +326,62 @@ static const struct backlight_ops auo_x163_backlight_ops = {
 static void auo_x163_set_sequence(struct mipi_dsim_lcd_device *dsim_dev)
 {
 	struct auo_x163 *lcd = dev_get_drvdata(&dsim_dev->dev);
+
+	mutex_lock(&lcd->lock);
+	if (!lcd->ddi_pd->lcd_pdata->lcd_enabled && lcd->ddi_pd->lcd_pdata->reset) {
+		lcd->ddi_pd->lcd_pdata->reset(lcd->ld);
+	}
+
+
 	auo_x163_panel_condition_setting(lcd);
 
 	auo_x163_sleep_out(lcd);
-	msleep(300);	//datesheet requirement
-	auo_x163_display_on(lcd);
-//	msleep(10);
 
+	/* wakeup default brightness */
+	auo_x163_brightness_setting(lcd, 0);
+
+	/* Sleep out to DISPLAY ON mast delay > 300ms* */
+	msleep(40);
+	//auo_x163_display_on(lcd);
+
+	mutex_unlock(&lcd->lock);
 	lcd->power = FB_BLANK_UNBLANK;
+}
+
+static int auo_x163_ioctl(struct mipi_dsim_lcd_device *dsim_dev, int cmd)
+{
+	struct auo_x163 *lcd = dev_get_drvdata(&dsim_dev->dev);
+	int ret = -1;
+	int i = 0;
+	if (!lcd) {
+		pr_err(" auo_x163_ioctl get drv failed\n");
+		return -1;
+	}
+	mutex_lock(&lcd->lock);
+	switch (cmd) {
+	case CMD_MIPI_DISPLAY_ON:
+		msleep(10);
+		/* send DISPLAY ON to power on */
+		auo_x163_display_on(lcd);
+
+		/* Wait swire signal active */
+		if (lcd->ddi_pd->swire_gpio > 0) {
+			while((ret != lcd->ddi_pd->swire_active_level) && (i < 100)) {
+				ret = gpio_get_value(lcd->ddi_pd->swire_gpio);
+				msleep(10);
+				i++;
+			}
+		}
+
+		/* enable backlight power */
+		bl_regulator(lcd, 1);
+		break;
+	default:
+		break;
+	}
+	mutex_unlock(&lcd->lock);
+
+	return 0;
 }
 
 static int auo_x163_regulator_get(struct auo_x163 *lcd)
@@ -380,7 +421,7 @@ static int auo_x163_regulator_get(struct auo_x163 *lcd)
 		err = regulator_enable(lcd->vcc_lcd_3v0_reg);
 	}
 	if (lcd->vcc_lcd_blk_reg) {
-			err = regulator_enable(lcd->vcc_lcd_blk_reg);
+		err = regulator_enable(lcd->vcc_lcd_blk_reg);
 	}
 	goto return_err;
 error_get_vcc_lcd_blk:
@@ -432,12 +473,19 @@ static int auo_x163_probe(struct mipi_dsim_lcd_device *dsim_dev)
 
 	err = auo_x163_regulator_get(lcd);
 	if (err) {
-		printk
-		    ("--------------------------------------------------error.\n");
 		dev_err(&dsim_dev->dev, "failed to get regulator\n");
 		return err;
 	}
 
+	/* Swire protocol setting pin of Power IC*/
+	if (lcd->ddi_pd->swire_gpio > 0) {
+		err = gpio_request(lcd->ddi_pd->swire_gpio, "auo_x163_swire");
+		if (err < 0) {
+			printk(" %s failed to set gpio swire.\n",__func__);
+			return err;
+		}
+		gpio_direction_input(lcd->ddi_pd->swire_gpio);
+	}
 
 	dev_set_drvdata(&dsim_dev->dev, lcd);
 
@@ -447,56 +495,46 @@ static int auo_x163_probe(struct mipi_dsim_lcd_device *dsim_dev)
 }
 
 #ifdef CONFIG_PM
-static void auo_x163_power_on(struct mipi_dsim_lcd_device *dsim_dev, int power)
-{
-	struct auo_x163 *lcd = dev_get_drvdata(&dsim_dev->dev);
-	if(power) {
-		auo_x163_regulator_enable(lcd);
-	} else {
-		//auo_x163_regulator_disable(lcd);
-	}
-	/* lcd power on */
-	if (lcd->ddi_pd->lcd_pdata->power_on)
-		lcd->ddi_pd->lcd_pdata->power_on(lcd->ld, power);
-
-	if (lcd->ddi_pd->lcd_pdata->reset) {
-		lcd->ddi_pd->lcd_pdata->reset(lcd->ld);
-	}
-}
-
 static int auo_x163_suspend(struct mipi_dsim_lcd_device *dsim_dev)
 {
 	struct auo_x163 *lcd = dev_get_drvdata(&dsim_dev->dev);
+	mutex_lock(&lcd->lock);
 
+	auo_x163_brightness_setting(lcd, 0);
 	auo_x163_display_off(lcd);
 	auo_x163_sleep_in(lcd);
-
-	msleep(140);
-	msleep(lcd->ddi_pd->lcd_pdata->power_off_delay);
-	msleep(15);
-	auo_x163_power_on(dsim_dev, 0);
-
 	auo_x163_regulator_disable(lcd);
+	lcd->ddi_pd->lcd_pdata->lcd_enabled = false;
+
+	mutex_unlock(&lcd->lock);
 	return 0;
 }
 
 static int auo_x163_resume(struct mipi_dsim_lcd_device *dsim_dev)
 {
 	struct auo_x163 *lcd = dev_get_drvdata(&dsim_dev->dev);
-	int ret;
-	auo_x163_regulator_enable(lcd);
-#if 0
-	if (lcd->enabled) {
-		ret = regulator_enable(lcd->vcc_lcd_3v0_reg);
-		ret = regulator_enable(lcd->vcc_lcd_1v8_reg);
-		if (lcd->vcc_lcd_blk_reg)
-			ret = regulator_enable(lcd->vcc_lcd_blk_reg);
-		lcd->enabled = false;
+	mutex_lock(&lcd->lock);
+
+	if (!lcd->ddi_pd->lcd_pdata->lcd_enabled) {
+		auo_x163_regulator_enable(lcd);
 	}
-#endif
+
+	mutex_unlock(&lcd->lock);
+
+	msleep(lcd->ddi_pd->lcd_pdata->power_on_delay);
+
 	return 0;
 }
 
+static void auo_x163_power_on(struct mipi_dsim_lcd_device *dsim_dev, int power)
+{
+	struct auo_x163 *lcd = dev_get_drvdata(&dsim_dev->dev);
+	auo_x163_resume(dsim_dev);
+	/* lcd power on */
+	if (lcd->ddi_pd->lcd_pdata->power_on)
+		lcd->ddi_pd->lcd_pdata->power_on(lcd->ld, power);
+
+}
 #else
 #define auo_x163_suspend		NULL
 #define auo_x163_resume		NULL
@@ -508,8 +546,9 @@ static struct mipi_dsim_lcd_driver auo_x163_dsim_ddi_driver = {
 	.power_on = auo_x163_power_on,
 	.set_sequence = auo_x163_set_sequence,
 	.probe = auo_x163_probe,
+	.ioctl = auo_x163_ioctl,
 	.suspend = auo_x163_suspend,
-	.resume = auo_x163_resume, /* resume not be called */
+	.resume = auo_x163_resume,
 };
 
 static int auo_x163_init(void)

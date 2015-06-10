@@ -116,6 +116,11 @@ typedef enum {
 	COLOR_CODE_24BIT
 } dsih_color_coding_t;
 
+enum {
+	CMD_MIPI_DISPLAY_ON = 1,
+	CMD_MIPI_END,
+};
+
 struct video_config {
 	unsigned char no_of_lanes;
 	unsigned char virtual_channel;
@@ -185,6 +190,7 @@ struct mipi_dsim_lcd_driver {
 
 	void    (*power_on)(struct mipi_dsim_lcd_device *dsim_dev, int enable);
 	void    (*set_sequence)(struct mipi_dsim_lcd_device *dsim_dev);
+	int    (*ioctl)(struct mipi_dsim_lcd_device *dsim_dev, int cmd);
 	int (*probe)(struct mipi_dsim_lcd_device *dsim_dev);
 	int (*remove)(struct mipi_dsim_lcd_device *dsim_dev);
 	void    (*shutdown)(struct mipi_dsim_lcd_device *dsim_dev);
@@ -251,6 +257,7 @@ struct dsi_master_ops {
 	int (*set_early_blank_mode)(struct dsi_device *dsi, int power);
 	int (*set_blank_mode)(struct dsi_device *dsi, int power);
 	int (*set_blank)(struct dsi_device *dsi, int blank_mode);
+	int (*ioctl)(struct dsi_device *dsi, int cmd);
 };
 
 extern struct jzdsi_data jzdsi_pdata;
