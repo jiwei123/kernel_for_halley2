@@ -15,3 +15,5 @@ obj-$(CONFIG_SND_ASOC_JZ_DUMP_CDC) += snd-asoc-dump.o
 
 snd-soc-dorado-icdc-objs := dorado_icdc.o
 obj-$(CONFIG_SND_ASOC_INGENIC_DORADO_ICDC) += snd-soc-dorado-icdc.o
+snd-soc-newton-icdc-objs := newton_icdc.o
+obj-$(CONFIG_SND_ASOC_INGENIC_NEWTON_ICDC) += snd-soc-newton-icdc.o

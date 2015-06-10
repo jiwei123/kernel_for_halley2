@@ -188,7 +188,7 @@ EXPORT_SYMBOL(wakeup_module_is_wakeup_enabled);
 static int __init wakeup_module_init(void)
 {
 	/* load voice wakeup firmware */
-	memcpy(FIRMWARE_LOAD_ADDRESS, wakeup_firmware, sizeof(wakeup_firmware));
+	memcpy((void*)FIRMWARE_LOAD_ADDRESS, wakeup_firmware, sizeof(wakeup_firmware));
 	setup_ops();
 
 	m_ops->_module_init();

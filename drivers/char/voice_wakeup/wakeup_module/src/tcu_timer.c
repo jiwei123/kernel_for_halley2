@@ -43,7 +43,7 @@ static void tcu_dump_reg(void)
 
 }
 
-static void tcu_dump_reg_hex(void)
+static void __attribute__ ((unused)) tcu_dump_reg_hex(void)
 {
 	TCSM_PCHAR('G');
 	serial_put_hex(tcu_readl(CH_TCSR(tcu_channel)));
@@ -69,7 +69,7 @@ static inline void start_timer()
 
 static void reset_timer(int count)
 {
-	unsigned int tcsr = tcu_readl(CH_TCSR(tcu_channel));
+	//unsigned int tcsr = tcu_readl(CH_TCSR(tcu_channel));
 
 	/* set count */
 	tcu_writel(CH_TDFR(tcu_channel),count);
@@ -188,4 +188,3 @@ void tcu_timer_handler(void)
 		tcu_timer_mod(ms_to_count(TCU_TIMER_MS));
 	}
 }
-

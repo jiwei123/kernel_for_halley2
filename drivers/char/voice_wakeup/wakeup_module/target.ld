@@ -1,5 +1,5 @@
 OUTPUT_ARCH(mips)
-ENTRY(start)
+ENTRY(interface)
 MEMORY{
 	/* TOTAL MEM :256KBytes */
 
@@ -11,15 +11,14 @@ MEMORY{
 
 SECTIONS
 {
-
 	.voice_mem : {
 		. = ALIGN(4);
-			*(.interface*)
 			*(.text)
-			*(.data)
-			*(.rodata)
 	} > voice_mem
-
+	.data : {
+		*(.data)
+	        *(.rodata)
+	} > voice_mem /**(.data)*/
 	.bss : {
 		. = ALIGN(4);
 			__bss_start = .;

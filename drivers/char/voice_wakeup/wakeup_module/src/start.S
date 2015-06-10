@@ -7,10 +7,7 @@
  * Copyright (C) 2006 Ingenic Semiconductor Inc.
  *
  */
-
-
-	.globl	start
-
+	.global interface
 	.extern open
 	.extern handler
 	.extern close
@@ -30,8 +27,10 @@
 
 	.extern module_init
 	.extern module_exit
-start:
-	.section .interface
+	.section .text
+	.type	interface, @function;
+	.ent interface
+interface:
 	.word open
 	.word handler
 	.word close
@@ -50,4 +49,4 @@ start:
 
 	.word module_init
 	.word module_exit
-
+	.end  interface

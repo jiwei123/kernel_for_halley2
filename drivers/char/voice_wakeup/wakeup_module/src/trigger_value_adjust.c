@@ -32,7 +32,7 @@ int adjust_trigger_value(int times_per_unit, int cur_thr)
 {
 	int result;
 	int fix_times = quantity_tri(times_per_unit);
-	int fix_thr   = quantity_thr(cur_thr);
+	//int fix_thr   = quantity_thr(cur_thr);
 	int fix_result;
 
 	fix_result = fix_times;
@@ -43,5 +43,3 @@ int adjust_trigger_value(int times_per_unit, int cur_thr)
 
 	return result;
 }
-
-

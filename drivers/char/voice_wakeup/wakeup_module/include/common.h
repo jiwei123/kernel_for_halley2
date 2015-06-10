@@ -21,11 +21,6 @@
 
 #define NULL (void *)0
 
-#define REG8(addr)  *((volatile u8 *)(addr))
-#define REG16(addr) *((volatile u16 *)(addr))
-#define REG32(addr) *((volatile u32 *)(addr))
-
-
 
 typedef		char s8;
 typedef	unsigned char	u8;
@@ -33,6 +28,10 @@ typedef		short s16;
 typedef unsigned short	u16;
 typedef		int s32;
 typedef unsigned int	u32;
+
+#define REG8(addr)  *((volatile u8 *)(addr))
+#define REG16(addr) *((volatile u16 *)(addr))
+#define REG32(addr) *((volatile u32 *)(addr))
 
 #define get_cp0_ebase()		__read_32bit_c0_register($15, 1)
 

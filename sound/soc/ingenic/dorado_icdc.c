@@ -34,23 +34,25 @@ static struct snd_soc_ops dorado_i2s_ops = {
 #if (defined(CONFIG_BOARD_DORADO_V21) || defined(CONFIG_BOARD_DORADO_V22)) && defined(CONFIG_GPIO_PCA953X)
 #define DORADO_SPK_GPIO   (177 + 5)
 #define DORADO_SPK_EN	1
-#define DORADO_HAVE_SPK_EN
 #elif defined(CONFIG_BOARD_DORADO_V20)
-#include <asm/arch/gpio.h>
 #define DORADO_SPK_GPIO  GPIO_PA(12)
 #define DORADO_SPK_EN	1
-#define DORADO_HAVE_SPK_EN
 #elif defined(CONFIG_BOARD_DORADO_V30)
-#include <asm/arch/gpio.h>
 #define DORADO_SPK_GPIO	 GPIO_PE(23)
 #define DORADO_SPK_EN	1
-#define DORADO_HAVE_SPK_EN
+#endif
+
+#if defined(CONFIG_BOARD_DORADO_V22)
+#define DORADO_HP_DET	GPIO_PA(1)
+#define DORADO_HP_DET_LEVEL	0
+#else
+#define DORADO_HP_DET	-1
+#define DORADO_HP_DET_LEVEL	-1
 #endif
 
 static int dorado_spk_power(struct snd_soc_dapm_widget *w,
-				struct snd_kcontrol *kcontrol, int event)
+		struct snd_kcontrol *kcontrol, int event)
 {
-#ifdef DORADO_HAVE_SPK_EN
 	if (SND_SOC_DAPM_EVENT_ON(event)) {
 		gpio_direction_output(DORADO_SPK_GPIO, DORADO_SPK_EN);
 		printk("gpio speaker enable %d\n", gpio_get_value(DORADO_SPK_GPIO));
@@ -58,7 +60,6 @@ static int dorado_spk_power(struct snd_soc_dapm_widget *w,
 		gpio_direction_output(DORADO_SPK_GPIO, !DORADO_SPK_EN);
 		printk("gpio speaker disable %d\n", gpio_get_value(DORADO_SPK_GPIO));
 	}
-#endif
 	return 0;
 }
 
@@ -69,8 +70,8 @@ static const struct snd_soc_dapm_widget dorado_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Mic Buildin", NULL),
 };
 
-static struct snd_soc_jack dorado_icdc_d1_hp_jack;
-static struct snd_soc_jack_pin dorado_icdc_d1_hp_jack_pins[] = {
+static struct snd_soc_jack dorado_icdc_d1_jack;
+static struct snd_soc_jack_pin dorado_icdc_d1_jack_pins[] = {
 	{
 		.pin = "Headphone Jack",
 		.mask = SND_JACK_HEADPHONE,
@@ -79,6 +80,14 @@ static struct snd_soc_jack_pin dorado_icdc_d1_hp_jack_pins[] = {
 		.pin = "Mic Jack",
 		.mask = SND_JACK_MICROPHONE,
 	},
+};
+
+static struct snd_soc_jack_gpio dorado_icdc_d1_jack_gpio[] = {
+	{
+		.name = "Headphone detection",
+		.report = SND_JACK_HEADPHONE,
+		.debounce_time = 150,
+	}
 };
 
 /* dorado machine audio_map */
@@ -106,6 +115,7 @@ static int dorado_dlv_dai_link_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
 	struct snd_soc_card *card = rtd->card;
 	int err;
+	int jack = 0;
 	err = devm_gpio_request(card->dev, DORADO_SPK_GPIO, "Speaker_en");
 	if (err)
 		return err;
@@ -121,12 +131,19 @@ static int dorado_dlv_dai_link_init(struct snd_soc_pcm_runtime *rtd)
 	if (err)
 		return err;
 
-	snd_soc_jack_new(codec, "Headset Jack", SND_JACK_HEADSET, &dorado_icdc_d1_hp_jack);
-	snd_soc_jack_add_pins(&dorado_icdc_d1_hp_jack,
-			ARRAY_SIZE(dorado_icdc_d1_hp_jack_pins),
-			dorado_icdc_d1_hp_jack_pins);
-
-	icdc_d1_hp_detect(codec, &dorado_icdc_d1_hp_jack, SND_JACK_HEADSET);
+	snd_soc_jack_new(codec, "Headset Jack", SND_JACK_HEADSET, &dorado_icdc_d1_jack);
+	snd_soc_jack_add_pins(&dorado_icdc_d1_jack,
+			ARRAY_SIZE(dorado_icdc_d1_jack_pins),
+			dorado_icdc_d1_jack_pins);
+	if (gpio_is_valid(DORADO_HP_DET)) {
+		dorado_icdc_d1_jack_gpio[jack].gpio = DORADO_HP_DET;
+		dorado_icdc_d1_jack_gpio[jack].invert = !DORADO_HP_DET_LEVEL;
+		snd_soc_jack_add_gpios(&dorado_icdc_d1_jack,
+				1,
+				dorado_icdc_d1_jack_gpio);
+	} else {
+		icdc_d1_hp_detect(codec, &dorado_icdc_d1_jack, SND_JACK_HEADSET);
+	}
 
 	snd_soc_dapm_force_enable_pin(dapm, "Speaker");
 	snd_soc_dapm_force_enable_pin(dapm, "Mic Buildin");
