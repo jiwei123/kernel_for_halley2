@@ -530,12 +530,10 @@ static int jz_mipi_dsi_set_blank(struct dsi_device *dsi, int blank_mode)
 		if (client_drv && client_drv->suspend)
 			client_drv->suspend(client_dev);
 
-
 		jz_dsih_dphy_clock_en(dsi, 0);
 		jz_dsih_dphy_shutdown(dsi, 0);
 		mipi_dsih_hal_power(dsi, 0);
 		clk_disable(dsi->clk);
-
 
 		break;
 	case DSI_BLANK_POWERUP:
@@ -569,6 +567,18 @@ static int jz_mipi_dsi_set_blank(struct dsi_device *dsi, int blank_mode)
 	}
 
 }
+
+static int jz_mipi_dsi_ioctl(struct dsi_device *dsi, int cmd)
+{
+	struct mipi_dsim_lcd_driver *client_drv = dsi->dsim_lcd_drv;
+	struct mipi_dsim_lcd_device *client_dev = dsi->dsim_lcd_dev;
+
+	if (client_drv && client_drv->ioctl)
+		client_drv->ioctl(client_dev, cmd);
+
+    return 0;
+}
+
 /* define MIPI-DSI Master operations. */
 static struct dsi_master_ops jz_master_ops = {
 	.video_cfg = jz_dsi_video_cfg,
@@ -576,7 +586,8 @@ static struct dsi_master_ops jz_master_ops = {
 	.cmd_read = NULL,	/*jz_dsi_rd_data, */
 	.set_early_blank_mode   = NULL, /*jz_mipi_dsi_early_blank_mode,*/
 	.set_blank_mode         = NULL, /*jz_mipi_dsi_blank_mode,*/
-	.set_blank				= jz_mipi_dsi_set_blank,
+	.set_blank		= jz_mipi_dsi_set_blank,
+	.ioctl			= jz_mipi_dsi_ioctl,
 };
 
 int mipi_dsi_register_lcd_device(struct mipi_dsim_lcd_device *lcd_dev)
