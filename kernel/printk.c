@@ -1880,7 +1880,7 @@ int update_console_cmdline(char *name, int idx, char *name_new, int idx_new, cha
 	return -1;
 }
 
-bool console_suspend_enabled = 1;
+bool console_suspend_enabled = 0;
 EXPORT_SYMBOL(console_suspend_enabled);
 
 static int __init console_suspend_disable(char *str)
@@ -1888,7 +1888,9 @@ static int __init console_suspend_disable(char *str)
 	console_suspend_enabled = 0;
 	return 1;
 }
+
 __setup("no_console_suspend", console_suspend_disable);
+
 module_param_named(console_suspend, console_suspend_enabled,
 		bool, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(console_suspend, "suspend console during suspend"
