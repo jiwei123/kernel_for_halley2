@@ -340,7 +340,9 @@ static irqreturn_t ricoh61x_irq(int irq, void *data)
 
 	ret = ricoh61x_read(ricoh61x->dev, RICOH61x_INTC_INTMON,
 						&master_int);
+
 	//printk(KERN_INFO "PMU1: %s: master_int=0x%x\n", __func__, master_int);
+
 	if (ret < 0) {
 		dev_err(ricoh61x->dev, "Error in reading reg 0x%02x "
 			"error: %d\n", RICOH61x_INTC_INTMON, ret);
@@ -358,8 +360,10 @@ static irqreturn_t ricoh61x_irq(int irq, void *data)
 
 		ret = ricoh61x_read(ricoh61x->dev,
 				irq_mon_add[i], &int_sts[i]);
+
 		//printk(KERN_INFO "PMU2: %s: int_sts[%d]=0x%x\n",
 		//				 __func__, i, int_sts[i]);
+
 		if (ret < 0) {
 			dev_err(ricoh61x->dev, "Error in reading reg 0x%02x "
 				"error: %d\n", irq_mon_add[i], ret);
@@ -440,6 +444,7 @@ static irqreturn_t ricoh61x_irq(int irq, void *data)
 	}
 
 	//printk(KERN_INFO "PMU: %s: out\n", __func__);
+
 	return IRQ_HANDLED;
 }
 

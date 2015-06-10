@@ -1273,6 +1273,14 @@ static int futex_requeue(u32 __user *uaddr1, unsigned int flags,
 	u32 curval2;
 
 	if (requeue_pi) {
+	       /*
+		*Requeue PI only works on two distinct uaddrs.This
+		*check is only valid for private futexes. See below.
+	        */
+
+		if (uaddr1 == uaddr2)
+		    return -EINVAL;
+
 		/*
 		*Requeue PI only works on two distinct uaddrs.This
 		*check is only valid for private futexes. See below.

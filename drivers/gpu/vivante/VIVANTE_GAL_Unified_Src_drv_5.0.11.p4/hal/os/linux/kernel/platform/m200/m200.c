@@ -274,8 +274,8 @@ _cache(
 		printk("Error! No platform! Can't [handle cache] \nIN %s:%d \n",__FILE__,__LINE__);
 		return gcvSTATUS_INVALID_ARGUMENT;
 	}
-	switch(Operation)
-	{
+
+	switch(Operation) {
 	case gcvCACHE_CLEAN:
 		dma_cache_sync(NULL,Logical,Bytes,DMA_BIDIRECTIONAL);
 		break;
