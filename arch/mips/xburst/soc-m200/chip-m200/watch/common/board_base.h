@@ -52,7 +52,7 @@ extern struct platform_device bcm_power_platform_device;
 extern struct platform_device bt_power_device;
 extern struct platform_device bluesleep_device;
 #endif
-#if IS_ENABLED(CONFIG_BCM43341)
+#if IS_ENABLED(CONFIG_BCMDHD_1_141_66)
 extern struct platform_device wlan_device;
 #endif
 #ifdef CONFIG_BCM2079X_NFC

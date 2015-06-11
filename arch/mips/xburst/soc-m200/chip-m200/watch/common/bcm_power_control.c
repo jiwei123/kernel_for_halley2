@@ -3,6 +3,7 @@
 #include <mach/jzmmc.h>
 #include <linux/bcm_pm_core.h>
 #include <linux/delay.h>
+#include <soc/base.h>
 
 #include "board_base.h"
 
@@ -208,7 +209,6 @@ static void wifi_le_restore_io(void)
 int bcm_wlan_init(void)
 {
 	int reset;
-
 	wifi_le_set_io();
 
 #if defined(HOST_WIFI_RST)
@@ -229,6 +229,30 @@ int bcm_wlan_init(void)
 	return 0;
 }
 EXPORT_SYMBOL(bcm_wlan_init);
+
+static int wifi_le_pull_io(void)
+{
+#if (defined(CONFIG_JZMMC_V12_MMC1) && defined(CONFIG_JZMMC_V12_MMC1_PE_4BIT))
+#define GPIO_PORT_E_BASE     GPIO_IOBASE+0x400
+#define GPIO_PORT_E_SIZE     0x100
+
+    void __iomem *base;
+
+    base = ioremap(GPIO_PORT_E_BASE, GPIO_PORT_E_SIZE);
+
+    if(base == NULL) {
+        printk("msc1_pull_init ioremap failed\n");
+        return -1;
+    }
+
+    writel(((0x1 << 29) | (0xF << 20)), base + 0x78);
+
+    iounmap(base);
+
+#endif
+    return 0;
+}
+
 
 int bcm_wlan_power_on(int flag)
 {
@@ -253,6 +277,7 @@ int bcm_wlan_power_on(int flag)
 start:
 	pr_debug("wlan power on:%d\n", flag);
 	wifi_le_restore_io();
+	wifi_le_pull_io();
 	bcm_power_on();
 
 	msleep(200);
