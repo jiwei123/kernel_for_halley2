@@ -32,21 +32,13 @@
 #define DC3_INIT_UV     3300
 #define DC4_INIT_UV     1800
 #define DC5_INIT_UV     3300
-#if defined(CONFIG_AW808_HW_V11_NATURAL_ROUND) || defined(CONFIG_AW808_HW_V11_WISE_SQUARE)
 #define LDO1_INIT_UV    1800
-#else
-#define LDO1_INIT_UV    3400
-#endif
 #define LDO2_INIT_UV    3300
 #define LDO3_INIT_UV    2500
 #define LDO4_INIT_UV    1800
 #define LDO5_INIT_UV    2500
 #define LDO6_INIT_UV    2800
-#if defined(CONFIG_AW808_HW_IN901)
-#define LDO7_INIT_UV    3300
-#else
 #define LDO7_INIT_UV    3000
-#endif
 #define LDO8_INIT_UV    1800
 #define LDO9_INIT_UV    1800
 #define LDO10_INIT_UV   2800

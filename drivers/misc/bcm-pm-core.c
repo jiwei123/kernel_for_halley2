@@ -206,7 +206,7 @@ static int bcm_power_probe(struct platform_device *pdev)
 	if (IS_ERR(bcm_power->regulator)) {
 		pr_err("wifi regulator missing\n");
 		ret = -EINVAL;
-		goto ERR1;
+		//goto ERR1;
 	}
 
 	bcm_power->probe_success = true;

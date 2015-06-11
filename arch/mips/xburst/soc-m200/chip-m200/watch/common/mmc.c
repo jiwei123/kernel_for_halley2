@@ -39,7 +39,9 @@ struct jzmmc_platform_data inand_pdata = {
 #endif
 
 #ifdef CONFIG_JZMMC_V12_MMC1
+#ifdef CONFIG_BCMDHD_1_141_66
 extern int bcm_wlan_init(void);
+#endif
 struct jzmmc_platform_data sdio_pdata = {
 	.removal  			= MANUAL,
 	.sdio_clk			= 1,
@@ -53,6 +55,8 @@ struct jzmmc_platform_data sdio_pdata = {
 #else
 	.pio_mode			= 0,
 #endif
+#ifdef CONFIG_BCMDHD_1_141_66
 	.private_init			= bcm_wlan_init,
+#endif
 };
 #endif

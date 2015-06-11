@@ -85,7 +85,7 @@ static void restore_pin_status(int bt_power_state)
 
 static struct bt_rfkill_platform_data  bt_gpio_data = {
 	.gpio = {
-		.bt_rst_n = -1,
+		.bt_rst_n = HOST_BT_RST,
 		.bt_reg_on = BT_REG_EN,
 		.bt_wake = HOST_WAKE_BT,
 		.bt_int = BT_WAKE_HOST,
