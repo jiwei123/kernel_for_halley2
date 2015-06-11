@@ -7,7 +7,7 @@
 #include "pmu.h"
 
 /* ****************************GPIO SLEEP START******************************* */
-#define GPIO_REGULATOR_SLP	GPIO_PA(12)
+#define GPIO_REGULATOR_SLP	GPIO_PB(0)
 #define GPIO_OUTPUT_TYPE	GPIO_OUTPUT1
 /* ****************************GPIO SLEEP END******************************** */
 
@@ -74,8 +74,14 @@
 #define VCC_LCD_1V8_NAME       LDO4_NAME
 #define VCC_LCD_2V8_NAME       LDO6_NAME
 #endif
-
-
+#ifdef CONFIG_JZ_EPD_V12
+#define GPIO_EPD_PWR0           -1
+#define GPIO_EPD_PWR1           -1
+#define GPIO_EPD_PWR2           -1
+#define GPIO_EPD_PWR3           -1
+#define GPIO_EPD_EN             -1
+#define GPIO_EPD_ENOP           -1
+#endif
 /* ****************************GPIO LCD END********************************** */
 
 /* ****************************GPIO I2C START******************************** */
@@ -98,12 +104,19 @@
 /* ****************************GPIO I2C END********************************** */
 
 /* ****************************GPIO SPI START******************************** */
-#ifndef CONFIG_SPI_GPIO
-#define GPIO_SPI_SCK  GPIO_PE(15)
-#define GPIO_SPI_MOSI GPIO_PE(17)
-#define GPIO_SPI_MISO GPIO_PE(14)
+#ifdef CONFIG_SPI_GPIO
+#define GPIO_SPI_SCK  GPIO_PC(13)
+#define GPIO_SPI_MISO GPIO_PC(14)
+#define GPIO_SPI_MOSI GPIO_PC(15)
 #endif
 /* ****************************GPIO SPI END********************************** */
+
+#ifdef  CONFIG_AFE4403
+#define SPI_STE GPIO_PB(8)
+#define AFE_ADC_RDY GPIO_PB(7)
+#define AFE_PWR_EN  GPIO_PC(12)
+#define AFE_ACG_CLK GPIO_PE(2)
+#endif
 
 /* ****************************GPIO TOUCHSCREEN START************************ */
 #ifdef CONFIG_TOUCHSCREEN_GWTC9XXXB
@@ -111,8 +124,11 @@
 #define GPIO_TP_WAKE		GPIO_PE(10)
 #endif
 #ifdef CONFIG_TOUCHSCREEN_FT6X0X
-#define GPIO_TP_INT		GPIO_PB(0)
-#define GPIO_TP_WAKE		GPIO_PE(10)
+#define GPIO_TP_INT			GPIO_PA(12)
+#define GPIO_TP_WAKE			GPIO_PA(14)
+#define GPIO_TP_EN			-1
+#define VCC_TOUCHSCREEN LDO10_NAME
+#define VIO_TOUCHSCREEN "" /* not use */
 #endif
 #ifdef CONFIG_TOUCHSCREEN_FT6X06
 #define GPIO_TP_INT		GPIO_PD(17)
@@ -133,11 +149,11 @@
 /* ****************************GPIO TOUCHSCREEN END************************** */
 
 /* ****************************GPIO KEY START******************************** */
-/*#define GPIO_HOME_KEY		GPIO_PD(18)
-#define ACTIVE_LOW_HOME		1 */
+#define GPIO_BACK_KEY		 GPIO_PD(18)
+#define ACTIVE_LOW_BACK		0
 
-#define GPIO_BACK_KEY         GPIO_PD(18)
-#define  ACTIVE_LOW_BACK	0
+//#define GPIO_VOLUMEDOWN_KEY        -1
+//#define ACTIVE_LOW_VOLUMEDOWN	0
 
 #define GPIO_ENDCALL_KEY            GPIO_PA(30)
 #define ACTIVE_LOW_ENDCALL      1
@@ -147,7 +163,7 @@
 /* ****************************GPIO PMU START******************************** */
 /* PMU ricoh619 */
 #ifdef CONFIG_REGULATOR_RICOH619
-#define PMU_IRQ_N		GPIO_PA(13)
+#define PMU_IRQ_N		GPIO_PA(0)
 #endif /* CONFIG_REGULATOR_RICOH619 */
 
 /* pmu d2041 or 9024 gpio def*/
@@ -156,28 +172,56 @@
 #endif
 /* ****************************GPIO PMU END********************************** */
 
-/******************************GPIO PCA9539 START***********************************/
-/*GPIO PCA9593*/
-#ifdef CONFIG_GPIO_PCA953X
-#define PCA9539_IRQ_N       GPIO_PD(19)
-#define PCA9539_RST_N       GPIO_PA(14)
-#define PCA9539_GPIO_BASE   177
-#define PCA9539_EXT_GPIO(x)   (PCA9539_GPIO_BASE + (x))
-#endif /* CONFIG_PCA9539 */
-/* ****************************GPIO PCA9539 END********************************** */
+/* ****************************SENSOR HUB START********************************** */
+#ifdef CONFIG_FRIZZ
+#define FRIZZ_IRQ GPIO_PA(9)
+#define FRIZZ_RESET GPIO_PA(8)
+#define FRIZZ_WAKEUP GPIO_PA(15)
+
+#if defined(CONFIG_AW808_HW_X3)
+#define GSENSOR_CHIP_ORIENTATION 7
+#elif defined(CONFIG_AW808_HW_IN901)
+#define GSENSOR_CHIP_ORIENTATION 2
+#else
+#define GSENSOR_CHIP_ORIENTATION 4
+#endif //define g_chip_orientation
+
+#endif
+/* ****************************SENSOR HUB END********************************** */
 
 /* ****************************GPIO GSENSOR START**************************** */
-#define GPIO_GSENSOR_INT     GPIO_PA(14)
+#define GPIO_GSENSOR_INT	-1
+#define GSENSOR_VDD_NAME	LDO5_NAME
+#define GSENSOR_VIO_NAME	DC4_NAME
 /* ****************************GPIO GSENSOR END****************************** */
+
+/* ****************************GPIO UVSENSOR START**************************** */
+#ifdef CONFIG_SENSORS_SI1132
+#define VCC_SENSOR_1V8_NAME  LDO7_NAME
+#define GPIO_UVSENSOR_INT    GPIO_PE(2)
+#endif
+/* ****************************GPIO UVSENSOR END****************************** */
+
+/* ****************************GPIO HEARTRATE START************************** */
+#define GPIO_PAH8001_INT 	GPIO_PA(10)
+#define GPIO_PAH8001_RESET 	GPIO_PA(11)
+#define GPIO_PAH8001_PD 	-1
+#if defined(CONFIG_AW808_HW_IN901)
+#define PAH8001_VDD_NAME    LDO7_NAME
+#define PAH8001_VIO_NAME    LDO8_NAME
+#endif
+/* ****************************GPIO HEARTRATE END**************************** */
 
 /* ****************************GPIO EFUSE START****************************** */
 #define GPIO_EFUSE_VDDQ      -1
 /* ****************************GPIO EFUSE END******************************** */
 
 /* ****************************GPIO LI ION START***************************** */
-#define GPIO_LI_ION_CHARGE   GPIO_PB(1)
-#define GPIO_LI_ION_AC       GPIO_PA(13)
+//#define GPIO_LI_ION_CHARGE   GPIO_PB(1)
+//#define GPIO_LI_ION_AC       GPIO_PA(13)
 #define GPIO_ACTIVE_LOW      1
+#define GPIO_ACTIVE_HIGH     0
+#define GPIO_USB_DETE_ACTIVE_LEVEL  GPIO_ACTIVE_LOW
 /* ****************************GPIO LI ION END******************************* */
 
 /* ****************************GPIO MMC START******************************** */
@@ -186,23 +230,24 @@
 /* ****************************GPIO MMC END******************************** */
 
 /* ****************************GPIO USB START******************************** */
-#define GPIO_USB_ID				-1/*GPIO_PA(13)*/
+//#define GPIO_USB_ID			GPIO_PA(13)
 #define GPIO_USB_ID_LEVEL		LOW_ENABLE
-#define GPIO_USB_DETE           GPIO_PE(10)
+#define GPIO_USB_DETE			GPIO_PA(1)
 #define GPIO_USB_DETE_LEVEL		LOW_ENABLE
-#define GPIO_USB_DRVVBUS		-1
-#define GPIO_USB_DRVVBUS_LEVEL		HIGH_ENABLE
+//#define GPIO_USB_DRVVBUS		GPIO_PE(10)
+//#define GPIO_USB_DRVVBUS_LEVEL		HIGH_ENABLE
 /* ****************************GPIO USB END********************************** */
 
 /* ****************************GPIO CAMERA START***************************** */
-#define CAMERA_RST				-1
-#define CAMERA_PWDN_N           GPIO_PC(22) /* pin conflict with USB_ID */
-#define CAMERA_PWEN				GPIO_PC(23)
-#define CAMERA_MCLK		GPIO_PE(2) /* no use */
+#if 0
+#define CAMERA_RST		GPIO_PC(22)
+#define CAMERA_PWDN_N           GPIO_PC(23) /* pin conflict with USB_ID */
+//#define CAMERA_MCLK		GPIO_PE(2) /* no use */
 #ifdef CONFIG_DVP_OV9712
 #define OV9712_POWER	 	GPIO_PC(2) //the power of camera board
 #define OV9712_RST		GPIO_PA(11)
 #define OV9712_PWDN_EN		GPIO_PD(28)
+#endif
 #endif
 /* ****************************GPIO CAMERA END******************************* */
 
@@ -210,14 +255,14 @@
 #define GPIO_HP_MUTE		-1	/*hp mute gpio*/
 #define GPIO_HP_MUTE_LEVEL	-1	/*vaild level*/
 
-#define GPIO_SPEAKER_EN		-1      /*speaker enable gpio*/
-#define GPIO_SPEAKER_EN_LEVEL	-1
+#define GPIO_SPEAKER_EN		GPIO_PA(2)      /*speaker enable gpio*/
+#define GPIO_SPEAKER_EN_LEVEL	1
 
 #define GPIO_HANDSET_EN		-1	/*handset enable gpio*/
 #define GPIO_HANDSET_EN_LEVEL   -1
 
-#define	GPIO_HP_DETECT	-1		/*hp detect gpio*/
-#define GPIO_HP_INSERT_LEVEL    1
+#define GPIO_HP_DETECT		-1		/*hp detect gpio*/
+#define GPIO_HP_INSERT_LEVEL    -1
 #define GPIO_MIC_SELECT		-1	/*mic select gpio*/
 #define GPIO_BUILDIN_MIC_LEVEL	-1	/*builin mic select level*/
 #define GPIO_MIC_DETECT		-1
@@ -236,13 +281,34 @@
 #define HOST_WAKE_WL     (-1)
 /* ****************************GPIO WIFI END********************************* */
 
+/* ***************************GPIO VIBRATOR START***************************** */
+#ifdef	CONFIG_ANDROID_TIMED_REGULATOR
+#define	REG_VDDIO	LDO4_NAME
+#define	MAX_TIMEOUT	18000
+#endif
+
+#ifdef	CONFIG_ANDROID_TIMED_GPIO
+
+#if defined(CONFIG_AW808_HW_X3) || defined(CONFIG_AW808_HW_IN901) || defined(CONFIG_AW808_HW_MAIN) || defined(CONFIG_AW808_HW_V11_NATURAL_ROUND) || defined(CONFIG_AW808_HW_V11_WISE_SQUARE)
+#define	VIBRATOR_EN		GPIO_PE(2)
+#define	ACTIVE_LEVEL	0
+#else
+#define	VIBRATOR_EN		-1
+#define	ACTIVE_LEVEL	0
+#endif
+
+#define	MAX_TIMEOUT	15000
+#endif
+/* ****************************GPIO VIBRATOR END******************************* */
+
+
 /* ****************************GPIO NFC START******************************** */
 /*
  * For BCM2079X NFC
  */
-#define NFC_REQ         -1//GPIO_PC(26)
-#define NFC_REG_PU      -1//GPIO_PC(27)
-#define HOST_WAKE_NFC   -1//GPIO_PA(11)
+//#define NFC_REQ		GPIO_PC(26)
+//#define NFC_REG_PU	GPIO_PC(27)
+//#define HOST_WAKE_NFC   GPIO_PA(11)
 /* ****************************GPIO NFC END********************************** */
 
 /* ****************************GPIO BLUETOOTH START************************** */
@@ -265,4 +331,12 @@
 #endif
 /* ****************************GPIO BLUETOOTH END**************************** */
 
+/* ****************************GPIO DRV2605 START**************************** */
+#ifndef VIBRATOR_EN
+#ifdef CONFIG_HAPTICS_DRV2605
+#define DRV2605_ENABLE		GPIO_PE(2)
+#define DRV2605_IN_TRIGGER	GPIO_PB(1)
+#endif
+#endif
+/* ****************************GPIO DRV2605 END****************************** */
 #endif /* __BOARD_H__ */
