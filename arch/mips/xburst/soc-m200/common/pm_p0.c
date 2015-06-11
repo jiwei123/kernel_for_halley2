@@ -580,6 +580,9 @@ static noinline void cpu_resume(void)
 		val = func(1);
 	}
 	//serial_put_hex(val);
+
+	/*ddr clk on*/
+	REG32(0xb0000020) &= ~(1<<31);
 #endif
 
 	/* restore  CPM CPCCR */

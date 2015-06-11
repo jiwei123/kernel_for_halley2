@@ -1,24 +1,16 @@
 choice
-	prompt "PRODUCT type"
+	prompt "Chip type"
 	depends on SOC_M200
-	default PRODUCT_DEVELOP
+	default CHIP_M200
 
-config BOARD_4785_FPGA
-       bool "FPGA"
+config CHIP_M200
+       bool "chip-m200"
+       select TRACEPOINTS
+       select SYS_SUPPORTS_HIGHMEM
+       select GENERIC_CLOCKEVENTS_BROADCAST
 
-config PRODUCT_DEVELOP
-       bool "DEVELOP"
-
-config BOARD_FORNAX
-       bool "FORNAX"
 endchoice
 
-config PRODUCT_NAME
-	string
-	default "fpga" if BOARD_4785_FPGA
-	default "dorado" if PRODUCT_DEVELOP
-	default "fornax" if BOARD_FORNAX
-
-if PRODUCT_DEVELOP
-source "arch/mips/xburst/soc-m200/board/dorado/Kconfig"
+if CHIP_M200
+source "arch/mips/xburst/soc-m200/chip-m200/Kconfig"
 endif
