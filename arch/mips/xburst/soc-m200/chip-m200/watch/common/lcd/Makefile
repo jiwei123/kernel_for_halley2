@@ -8,3 +8,4 @@ obj-$(CONFIG_LCD_TRULY_TDO_HD0499K) += lcd-truly_tdo_hd0499k.o
 obj-$(CONFIG_LCD_LH155) 	+= lcd-lh155.o
 obj-$(CONFIG_JZ_EPD_V12)	+= epd.o
 obj-$(CONFIG_LCD_X163) += lcd-x163.o
+obj-$(CONFIG_LCD_AUO_H139BLN01) += lcd-auo_h139bln01.o

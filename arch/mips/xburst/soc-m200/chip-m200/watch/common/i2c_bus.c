@@ -61,8 +61,12 @@ struct ft6x06_platform_data ft6x06_tsc_pdata = {
 #ifdef CONFIG_TOUCHSCREEN_ITE7258
 #include <linux/i2c/ite7258_tsc.h>
 struct jztsc_pin ite7258_tsc_gpio[2] = {
-	{GPIO_TP_INT},
-	{GPIO_TP_RESET},
+        [0] = {GPIO_TP_INT, LOW_ENABLE},
+#if (defined(CONFIG_AW808_HW_V11_NATURAL_ROUND))
+        [1] = {GPIO_TP_RESET, HIGH_ENABLE},
+#else
+        [1] = {GPIO_TP_RESET, LOW_ENABLE},
+#endif
 };
 static struct jztsc_platform_data ite7258_tsc_pdata = {
 	.gpio           = ite7258_tsc_gpio,

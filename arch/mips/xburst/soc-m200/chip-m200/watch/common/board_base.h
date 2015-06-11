@@ -97,6 +97,9 @@ extern struct mipi_dsim_lcd_device	byd_9177aa_device;
 #ifdef CONFIG_LCD_X163
 extern struct mipi_dsim_lcd_device  auo_x163_device;
 #endif
+#ifdef CONFIG_LCD_AUO_H139BLN01
+extern struct mipi_dsim_lcd_device  auo_h139bln01_device;
+#endif
 #ifdef CONFIG_LCD_TRULY_TDO_HD0499K
 extern struct mipi_dsim_lcd_device	truly_tdo_hd0499k_device;
 #endif

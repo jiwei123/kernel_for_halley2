@@ -99,6 +99,7 @@ struct jzdsi_data {
 /**
  * struct jzfb_platform_data - the platform data of frame buffer
  *
+ * @name: id of lcd device
  * @num_modes: size of modes
  * @modes: list of valid video modes
  * @lcd_type: lcd type
@@ -130,9 +131,11 @@ struct jzdsi_data {
  * @cls: special_tft CLS signal register setting
  * @ps: special_tft PS signal register setting
  * @rev: special_tft REV signal register setting
+ * @lcd_desc: lcd description information, include shape, resolution, size, type
  */
 
 struct jzfb_platform_data {
+	char *name;
 	size_t num_modes;
 	struct fb_videomode *modes;
 	struct jzdsi_data *dsi_pdata;
@@ -197,6 +200,8 @@ struct jzfb_platform_data {
 		int (*dma_transfer_begin)(void*);
 		int (*dma_transfer_end)(void*);
 	} lcd_callback_ops;
+
+	const char *lcd_desc;
 
 };
 

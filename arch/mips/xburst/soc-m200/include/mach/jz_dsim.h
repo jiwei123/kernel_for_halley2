@@ -117,6 +117,10 @@ typedef enum {
 } dsih_color_coding_t;
 
 enum {
+    POWER_ON_LCD = 1,
+    POWER_ON_BL,
+};
+enum {
 	CMD_MIPI_DISPLAY_ON = 1,
 	CMD_MIPI_END,
 };

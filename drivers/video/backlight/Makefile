@@ -20,6 +20,7 @@ obj-$(CONFIG_LCD_VGG2432A4)		+= vgg2432a4.o
 obj-$(CONFIG_LCD_BYD_8991FTGF)	+= byd_8991.o byd_8991_init.o
 obj-$(CONFIG_LCD_BYD_9177AA)	+= byd_9177aa.o
 obj-$(CONFIG_LCD_X163)             += auo_x163.o
+obj-$(CONFIG_LCD_AUO_H139BLN01)    += auo_h139bln01.o
 
 obj-$(CONFIG_BACKLIGHT_88PM860X)	+= 88pm860x_bl.o
 obj-$(CONFIG_BACKLIGHT_AAT2870)		+= aat2870_bl.o

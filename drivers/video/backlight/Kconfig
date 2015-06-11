@@ -152,11 +152,13 @@ config LCD_BYD_8991FTGF
 	tristate "BYD 8991FTGF panel(480x800)"
 	depends on BACKLIGHT_CLASS_DEVICE
 	default n
+
 config LCD_BYD_9177AA
 	tristate "byd 9177aa  mipi-dsi panel(540x960)"
 	depends on FB && JZ_MIPI_DSI
 	help
 	   jz mipi dsi.dpi TFT display panel  support
+
 config LCD_X163
    tristate "X163 smart mipi-dsi panel(320x320)"
    depends on FB && JZ_MIPI_DSI
@@ -168,6 +170,13 @@ config AUO_X163_ROTATION_180
 	default n
 	help
 	  If your board is needed rotation 180, select this option.
+
+config LCD_AUO_H139BLN01
+	tristate "AUO 1.4 inch AMOLED mipi-dsi panel(400x4000)"
+	depends on FB && JZ_MIPI_DSI
+	help
+	   jz mipi dsi.dpi AMOLED display panel support
+
 endif # LCD_CLASS_DEVICE
 
 #

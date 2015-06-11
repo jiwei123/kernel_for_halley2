@@ -241,6 +241,10 @@ static int __init board_base_init(void)
 	mipi_dsi_register_lcd_device(&auo_x163_device);
 #endif
 
+#ifdef CONFIG_LCD_AUO_H139BLN01
+	mipi_dsi_register_lcd_device(&auo_h139bln01_device);
+#endif
+
 	pdevices_array_size = ARRAY_SIZE(platform_devices_array);
 	for(i = 0; i < pdevices_array_size; i++) {
 		if(platform_devices_array[i].size)

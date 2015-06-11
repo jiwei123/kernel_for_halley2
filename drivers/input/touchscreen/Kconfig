@@ -170,6 +170,61 @@ config ITE7258_MULTITOUCH
 	help
 	  support multitouch ite7258,if you want , say Y here.
 
+
+if TOUCHSCREEN_ITE7258
+config ITE7258_SYSFS_DEBUG
+	 bool "ite7258 extra function sysfs interface upgrage firmware"
+	 depends on TOUCHSCREEN_ITE7258
+	 default n
+	 help
+		ite7258 extra function:
+		1.tp firmware upgrade sysfs interface
+
+config ITE7258_EXT_FUNC
+	 bool "ite7258 extra function upgrage firmware"
+	 depends on TOUCHSCREEN_ITE7258
+	 default n
+	 help
+		ite7258 extra function:
+		1.tp firmware auto upgrade control
+choice
+	 prompt "ite7258 fireware"
+		  depends on ITE7258_EXT_FUNC
+		  default ITE7258_H215H1606A
+
+config ITE7258_SS_114_33FPB1501A
+         bool "SS_114_33FPB1501A_update_fireware"
+         depends on ITE7258_EXT_FUNC
+         help
+         SS_114_33FPB1501A is the FPC type
+         SS_114_33FPB1501A for newton
+config ITE7258_TWS20192A0
+         bool "TWS20192A0_update_fireware"
+         depends on ITE7258_EXT_FUNC
+         help
+         TWS20192A0 is the FPC type
+         TWS20192A0 for acrab
+config ITE7258_H215H1606A
+         bool "H215H1606A_update_fireware"
+         depends on ITE7258_EXT_FUNC
+         help
+         H215H1606A is the FPC type
+         H215H1606A for aw808 && aw808_v11_wisesquare
+config ITE7258_TWS20278A0
+         bool "TWS20278A0_update_fireware"
+         depends on ITE7258_EXT_FUNC
+         help
+         TWS20278A0 is the FPC type
+         TWS20278A0 for aw808_v11_naturalround
+config ITE7258_FPB1504A
+         bool "FPB1504A_update_fireware"
+         depends on ITE7258_EXT_FUNC
+         help
+         FPB1504A is the FPC type
+         FPB1504A for foxconn
+endchoice
+endif
+
 config TOUCHSCREEN_AD7879_I2C
 	tristate "support I2C bus connection"
 	depends on TOUCHSCREEN_AD7879 && I2C

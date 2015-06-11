@@ -67,6 +67,13 @@
 #define GPIO_LCD_SWIRE               GPIO_PC(24)
 #define GPIO_LCD_SWIRE_ACTIVE_LEVEL  1
 #endif
+#ifdef CONFIG_LCD_AUO_H139BLN01
+#define GPIO_MIPI_RST_N        GPIO_PC(19)
+#define DSI_TE_GPIO            GPIO_PC(18)
+#define GPIO_LCD_BLK_EN        -1
+#define VCC_LCD_1V8_NAME       LDO4_NAME
+#define VCC_LCD_2V8_NAME       LDO6_NAME
+#endif
 
 
 /* ****************************GPIO LCD END********************************** */
