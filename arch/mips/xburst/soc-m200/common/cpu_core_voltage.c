@@ -61,14 +61,11 @@ static struct cpu_core_voltage {
 static struct vol_freq {
 	unsigned int u_vol;
 	unsigned int k_freq;
-}vol_freq[] = {
-	{1025000,   25000},
-	{1025000,  100000},
-	{1050000,  300000},
-	{1075000,  600000},
-	{1100000,  800000},
-    {1125000,  1008000},
-	{1150000,  1200000},
+} vol_freq[] = {
+	{1050000, 300000},
+	{1075000, 600000},
+	{1100000, 800000},
+        {1150000, 1008000},
 };
 
 static unsigned int get_vol_from_freq(struct cpu_core_voltage *pcore,

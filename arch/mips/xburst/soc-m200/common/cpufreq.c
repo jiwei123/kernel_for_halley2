@@ -118,9 +118,55 @@ static int m200_update_cpu_speed(struct cpufreq_policy *policy,
 	return ret;
 }
 
-#define CPUFRQ_MIN  12000
-extern struct cpufreq_frequency_table *init_freq_table(unsigned int max_freq,
-						       unsigned int min_freq);
+static int m200_target(struct cpufreq_policy *policy,
+			 unsigned int target_freq,
+			 unsigned int relation)
+{
+	int index;
+	int ret = 0;
+
+	if (jz_cpufreq->is_suspended) {
+		return -EBUSY;
+	}
+
+	ret = cpufreq_frequency_table_target(policy, jz_cpufreq->freq_table,
+			target_freq, relation, &index);
+	if (ret) {
+		pr_err("%s: cpu%d: no freq match for %d(ret=%d)\n",
+		       __func__, policy->cpu, target_freq, ret);
+		return ret;
+	}
+
+	ret = m200_update_cpu_speed(policy, jz_cpufreq->freq_table[index].frequency);
+
+	return ret;
+}
+
+static DEFINE_MUTEX(m200_cpu_lock);
+
+static int m200_pm_notify(struct notifier_block *nb, unsigned long event,
+		void *dummy)
+{
+	mutex_lock(&m200_cpu_lock);
+	if (event == PM_SUSPEND_PREPARE) {
+		struct cpufreq_policy *policy = cpufreq_cpu_get(0);
+		jz_cpufreq->is_suspended = true;
+		pr_info("Tegra cpufreq suspend: setting frequency to %d kHz\n",
+				jz_cpufreq->sleep_freq);
+		m200_update_cpu_speed(policy, jz_cpufreq->sleep_freq);
+		cpufreq_cpu_put(policy);
+	} else if (event == PM_POST_SUSPEND) {
+		jz_cpufreq->is_suspended = false;
+	}
+	mutex_unlock(&m200_cpu_lock);
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block cpufreq_sleep_pm_notifier = {
+	.notifier_call = m200_pm_notify,
+	.priority = 1,
+};
 
 static void freq_down_timer(unsigned long data)
 {
@@ -137,8 +183,8 @@ static void freq_up_irq_work(struct work_struct *work)
 		policy->min = policy->max;
 		policy->governor->governor(policy, CPUFREQ_GOV_LIMITS);
 	}
-
-	mod_timer(&jz_cpufreq->freq_down_timer,jiffies + msecs_to_jiffies(2000));
+	mod_timer(&jz_cpufreq->freq_down_timer,jiffies +
+			msecs_to_jiffies(2000));
 }
 
 static int freq_up_change_notify(struct jz_notifier *notify,void *v)
@@ -198,8 +244,7 @@ static int __cpuinit m200_cpu_init(struct cpufreq_policy *policy)
 	policy->shared_type = CPUFREQ_SHARED_TYPE_ANY;
 	cpumask_setall(policy->cpus);
 
-	/* 300us for latency. FIXME: what's the actual transition time? */
-	policy->cpuinfo.transition_latency = 40 * 1000;
+	policy->cpuinfo.transition_latency = TRANSITION_LATENCY;
 
 	mutex_init(&jz_cpufreq->mutex);
 	INIT_WORK(&jz_cpufreq->freq_up_work, freq_up_irq_work);

@@ -24,7 +24,7 @@
 /* ****************************PMU DC/LDO NAME END*************************** */
 
 /* ****************************PMU DC/LDO DEFAULT V************************** */
-#define DC1_INIT_UV     1200
+#define DC1_INIT_UV     1100
 #define DC2_INIT_UV     1200
 #define DC3_INIT_UV     1200
 #ifdef CONFIG_JZ_EPD_V12

@@ -35,6 +35,9 @@
 
 #define CAMERA_NEED_REGULATOR		(0)
 
+#define UNSTABLE_FRAMES 13
+extern int capture_frames_count;
+
 static struct ovisp_camera_format isp_oformats[] = {
 	{
 		.name     = "YUV 4:2:2 packed, YCbYCr",
