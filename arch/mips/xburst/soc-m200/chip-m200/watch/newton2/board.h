@@ -62,6 +62,9 @@
 #define VCC_LCD_1V8_NAME        LDO9_NAME
 #define VCC_LCD_3V0_NAME        LDO10_NAME
 #define DSI_TE_GPIO             GPIO_PC(27)
+#define VCC_LCD_BLK_NAME        NULL
+#define GPIO_LCD_SWIRE          -1
+#define GPIO_LCD_SWIRE_ACTIVE_LEVEL  1
 #endif
 
 /* ****************************GPIO LCD END********************************** */
@@ -241,6 +244,7 @@
 #define BT_WAKE_HOST	GPIO_PA(3)
 #define BT_REG_EN	GPIO_PA(1)
 #define BT_UART_RTS	GPIO_PF(2)
+#define HOST_BT_RST     -1
 #define BLUETOOTH_UPORT_NAME  "ttyS0"
 /* ****************************GPIO BLUETOOTH END**************************** */
 
