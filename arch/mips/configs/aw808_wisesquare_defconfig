@@ -2456,8 +2456,7 @@ CONFIG_ITG3200=y
 #
 # Inertial measurement units
 #
-CONFIG_INV_MPU_IIO=y
-# CONFIG_INV_IIO_MPU3050_ACCEL_SLAVE_BMA250 is not set
+# CONFIG_INV_MPU_IIO is not set
 # CONFIG_INV_MPU6050_IIO is not set
 
 #
