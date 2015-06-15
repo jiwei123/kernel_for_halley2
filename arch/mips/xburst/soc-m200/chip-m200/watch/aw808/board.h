@@ -11,6 +11,24 @@
 #define GPIO_OUTPUT_TYPE	GPIO_OUTPUT1
 /* ****************************GPIO SLEEP END******************************** */
 
+/* ****************************SENSOR HUB START********************************** */
+#ifdef CONFIG_FRIZZ
+#define FRIZZ_IRQ GPIO_PA(9)
+#define FRIZZ_RESET GPIO_PA(8)
+#define FRIZZ_WAKEUP GPIO_PA(15)
+
+#if defined(CONFIG_AW808_HW_X3)
+#define GSENSOR_CHIP_ORIENTATION 7
+#elif defined(CONFIG_AW808_HW_IN901)
+#define GSENSOR_CHIP_ORIENTATION 2
+#else
+#define GSENSOR_CHIP_ORIENTATION 4
+#endif //define g_chip_orientation
+
+#endif
+/* ****************************SENSOR HUB END********************************** */
+
+
 /* ****************************GPIO LCD START******************************** */
 #ifdef CONFIG_LCD_BYD_8991FTGF
 #define GPIO_LCD_DISP		GPIO_PB(0)
@@ -19,8 +37,8 @@
 #define GPIO_LCD_HSYNC		0
 #define GPIO_LCD_CS		GPIO_PA(11)
 #define GPIO_LCD_CLK	        GPIO_PD(28)
-#define GPIO_LCD_SDO		GPIO_PE(3)
-#define GPIO_LCD_SDI		GPIO_PE(0)
+//#define GPIO_LCD_SDO		GPIO_PE(3)
+//#define GPIO_LCD_SDI		GPIO_PE(0)
 #define GPIO_LCD_BACK_SEL	GPIO_PC(20)
 #endif
 #ifdef CONFIG_LCD_LH155

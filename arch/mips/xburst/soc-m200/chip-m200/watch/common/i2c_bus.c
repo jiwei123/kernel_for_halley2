@@ -5,6 +5,18 @@
 #include <linux/i2c/pca953x.h>
 #include "board_base.h"
 
+/* *****************************sensor hub start************************** */
+#if defined(CONFIG_FRIZZ)
+#include <linux/i2c/frizz.h>
+static struct frizz_platform_data frizz_pdata = {
+	.irq_gpio = FRIZZ_IRQ,
+	.reset_gpio = FRIZZ_RESET,
+	.wakeup_frizz_gpio = FRIZZ_WAKEUP,
+	.g_chip_orientation = GSENSOR_CHIP_ORIENTATION,
+};
+#endif
+/* *****************************sensor hub end**************************** */
+
 /* *****************************touchscreen******************************* */
 #ifdef CONFIG_TOUCHSCREEN_GWTC9XXXB
 static struct jztsc_pin fpga_tsc_gpio[] = {
@@ -171,13 +183,12 @@ struct i2c_board_info jz_i2c1_devs[] __initdata = {
 #if (defined(CONFIG_I2C_GPIO) || defined(CONFIG_I2C2_V12_JZ))
 struct i2c_board_info jz_i2c2_devs[] __initdata = {
 
-#ifdef CONFIG_INV_MPU_IIO
+#if defined(CONFIG_FRIZZ)
 	{
-		I2C_BOARD_INFO("mpu6500", 0x68),
-		.irq = (IRQ_GPIO_BASE + GPIO_GSENSOR_INT),
-		.platform_data = &mpu9250_platform_data,
+		I2C_BOARD_INFO("frizz", 0x38),
+		.platform_data = &frizz_pdata,
 	},
-#endif /*CONFIG_INV_MPU_IIO*/
+#endif
 };
 #endif  /*I2C1*/
 
