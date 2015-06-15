@@ -1114,10 +1114,10 @@ CONFIG_WLAN=y
 CONFIG_BCMDHD_1_141_66=y
 CONFIG_BCMDHD_1_141_66_SDIO=y
 # CONFIG_BCM4339 is not set
-# CONFIG_BCM4343 is not set
+CONFIG_BCM4343=y
 # CONFIG_BCM4354 is not set
-CONFIG_BCMDHD_1_141_66_FW_PATH="/firmware/fw_bcm43438.bin"
-CONFIG_BCMDHD_1_141_66_NVRAM_PATH="/firmware/bcm43438.cal"
+CONFIG_BCMDHD_1_141_66_FW_PATH="/system/lib/firmware/wifi/fw_bcm43438.bin"
+CONFIG_BCMDHD_1_141_66_NVRAM_PATH="/system/lib/firmware/wifi/bcm43438.cal"
 
 #
 # Enable WiMAX (Networking options) to see the WiMAX drivers
