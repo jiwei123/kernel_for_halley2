@@ -27,7 +27,7 @@
 #define BLANKING_PACKET         6
 #define MAX_NULL_SIZE		1023
 #define TX_ESC_CLK_DIV		7
-#define MAX_WORD_COUNT     150
+#define MAX_WORD_COUNT     21
 #define PANEL_NAME_SIZE     (32)
 
 
@@ -65,7 +65,6 @@ struct dsi_config {
 	int shut_down_polarity;
 	int te_gpio;
 	int te_irq_level;
-
 };
 
 typedef enum {
@@ -85,12 +84,6 @@ typedef enum {
 	ERR_DSI_TIMEOUT
 } dsih_error_t;
 
-enum {
-	DSI_BLANK_UNBLANK,
-	DSI_BLANK_NORMAL,
-	DSI_BLANK_POWERDOWN,
-	DSI_BLANK_POWERUP
-};
 typedef enum {
 	NOT_INITIALIZED = 0,
 	INITIALIZED,
@@ -115,15 +108,6 @@ typedef enum {
 	COLOR_CODE_18BIT_CONFIG2,
 	COLOR_CODE_24BIT
 } dsih_color_coding_t;
-
-enum {
-    POWER_ON_LCD = 1,
-    POWER_ON_BL,
-};
-enum {
-	CMD_MIPI_DISPLAY_ON = 1,
-	CMD_MIPI_END,
-};
 
 struct video_config {
 	unsigned char no_of_lanes;
@@ -188,11 +172,19 @@ struct mipi_dsim_lcd_device {
 	void            *platform_data;
 };
 
+enum {
+    POWER_ON_LCD = 1,
+    POWER_ON_BL,
+};
+enum {
+    CMD_MIPI_DISPLAY_ON = 1,
+    CMD_MIPI_END,
+};
 struct mipi_dsim_lcd_driver {
 	char            *name;
 	int         id;
 
-	void    (*power_on)(struct mipi_dsim_lcd_device *dsim_dev, int enable);
+	void    (*power_on)(struct mipi_dsim_lcd_device *dsim_dev, int mode);
 	void    (*set_sequence)(struct mipi_dsim_lcd_device *dsim_dev);
 	int    (*ioctl)(struct mipi_dsim_lcd_device *dsim_dev, int cmd);
 	int (*probe)(struct mipi_dsim_lcd_device *dsim_dev);
@@ -246,9 +238,7 @@ struct loop_band {
  * @get_fb_frame_done: get frame done status of display controller.
  * @trigger: trigger display controller.
  *	- this one would be used only in case of CPU mode.
- *  @set_early_blank_mode: set framebuffer blank mode.
- *	- this callback should be called prior to fb_blank() by a client driver
- *	only if needing.
+ *  @ioctl: mipi_dsi ioctl callback.
  *  @set_blank_mode: set framebuffer blank mode.
  *	- this callback should be called after fb_blank() by a client driver
  *	only if needing.
@@ -258,10 +248,8 @@ struct dsi_master_ops {
 	int (*cmd_write) (struct dsi_device * dsi, struct dsi_cmd_packet cmd_data);
 	int (*cmd_read) (struct dsi_device * dsi, u8 * rx_buf);
 	int (*video_cfg) (struct dsi_device * dsi);
-	int (*set_early_blank_mode)(struct dsi_device *dsi, int power);
-	int (*set_blank_mode)(struct dsi_device *dsi, int power);
-	int (*set_blank)(struct dsi_device *dsi, int blank_mode);
 	int (*ioctl)(struct dsi_device *dsi, int cmd);
+	int (*set_blank_mode)(struct dsi_device *dsi, int power);
 };
 
 extern struct jzdsi_data jzdsi_pdata;

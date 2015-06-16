@@ -1,26 +1,12 @@
 /*
- * Copyright (C) 2015 Ingenic Electronics
+ * Copyright (c) 2012 Ingenic Semiconductor Co., Ltd.
+ *              http://www.ingenic.com/
  *
- * AUO 1.39 400*400 MIPI LCD Driver (driver's data part)
+ * M200 dorado board lcd setup routines.
  *
- * Model : H139BLN01.1
- *
- * Author: MaoLei.Wang <maolei.wang@ingenic.com>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  */
 
 #include <linux/init.h>
@@ -41,7 +27,7 @@ static struct regulator *lcd_vcc_reg = NULL;
 static struct regulator *lcd_io_reg = NULL;
 static bool is_init = 0;
 
-int auo_h139bln01_init(struct lcd_device *lcd)
+int boe_tft320320_init(struct lcd_device *lcd)
 {
 	int ret = 0;
 
@@ -63,12 +49,10 @@ int auo_h139bln01_init(struct lcd_device *lcd)
 		return ret;
 	}
 
-	if (GPIO_LCD_BLK_EN > -1) {
-		ret = gpio_request(GPIO_LCD_BLK_EN, "bl power enable pin");
-		if (ret) {
-			dev_err(&lcd->dev,"can't request backlight power enable pin\n");
-			return ret;
-		}
+	ret = gpio_request(GPIO_LCD_BLK_EN, "bl power enable pin");
+	if (ret) {
+		dev_err(&lcd->dev,"can't request backlight power enable pin\n");
+		return ret;
 	}
 
 	is_init = 1;
@@ -76,69 +60,60 @@ int auo_h139bln01_init(struct lcd_device *lcd)
 	return ret;
 }
 
-int auo_h139bln01_reset(struct lcd_device *lcd)
+int boe_tft320320_reset(struct lcd_device *lcd)
 {
 	gpio_direction_output(GPIO_MIPI_RST_N, 1);
-	udelay(5);
+	udelay(100);
 	gpio_direction_output(GPIO_MIPI_RST_N, 0);
-	msleep(10);
+	udelay(100);
 	gpio_direction_output(GPIO_MIPI_RST_N, 1);
-
+	udelay(300);
 	return 0;
 }
 
-int auo_h139bln01_power_on(struct lcd_device *lcd, int enable)
+int boe_tft320320_power_on(struct lcd_device *lcd, int enable)
 {
-	int ret;
-
-	if(!is_init && auo_h139bln01_init(lcd))
+	if(!is_init && boe_tft320320_init(lcd))
 		return -EFAULT;
 
 	if (enable == POWER_ON_LCD) {
-		ret = regulator_enable(lcd_vcc_reg);
-		if (ret)
-			printk(KERN_ERR "failed to enable lcd vcc reg\n");
-		ret = regulator_enable(lcd_io_reg);
-		if (ret)
-			printk(KERN_ERR "failed to enable lcd io reg\n");
-		if (gpio_is_valid(GPIO_LCD_BLK_EN))
-			gpio_direction_output(GPIO_LCD_BLK_EN, 1);
+		regulator_enable(lcd_vcc_reg);
+		regulator_enable(lcd_io_reg);
 	} else if (enable == POWER_ON_BL){
-		if (gpio_is_valid(GPIO_LCD_BLK_EN))
-			gpio_direction_output(GPIO_LCD_BLK_EN, 1);
+		gpio_direction_output(GPIO_LCD_BLK_EN, 1);
 	} else {
 		/* power off the power of LCD and it's Backlight */
+		gpio_direction_output(GPIO_MIPI_RST_N, 0);
 		regulator_disable(lcd_io_reg);
 		regulator_disable(lcd_vcc_reg);
-		if (gpio_is_valid(GPIO_LCD_BLK_EN))
-			gpio_direction_output(GPIO_LCD_BLK_EN, 0);
+		gpio_direction_output(GPIO_LCD_BLK_EN, 0);
 	}
 
 	return 0;
 }
 
-struct lcd_platform_data auo_h139bln01_data = {
-	.reset    = auo_h139bln01_reset,
-	.power_on = auo_h139bln01_power_on,
+struct lcd_platform_data boe_tft320320_data = {
+	.reset    = boe_tft320320_reset,
+	.power_on = boe_tft320320_power_on,
 	.lcd_enabled = 1, // lcd panel was enabled from uboot
 };
 
-struct mipi_dsim_lcd_device auo_h139bln01_device={
-	.name = "auo_h139bln01-lcd",
+struct mipi_dsim_lcd_device boe_tft320320_device={
+	.name = "boe_tft320320-lcd",
 	.id   = 0,
-	.platform_data = &auo_h139bln01_data,
+	.platform_data = &boe_tft320320_data,
 };
 
-unsigned long auo_h139bln01_cmd_buf[]= {
+unsigned long boe_tft320320_cmd_buf[]= {
 	0x2C2C2C2C,
 };
 
 struct fb_videomode jzfb_videomode = {
-	.name = "auo_h139bln01-lcd",
-	.refresh = 30,
-	.xres = 400,
-	.yres = 400,
-	.pixclock = KHZ2PICOS((9600 * 3) / 2), //PCLK Frequency: 9.6MHz
+	.name = "boe_tft320320-lcd",
+	.refresh = 60,
+	.xres = 320,
+	.yres = 320,
+	.pixclock = KHZ2PICOS(6144), //PCLK Frequency: 6.144MHz
 	.left_margin  = 0,
 	.right_margin = 0,
 	.upper_margin = 0,
@@ -172,7 +147,7 @@ struct jzdsi_data jzdsi_pdata = {
 };
 
 struct jzfb_platform_data jzfb_pdata = {
-	.name = "auo_h139bln01-lcd",
+	.name = "boe_tft320320-lcd",
 	.num_modes = 1,
 	.modes = &jzfb_videomode,
 	.dsi_pdata = &jzdsi_pdata,
@@ -185,13 +160,54 @@ struct jzfb_platform_data jzfb_pdata = {
 	.smart_config.clkply_active_rising = 0,
 	.smart_config.rsply_cmd_high = 0,
 	.smart_config.csply_active_high = 0,
-	.smart_config.write_gram_cmd = auo_h139bln01_cmd_buf,
-	.smart_config.length_cmd = ARRAY_SIZE(auo_h139bln01_cmd_buf),
+	.smart_config.write_gram_cmd = boe_tft320320_cmd_buf,
+	.smart_config.length_cmd = ARRAY_SIZE(boe_tft320320_cmd_buf),
 	.smart_config.bus_width = 8,
 	.dither_enable = 1,
-	.dither.dither_red   = 1,	/* 6bit */
-	.dither.dither_green = 1,	/* 6bit */
-	.dither.dither_blue  = 1,	/* 6bit */
+	.dither.dither_red = 1,	/* 6bit */
+	.dither.dither_red = 1,	/* 6bit */
+	.dither.dither_red = 1,	/* 6bit */
 
-	.lcd_desc = "CIRCULARITY_400_400_1.39_AMOLED", /* use to create sysfs node */
+	.lcd_desc = "SQUARE_320_320_1.54_TFT", /* use to create sysfs node */
 };
+
+/**************************************************************************************************/
+#ifdef CONFIG_BACKLIGHT_PWM
+#ifndef CONFIG_CLEAR_PWM_OUTPUT
+#warning "Not define CONFIG_CLEAR_PWM_OUTPUT at 'make menuconfig' !"
+#endif
+static int backlight_init(struct device *dev)
+{
+	int ret = 0;
+
+	ret = gpio_request(GPIO_LCD_PWM, "Backlight");
+	if (ret) {
+		printk(KERN_ERR "failed to request PWM for Backlight\n");
+		return ret;
+	}
+
+	return 0;
+}
+
+static void backlight_exit(struct device *dev)
+{
+	gpio_free(GPIO_LCD_PWM);
+}
+
+static struct platform_pwm_backlight_data backlight_data = {
+	.pwm_id		= 1,
+	.max_brightness	= 255,
+	.dft_brightness	= 120,
+	.pwm_period_ns	= 30000,
+	.init		= backlight_init,
+	.exit		= backlight_exit,
+};
+
+struct platform_device backlight_device = {
+	.name		= "pwm-backlight",
+	.dev		= {
+		.platform_data	= &backlight_data,
+	},
+};
+#endif
+

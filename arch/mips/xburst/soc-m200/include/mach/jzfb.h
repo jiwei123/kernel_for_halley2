@@ -102,8 +102,8 @@ struct jzdsi_data {
  * @name: id of lcd device
  * @num_modes: size of modes
  * @modes: list of valid video modes
- * @lcd_type: lcd type
- * @bpp: bits per pixel for the lcd
+ * @lcd_type: lcd type, specify lcd panel interface type (16 data pin, 24 data pin...)
+ * @bpp: bits per pixel for framebuffer
  * @width: width of the lcd display in mm
  * @height: height of the lcd display in mm
  * @pinmd: 16bpp lcd data pin mapping. 0: LCD_D[15:0],1: LCD_D[17:10] LCD_D[8:1]
@@ -166,11 +166,10 @@ struct jzfb_platform_data {
 		unsigned bus_width;
 		size_t length_data_table;
 		struct smart_lcd_data_table *data_table;
-		int (*init) (void);
-		int (*gpio_for_slcd) (void);
 		int te_gpio;
 		int te_irq_level;
-
+		int (*init) (void);
+		int (*gpio_for_slcd) (void);
 	} smart_config;
 
 	unsigned dither_enable:1;
@@ -202,7 +201,6 @@ struct jzfb_platform_data {
 	} lcd_callback_ops;
 
 	const char *lcd_desc;
-
 };
 
 #endif

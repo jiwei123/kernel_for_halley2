@@ -233,6 +233,8 @@ void jz_dsi_dpi_cfg(struct dsi_device *dsi, unsigned int *ratio_clock_xPF,
 			       video_config->v_active_lines));
 	mipi_dsih_hal_dpi_vbp(dsi, video_config->v_back_porch_lines);
 	mipi_dsih_hal_dpi_vsync(dsi, video_config->v_sync_lines);
+
+#ifdef CONFIG_DSI_DPI_DEBUG
 	printk("hline:%d\n",
 	       (unsigned
 		short)((video_config->h_total_pixels * (*ratio_clock_xPF)) /
@@ -250,6 +252,7 @@ void jz_dsi_dpi_cfg(struct dsi_device *dsi, unsigned int *ratio_clock_xPF,
 					      video_config->v_active_lines));
 	printk("vbp:%d\n", video_config->v_back_porch_lines);
 	printk("vsync:%d\n", video_config->v_sync_lines);
+#endif
 
 	mipi_dsih_hal_dpi_hsync_pol(dsi, !video_config->h_polarity);	//active low
 	mipi_dsih_hal_dpi_vsync_pol(dsi, !video_config->v_polarity);	//active low

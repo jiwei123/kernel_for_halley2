@@ -11,8 +11,7 @@
 #include <linux/fb.h>
 #include <linux/delay.h>
 #include <mach/jzfb.h>
-#include <asm//uaccess.h>
-
+#include <asm/uaccess.h>
 #include "jz_fb.h"
 #include "regs.h"
 #include "image_enh.h"

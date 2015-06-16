@@ -22,16 +22,6 @@
 
 #include "../board_base.h"
 
-/******GPIO PIN************/
-#undef GPIO_LCD_CS
-#undef GPIO_LCD_RD
-#undef GPIO_BL_PWR_EN
-
-#define GPIO_LCD_CS            GPIO_PC(14)
-#define GPIO_LCD_RD            GPIO_PC(17)
-#define GPIO_BL_PWR_EN         GPIO_PC(18)
-#define GPIO_LCD_RST           GPIO_PA(12)
-
 /*ifdef is 18bit,6-6-6 ,ifndef default 5-6-6*/
 //#define CONFIG_SLCD_TRULY_18BIT
 
@@ -49,36 +39,38 @@ struct truly_tft240240_power{
 
 static struct truly_tft240240_power lcd_power = {
 	NULL,
-	NULL,
-	0
+    NULL,
+    0
 };
 
 int truly_tft240240_power_init(struct lcd_device *ld)
 {
-	int ret ;
-	printk("======truly_tft240240_power_init==============\n");
-
-	ret = gpio_request(GPIO_LCD_RST, "lcd rst");
-	if (ret) {
-		printk(KERN_ERR "can's request lcd rst\n");
-		return ret;
-	}
-
-	ret = gpio_request(GPIO_LCD_CS, "lcd cs");
-	if (ret) {
-		printk(KERN_ERR "can's request lcd cs\n");
-		return ret;
-	}
-
-	ret = gpio_request(GPIO_LCD_RD, "lcd rd");
-	if (ret) {
-		printk(KERN_ERR "can's request lcd rd\n");
-		return ret;
-	}
-
-	printk("set lcd_power.inited  =======1 \n");
-	lcd_power.inited = 1;
-	return 0;
+    int ret ;
+    printk("======truly_tft240240_power_init==============\n");
+    if(GPIO_LCD_RST > 0){
+        ret = gpio_request(GPIO_LCD_RST, "lcd rst");
+        if (ret) {
+            printk(KERN_ERR "can's request lcd rst\n");
+            return ret;
+        }
+    }
+    if(GPIO_LCD_CS > 0){
+        ret = gpio_request(GPIO_LCD_CS, "lcd cs");
+        if (ret) {
+            printk(KERN_ERR "can's request lcd cs\n");
+            return ret;
+        }
+    }
+    if(GPIO_LCD_RD > 0){
+        ret = gpio_request(GPIO_LCD_RD, "lcd rd");
+        if (ret) {
+            printk(KERN_ERR "can's request lcd rd\n");
+            return ret;
+        }
+    }
+    printk("set lcd_power.inited  =======1 \n");
+    lcd_power.inited = 1;
+    return 0;
 }
 
 int truly_tft240240_power_reset(struct lcd_device *ld)
@@ -108,7 +100,6 @@ int truly_tft240240_power_on(struct lcd_device *ld, int enable)
 		gpio_direction_output(GPIO_LCD_CS, 0);
 
 	} else {
-		gpio_direction_output(GPIO_BL_PWR_EN, 0);
 		mdelay(5);
 		gpio_direction_output(GPIO_LCD_CS, 0);
 		gpio_direction_output(GPIO_LCD_RD, 0);
@@ -279,7 +270,7 @@ struct fb_videomode jzfb0_videomode = {
 	.refresh = 60,
 	.xres = 240,
 	.yres = 240,
-	.pixclock = KHZ2PICOS(30000),
+	.pixclock = KHZ2PICOS(15000),
 	.left_margin = 0,
 	.right_margin = 0,
 	.upper_margin = 0,
@@ -293,10 +284,11 @@ struct fb_videomode jzfb0_videomode = {
 
 
 struct jzfb_platform_data jzfb_pdata = {
+	.name = "truly240240",
 	.num_modes = 1,
 	.modes = &jzfb0_videomode,
 	.lcd_type = LCD_TYPE_SLCD,
-	.bpp    = 16,
+	.bpp    = 18,
 	.width = 31,
 	.height = 31,
 	.pinmd  = 0,
@@ -310,6 +302,8 @@ struct jzfb_platform_data jzfb_pdata = {
 	.smart_config.bus_width = 8,
 	.smart_config.length_data_table =  ARRAY_SIZE(truly_tft240240_data_table),
 	.smart_config.data_table = truly_tft240240_data_table,
+	.smart_config.te_gpio = SLCD_TE_GPIO,
+	.smart_config.te_irq_level = IRQF_TRIGGER_RISING,
 	.dither_enable = 0,
 };
 /**************************************************************************************************/
@@ -317,11 +311,13 @@ struct jzfb_platform_data jzfb_pdata = {
 static int backlight_init(struct device *dev)
 {
 	int ret;
-	ret = gpio_request(GPIO_LCD_PWM, "Backlight");
+
+	//GPIO redefinition in arch/mips/xburst/soc-m200/include/mach/platform.h
+/*	ret = gpio_request(GPIO_LCD_PWM, "Backlight");
 	if (ret) {
 		printk(KERN_ERR "failed to request GPF for PWM-OUT1\n");
 		return ret;
-	}
+	}*/
 
 	ret = gpio_request(GPIO_BL_PWR_EN, "BL PWR");
 	if (ret) {

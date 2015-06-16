@@ -23,12 +23,12 @@
 
 
 struct auo_x163_platform_data{
-	struct lcd_platform_data *lcd_pdata;
-	char *vcc_lcd_1v8_name;
-	char *vcc_lcd_3v0_name;
-	char *vcc_lcd_blk_name;
-	int swire_gpio;
-	int swire_active_level;
+    struct lcd_platform_data *lcd_pdata;
+    char *vcc_lcd_1v8_name;
+    char *vcc_lcd_3v0_name;
+    char *vcc_lcd_blk_name;
+    int swire_gpio;
+    int swire_active_level;
 };
 
 struct fb_videomode jzfb_videomode = {
@@ -36,7 +36,7 @@ struct fb_videomode jzfb_videomode = {
 	.refresh = 60,
 	.xres = 320,
 	.yres = 320,
-	.pixclock = KHZ2PICOS(5760),
+	.pixclock = KHZ2PICOS(12288),
 	.left_margin = 0,
 	.right_margin = 0,
 	.upper_margin = 0,
@@ -58,18 +58,16 @@ int auo_x163_reset(struct lcd_device *lcd)
 		return ret;
 	}
 
-	gpio_direction_output(GPIO_LCD_RST, 1);
-	gpio_direction_output(GPIO_LCD_RST, 0);  //reset active low
-	/* This loading is done every time when there is H/W reset complete time (tREST)
-	within 5ms after a rising edge of RESX */
-	mdelay(1);
-	gpio_direction_output(GPIO_LCD_RST, 1);
-	mdelay(5);
-	gpio_free(GPIO_LCD_RST);
-
+    gpio_direction_output(GPIO_LCD_RST, 1);
+    gpio_direction_output(GPIO_LCD_RST, 0);  //reset active low
+    /* This loading is done every time when there is H/W reset complete time (tREST)
+    within 5ms after a rising edge of RESX */
+    mdelay(1);
+    gpio_direction_output(GPIO_LCD_RST, 1);
+    mdelay(5);
+    gpio_free(GPIO_LCD_RST);
 	return 0;
 }
-
 
 struct lcd_platform_data auo_x163_data = {
 	.reset = auo_x163_reset,
@@ -77,12 +75,12 @@ struct lcd_platform_data auo_x163_data = {
 };
 
 struct auo_x163_platform_data auo_x163_pdata = {
-	.lcd_pdata          = &auo_x163_data,
-	.vcc_lcd_1v8_name   = VCC_LCD_1V8_NAME,
-	.vcc_lcd_3v0_name   = VCC_LCD_3V0_NAME,
-	.vcc_lcd_blk_name   = VCC_LCD_BLK_NAME,
-	.swire_gpio         = GPIO_LCD_SWIRE,
-	.swire_active_level = GPIO_LCD_SWIRE_ACTIVE_LEVEL,
+    .lcd_pdata          = &auo_x163_data,
+    .vcc_lcd_1v8_name   = VCC_LCD_1V8_NAME,
+    .vcc_lcd_3v0_name   = VCC_LCD_3V0_NAME,
+    .vcc_lcd_blk_name   = VCC_LCD_BLK_NAME,
+    .swire_gpio         = GPIO_LCD_SWIRE,
+    .swire_active_level = GPIO_LCD_SWIRE_ACTIVE_LEVEL,
 };
 
 
@@ -118,6 +116,7 @@ struct jzdsi_data jzdsi_pdata = {
 };
 
 struct jzfb_platform_data jzfb_pdata = {
+	.name = "auo_x163-lcd",
 	.num_modes = 1,
 	.modes = &jzfb_videomode,
 	.dsi_pdata = &jzdsi_pdata,
@@ -137,6 +136,8 @@ struct jzfb_platform_data jzfb_pdata = {
 	.dither.dither_red = 1,	/* 6bit */
 	.dither.dither_red = 1,	/* 6bit */
 	.dither.dither_red = 1,	/* 6bit */
+
+	.lcd_desc = "SQUARE_320_320_1.63_AMOLED", /* use to create sysfs node */
 };
 
 /**************************************************************************************************/
@@ -175,4 +176,3 @@ struct platform_device backlight_device = {
 };
 
 #endif
-

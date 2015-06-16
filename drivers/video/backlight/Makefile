@@ -21,6 +21,16 @@ obj-$(CONFIG_LCD_BYD_8991FTGF)	+= byd_8991.o byd_8991_init.o
 obj-$(CONFIG_LCD_BYD_9177AA)	+= byd_9177aa.o
 obj-$(CONFIG_LCD_X163)             += auo_x163.o
 obj-$(CONFIG_LCD_AUO_H139BLN01)    += auo_h139bln01.o
+obj-$(CONFIG_LCD_ARS_NT35350) += ars_nt35350.o
+obj-$(CONFIG_LCD_BOE_TFT320320) += boe_tft320320.o
+obj-$(CONFIG_LCD_EDO_E1392AM1) += edo_e1392am1.o
+obj-$(CONFIG_LCD_LH155)	+= lh155.o
+obj-$(CONFIG_LCD_ORISE_OTM3201A) += orise_otm3201a.o
+obj-$(CONFIG_LCD_SAMSUNG)	+= samsung.o
+obj-$(CONFIG_LCD_TRULY_TDO_HD0499K) += truly_tdo_hd0499k.o
+obj-$(CONFIG_LCD_H160_TFT320320) += h160_tft320320.o
+obj-$(CONFIG_LCD_TRULY_TFT320320) += truly_tft320320.o
+obj-$(CONFIG_LCD_TRULY_TFT240240_2_E) += truly_tft240240_2_e.o
 
 obj-$(CONFIG_BACKLIGHT_88PM860X)	+= 88pm860x_bl.o
 obj-$(CONFIG_BACKLIGHT_AAT2870)		+= aat2870_bl.o
