@@ -76,7 +76,7 @@ static inline int bl_regulator(struct auo_x163 *lcd, int en)
 
     reg = lcd->vcc_lcd_blk_reg;
 
-    return (en ? regulator_enable(reg) : regulator_force_disable(reg));
+    return (en ? regulator_enable(reg) : regulator_disable(reg));
 }
 
 static void auo_x163_regulator_enable(struct auo_x163 *lcd)
@@ -99,11 +99,11 @@ static void auo_x163_regulator_disable(struct auo_x163 *lcd)
 	/* next arrival operation mast delay >120ms */
 	msleep(120);
 
-	ret = regulator_force_disable(lcd->vcc_lcd_1v8_reg);
+	ret = regulator_disable(lcd->vcc_lcd_1v8_reg);
 	if (ret)
 		printk("can't disable auo_x163 vcc_1v8_reg ++++++++++\n");
 
-	ret = regulator_force_disable(lcd->vcc_lcd_3v0_reg);
+	ret = regulator_disable(lcd->vcc_lcd_3v0_reg);
 	if (ret)
 		printk("can't disable auo_x163 vcc_3v0_reg ++++++++++\n");
 }

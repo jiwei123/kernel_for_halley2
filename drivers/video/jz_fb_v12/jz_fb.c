@@ -1583,11 +1583,9 @@ static int jzfb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 
 	switch (cmd) {
 	case JZFB_GET_MODENUM:
-		pr_err("\n%d\n", __LINE__);
 		copy_to_user(argp, &pdata->num_modes, sizeof(int));
 		break;
 	case JZFB_GET_MODELIST:
-		pr_err("\n%d\n", __LINE__);
 		buf = kzalloc(sizeof(int) * pdata->num_modes, GFP_KERNEL);
 		for (i = 0; i < pdata->num_modes; i++) {
 			if (!pdata->modes[i].flag)
@@ -1598,13 +1596,11 @@ static int jzfb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 		kzfree(buf);
 		break;
 	case JZFB_SET_VIDMEM:
-		pr_err("\n%d\n", __LINE__);
 		if (copy_from_user
 		    (&jzfb->vidmem_phys, argp, sizeof(unsigned int)))
 			return -EFAULT;
 		break;
 	case JZFB_SET_MODE:
-		pr_err("\n%d\n", __LINE__);
 		if (copy_from_user(&value, argp, sizeof(int)))
 			return -EFAULT;
 
@@ -1620,7 +1616,6 @@ static int jzfb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 		return -EFAULT;
 		break;
 	case JZFB_ENABLE:
-		pr_err("\n%d\n", __LINE__);
 		if (copy_from_user(&value, argp, sizeof(int))) {
 			dev_info(info->dev, "copy FB enable value failed\n");
 			return -EFAULT;
@@ -1633,7 +1628,6 @@ static int jzfb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 		}
 		break;
 	case JZFB_SET_FG_SIZE:
-		pr_err("\n%d\n", __LINE__);
 		if (copy_from_user
 		    (&osd.fg_size, argp, sizeof(struct jzfb_fg_size))) {
 			dev_info(info->dev, "copy FG size from user failed\n");
@@ -1658,7 +1652,6 @@ static int jzfb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 		}
 		break;
 	case JZFB_GET_FG_SIZE:
-		pr_err("\n%d\n", __LINE__);
 		if (copy_from_user
 		    (&osd.fg_size, argp, sizeof(struct jzfb_fg_size))) {
 			dev_info(info->dev, "copy FG size from user failed\n");
@@ -1680,7 +1673,6 @@ static int jzfb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 		}
 		break;
 	case JZFB_SET_FG_POS:
-		pr_err("\n%d\n", __LINE__);
 		if (copy_from_user
 		    (&osd.fg_pos, argp, sizeof(struct jzfb_fg_pos))) {
 			dev_info(info->dev, "copy FG pos from user failed\n");
@@ -1690,7 +1682,6 @@ static int jzfb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 		}
 		break;
 	case JZFB_GET_FG_POS:
-		pr_err("\n%d\n", __LINE__);
 		if (copy_from_user
 		    (&osd.fg_pos, argp, sizeof(struct jzfb_fg_pos))) {
 			dev_info(info->dev, "copy FG pos from user failed\n");
@@ -1710,14 +1701,12 @@ static int jzfb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 		}
 		break;
 	case JZFB_GET_BUFFER:
-		pr_err("\n%d\n", __LINE__);
 		if (copy_to_user(argp, &jzfb->current_buffer, sizeof(int))) {
 			dev_info(info->dev, "user get current buffer failed\n");
 			return -EFAULT;
 		}
 		break;
 	case JZFB_SET_ALPHA:
-		pr_err("\n%d\n", __LINE__);
 		if (copy_from_user
 		    (&osd.fg_alpha, argp, sizeof(struct jzfb_fg_alpha))) {
 			dev_info(info->dev, "copy alpha from user failed\n");
@@ -1727,7 +1716,6 @@ static int jzfb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 		}
 		break;
 	case JZFB_SET_VSYNCINT:
-		pr_err("\n%d\n", __LINE__);
 		if (unlikely(copy_from_user(&value, argp, sizeof(int))))
 			return -EFAULT;
 		if (value) {
@@ -1746,7 +1734,6 @@ static int jzfb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 		}
                 break;
 	case FBIO_WAITFORVSYNC:
-		pr_err("\n%d\n", __LINE__);
 		if (likely(jzfb->timestamp.wp == jzfb->timestamp.rp)) {
 			unlock_fb_info(info);
 			interruptible_sleep_on(&jzfb->vsync_wq);
@@ -1763,7 +1750,6 @@ static int jzfb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 			return -EFAULT;
 		break;
 	case JZFB_SET_BACKGROUND:
-		pr_err("\n%d\n", __LINE__);
 		if (copy_from_user
 				(&osd.background, argp, sizeof(struct jzfb_bg))) {
 			dev_info(info->dev, "copy colorkey from user failed\n");
@@ -1773,7 +1759,6 @@ static int jzfb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 		}
 		break;
 	case JZFB_SET_COLORKEY:
-		pr_err("\n%d\n", __LINE__);
 		if (copy_from_user
 		    (&osd.color_key, argp, sizeof(struct jzfb_color_key))) {
 			dev_info(info->dev, "copy colorkey from user failed\n");
@@ -1782,7 +1767,6 @@ static int jzfb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 		jzfb_set_colorkey(info, &osd.color_key);
 		break;
 	case JZFB_16X16_BLOCK_EN:
-		pr_err("\n%d\n", __LINE__);
 		if (copy_from_user(&value, argp, sizeof(int)))
 			return -EFAULT;
 
@@ -1797,7 +1781,6 @@ static int jzfb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 		}
 		break;
 	case JZFB_ENABLE_FG0:
-		pr_err("\n%d\n", __LINE__);
 		if (copy_from_user(&value, argp, sizeof(int)))
 			return -EFAULT;
 		for (i = 0; i < jzfb->desc_num - 1; i++) {
@@ -1809,7 +1792,6 @@ static int jzfb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 		}
 		break;
 	case JZFB_ENABLE_FG1:
-		pr_err("\n%d\n", __LINE__);
 		if (copy_from_user(&value, argp, sizeof(int)))
 			return -EFAULT;
 		if (value) {
@@ -1819,7 +1801,6 @@ static int jzfb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 		}
 		break;
 	case JZFB_GET_LCDTYPE:
-		pr_err("\n%d\n", __LINE__);
 		wmb();
 		if(copy_to_user(argp, &(jzfb->pdata->lcd_type), sizeof(int))){
 			dev_info(info->dev, "copy lcd_type to user failed\n");
@@ -1828,7 +1809,6 @@ static int jzfb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 		break;
 
 	default:
-		pr_err("\n%d\n", __LINE__);
 		jzfb_image_enh_ioctl(info, cmd, arg);
 		break;
 	}
