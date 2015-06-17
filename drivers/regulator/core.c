@@ -1810,17 +1810,24 @@ static int _regulator_force_disable(struct regulator_dev *rdev)
 	int ret = 0;
 
 	/* force disable */
-	if (rdev->desc->ops->disable) {
+	if (rdev->ena_pin) {
+        ret = _regulator_do_disable(rdev);
+        if (ret < 0) {
+            rdev_err(rdev, "failed to disable\n");
+            return ret;
+        }
+	} else if (rdev->desc->ops->disable) {
 		/* ah well, who wants to live forever... */
 		ret = rdev->desc->ops->disable(rdev);
 		if (ret < 0) {
 			rdev_err(rdev, "failed to force disable\n");
 			return ret;
 		}
-		/* notify other consumers that power has been forced off */
-		_notifier_call_chain(rdev, REGULATOR_EVENT_FORCE_DISABLE |
-			REGULATOR_EVENT_DISABLE, NULL);
 	}
+	rdev->use_count = 0;
+    /* notify other consumers that power has been forced off */
+    _notifier_call_chain(rdev, REGULATOR_EVENT_FORCE_DISABLE |
+        REGULATOR_EVENT_DISABLE, NULL);
 
 	return ret;
 }
