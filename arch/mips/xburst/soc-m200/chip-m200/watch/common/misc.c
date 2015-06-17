@@ -39,6 +39,12 @@ struct platform_device snd_newton_device = {
 };
 #endif
 
+#if IS_ENABLED(CONFIG_SND_ASOC_INGENIC_WATCH_ICDC)
+struct platform_device snd_watch_device = {
+    .name = "ingenic-watch",
+};
+#endif
+
 #ifdef CONFIG_JZ_BATTERY
 static struct jz_battery_info  dorado_battery_info = {
 	.max_vol        = 4050,
