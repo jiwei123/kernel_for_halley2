@@ -893,108 +893,136 @@ config I2C4_JZ4780_PF
 	bool "gpf24 & gpf25"
 endchoice
 
-config I2C_V12_JZ
-        tristate "Ingenic SoC based on Xburst arch's I2C controler Driver support"
-	depends on MACH_XBURST
+comment "Xburst soc M200 internal i2c controller"
+    depends on SOC_M200
+
+
+menuconfig I2C0_MODE_SLECT
+	bool "i2c0 mode select"
 	default n
 	help
-	  Say Y here in order to support Ingenic SoC's I2C Controller Drvier,
-	  for example, M200, M150, JZ4775, JZ4780, and so on.
+		Say 'Y' to enable i2c0 mode  support.
 
-config I2C_FIFO_LEN
-        int "JZ_V12 I2C Controller FIFO length"
-	default 64
-	depends on I2C_V12_JZ
-	help
-	  M200 and JZ4775 have 64 entries FIFO.
+if I2C0_MODE_SLECT
 
-config I2C_DEBUG_INFO
-	bool "enable or disable Ingenic Soc's I2C driver debug info"
-	default n
-	depends on I2C_V12_JZ
-	help
-	  I2C debug print info, you can get the debug information from
-	  /sys/devices/platform/jz_i2c.x/debug_info,
-	  for example, echo 3 > /sys/devices/platform/jz_i2c.x/debug
+config I2C0_V12_JZ
+	tristate "JZ_v12 i2c controler 0 Interface support"
+	depends on SOC_M200 && !SOFT_I2C0_GPIO_V12_JZ
 
 config SOFT_I2C0_GPIO_V12_JZ
 	bool "soft gpio for i2c controler 0 Interface support"
 	depends on I2C_GPIO
 
-config I2C0_V12_JZ
-        tristate "JZ_v12 i2c controler 0 Interface support"
-	depends on I2C_V12_JZ && !SOFT_I2C0_GPIO_V12_JZ
-	default n
-
 config I2C0_SPEED
-        int "Jz_v12 i2c0 speed in KHZ"
-        range 100 400
-        default 400
-        depends on I2C0_V12_JZ || SOFT_I2C0_GPIO_V12_JZ
+	int "Jz_v12 i2c0 speed in KHZ"
+	range 100 400
+	default 100
+    depends on I2C0_V12_JZ || SOFT_I2C0_GPIO_V12_JZ
+
+config I2C0_INTERNAL_PULL
+	bool "set i2c0 to internal pull"
+	depends on I2C0_V12_JZ || SOFT_I2C0_GPIO_V12_JZ
+endif
+
+menuconfig I2C1_MODE_SLECT
+	bool "i2c1 mode select"
+	default n
+	help
+		Say 'Y' to enable i2c1 mode  support.
+
+if I2C1_MODE_SLECT
+config I2C1_V12_JZ
+	tristate "JZ_v12 i2c controler 1 Interface support"
+	depends on SOC_M200 && !SOFT_I2C1_GPIO_V12_JZ
+
 config SOFT_I2C1_GPIO_V12_JZ
 	bool "soft gpio for i2c controler 1 Interface support"
 	depends on I2C_GPIO
 
-config I2C1_V12_JZ
-        tristate "JZ_v12 i2c controler 1 Interface support"
-	depends on I2C_V12_JZ && !SOFT_I2C1_GPIO_V12_JZ
-	default n
-
 config I2C1_SPEED
-        int "Jz_v12 i2c1 speed in KHZ"
-        range 10 400
-        default 400
+	int "Jz_v12 i2c1 speed in KHZ"
+	range 10 400
+	default 400
+    depends on I2C1_V12_JZ || SOFT_I2C1_GPIO_V12_JZ
+
+config I2C1_INTERNAL_PULL
+	bool "set i2c1 to internal pull"
 	depends on I2C1_V12_JZ || SOFT_I2C1_GPIO_V12_JZ
+endif
+
+menuconfig I2C2_MODE_SLECT
+	bool "i2c2 mode select"
+	default n
+	help
+		Say 'Y' to enable i2c2 mode support.
+
+if I2C2_MODE_SLECT
+config I2C2_V12_JZ
+	tristate "JZ_v12 i2c controler 2 Interface support"
+	depends on SOC_M200 && !SOFT_I2C2_GPIO_V12_JZ
+
+
+choice
+	prompt "JZ_v12 i2c controler 2  function pins select"
+	depends on I2C2_V12_JZ
+	default I2C2_PA
+config I2C3_PA
+	bool "gpa16 & gpa17"
+config I2C3_PE
+	bool "gpe0 & gpe3"
+endchoice
 
 config  SOFT_I2C2_GPIO_V12_JZ
-    bool "soft gpio for i2c controler 2 Interface support"
+	bool "soft gpio for i2c controler 2 Interface support"
 	depends on I2C_GPIO
-
-config I2C2_V12_JZ
-        tristate "JZ_v12 i2c controler 2 Interface support"
-	depends on I2C_V12_JZ && !SOFT_I2C2_GPIO_V12_JZ
-	default n
-
-choice
-        prompt "JZ_v12 i2c controler 2  function pins select"
-        depends on I2C2_V12_JZ
-        default I2C2_PA
-config I2C3_PA
-        bool "GPIO_PA16 & GPIO_PA17"
-config I2C3_PE
-        bool "GPIO_PE0 & GPIO_PE3"
-endchoice
 
 config I2C2_SPEED
-        int "Jz_v12 i2c2 speed in KHZ"
-        range 100 400
-        default 100
+	int "Jz_v12 i2c2 speed in KHZ"
+	range 100 400
+	default 100
+    depends on I2C2_V12_JZ || SOFT_I2C2_GPIO_V12_JZ
+
+config I2C2_INTERNAL_PULL
+	bool "set i2c2 to internal pull"
 	depends on I2C2_V12_JZ || SOFT_I2C2_GPIO_V12_JZ
+endif
 
-config  SOFT_I2C3_GPIO_V12_JZ
-    bool "soft gpio for i2c controler 3 Interface support"
-	depends on I2C_GPIO
 
-config I2C3_V12_JZ
-        tristate "JZ_v12 i2c controler 3 Interface support"
-	depends on I2C_V12_JZ && !SOFT_I2C3_GPIO_V12_JZ
+menuconfig I2C3_MODE_SLECT
+	bool "i2c3 mode select"
 	default n
+	help
+		Say 'Y' to enable i2c3 mode support.
+
+if I2C3_MODE_SLECT
+config I2C3_V12_JZ
+	tristate "JZ i2c v12 controler 3 Interface support"
+	depends on SOC_M200 && !SOFT_I2C3_GPIO_V12_JZ
 
 choice
-        prompt "JZ_v12 i2c controler 3  function pins select"
-        depends on I2C3_V12_JZ
-        default I2C3_PB
+	prompt "JZ_v12 i2c controler 3  function pins select"
+	depends on I2C3_V12_JZ
+	default I2C3_PB
 config I2C3_PB
-        bool "GPIO_PB7 & GPIO_PB8"
+	bool "gpb7 & gpb8"
 config I2C3_PC
-        bool "GPIO_PC22 & GPIO_PC23"
+	bool "gpc22 & gpb23"
 endchoice
 
+config SOFT_I2C3_GPIO_V12_JZ
+	bool "soft gpio for i2c controler 3 Interface support"
+	depends on I2C_GPIO
+
 config I2C3_SPEED
-        int "Jz_v12 i2c3 speed in KHZ"
-        range 100 400
-        default 100
-        depends on I2C3_V12_JZ || SOFT_I2C3_GPIO_V12_JZ
+	int "Jz_v12 i2c3 speed in KHZ"
+	range 100 400
+	default 100
+    depends on I2C3_V12_JZ || SOFT_I2C3_GPIO_V12_JZ
+
+config I2C3_INTERNAL_PULL
+	bool "set i2c3 to internal pull"
+	depends on I2C3_V12_JZ || SOFT_I2C3_GPIO_V12_JZ
+endif
 
 config I2C_JZV10_WAIT_MS
         int "JZ_v10 i2c bus wait time in ms"
