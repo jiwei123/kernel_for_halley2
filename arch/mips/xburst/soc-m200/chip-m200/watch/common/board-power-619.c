@@ -49,6 +49,12 @@ static struct regulator_consumer_supply ricoh619_dc1_supply_0[] = {
 	REGULATOR_SUPPLY(DC1_NAME, NULL),
 };
 
+static struct regulator_consumer_supply ricoh619_dc1_slp_supply_0[] = {
+#ifdef DC1_SLP_NAME
+	REGULATOR_SUPPLY(DC1_SLP_NAME, NULL),
+#endif
+};
+
 static struct regulator_consumer_supply ricoh619_dc2_supply_0[] = {
 	REGULATOR_SUPPLY(DC2_NAME, NULL),
 };
@@ -64,6 +70,7 @@ static struct regulator_consumer_supply ricoh619_dc4_supply_0[] = {
 static struct regulator_consumer_supply ricoh619_dc5_supply_0[] = {
 	REGULATOR_SUPPLY(DC5_NAME, NULL),
 };
+
 static struct regulator_consumer_supply ricoh619_ldo1_supply_0[] = {
 	REGULATOR_SUPPLY(LDO1_NAME, NULL),
 };
@@ -107,7 +114,7 @@ static struct regulator_consumer_supply ricoh619_ldortc2_supply_0[] = {
 };
 
 #define RICOH_PDATA_INIT(_name, _sname, _minmv, _maxmv, _supply_reg, _always_on, \
-	_boot_on, _apply_uv, _init_uV, _sleep_uV, _init_enable, _init_apply, _flags, \
+	_boot_on, _apply_uv, _init_uV, _init_enable, _init_apply, _flags, \
 	_ext_contol, _ds_slots) \
 	static struct ricoh619_regulator_platform_data pdata_##_name##_##_sname = \
 	{								\
@@ -130,7 +137,6 @@ static struct regulator_consumer_supply ricoh619_ldortc2_supply_0[] = {
 			.supply_regulator = _supply_reg,		\
 		},							\
 		.init_uV =  _init_uV * 1000,				\
-		.sleep_uV = _sleep_uV * 1000,				\
 		.init_enable = _init_enable,				\
 		.init_apply = _init_apply,				\
 		.sleep_slots = _ds_slots,				\
@@ -144,39 +150,41 @@ static struct regulator_consumer_supply ricoh619_ldortc2_supply_0[] = {
 /*_name,_sname,_minmv,_maxmv,_supply_reg,_always_on,_boot_on,_apply_uv,_init_uV,_init_enable,_init_apply,
  * _flags,_ext_contol,_ds_slots) */
 RICOH_PDATA_INIT(dc1, 0,	600,   1200, 0, DC1_ALWAYS_ON, DC1_BOOT_ON, 1,
-		 DC1_INIT_UV, DC1_INIT_SLP_UV, DC1_INIT_ENABLE, 1, 0, 0, 0);
+		 DC1_INIT_UV, DC1_INIT_ENABLE, 1, 0, 0, 0);
+RICOH_PDATA_INIT(dc1_slp, 0,	600,   1200, 0, DC1_ALWAYS_ON, DC1_BOOT_ON, 1,
+		 DC1_INIT_UV, DC1_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(dc2, 0,	600,   3500, 0, DC2_ALWAYS_ON, DC2_BOOT_ON, 1,
-		 DC2_INIT_UV, DC2_INIT_SLP_UV, DC1_INIT_ENABLE, 1, 0, 0, 0);
+		 DC2_INIT_UV, 1, DC1_INIT_ENABLE, 0, 0, 0);
 RICOH_PDATA_INIT(dc3, 0,	600,   3500, 0, DC3_ALWAYS_ON, DC3_BOOT_ON, 1,
-		 DC3_INIT_UV, DC3_INIT_SLP_UV, DC3_INIT_ENABLE, 1, 0, 0, 0);
+		 DC3_INIT_UV, DC3_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(dc4, 0,	600,   3500, 0, DC4_ALWAYS_ON, DC4_BOOT_ON, 1,
-		 DC4_INIT_UV, DC4_INIT_SLP_UV, DC4_INIT_ENABLE, 1, 0, 0, 0);
+		 DC4_INIT_UV, DC4_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(dc5, 0,	600,   3500, 0, DC5_ALWAYS_ON, DC5_BOOT_ON, 1,
-		 DC5_INIT_UV, DC5_INIT_SLP_UV, DC5_INIT_ENABLE, 1, 0, 0, 0);
+		 DC5_INIT_UV, DC5_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(ldo1, 0,	900,   3500, 0, LDO1_ALWAYS_ON, LDO1_BOOT_ON, 1,
-		 LDO1_INIT_UV, LDO1_INIT_SLP_UV, LDO1_INIT_ENABLE, 1, 0, 0, 0);
+		 LDO1_INIT_UV, LDO1_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(ldo2, 0,	900,   3500, 0, LDO2_ALWAYS_ON, LDO2_BOOT_ON, 1,
-		 LDO2_INIT_UV, LDO2_INIT_SLP_UV, LDO2_INIT_ENABLE, 1, 0, 0, 0);
+		 LDO2_INIT_UV, LDO2_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(ldo3, 0,	900,   3500, 0, LDO3_ALWAYS_ON, LDO3_BOOT_ON, 1,
-		 LDO3_INIT_UV, LDO3_INIT_SLP_UV, LDO3_INIT_ENABLE, 1, 0, 0, 0);
+		 LDO3_INIT_UV, LDO3_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(ldo4, 0,	900,   3500, 0, LDO4_ALWAYS_ON, LDO4_BOOT_ON, 1,
-		 LDO4_INIT_UV, LDO4_INIT_SLP_UV, LDO4_INIT_ENABLE, 1, 0, 0, 0);
+		 LDO4_INIT_UV, LDO4_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(ldo5, 0,	600,   3500, 0, LDO5_ALWAYS_ON, LDO5_BOOT_ON, 1,
-		 LDO5_INIT_UV, LDO5_INIT_SLP_UV, LDO5_INIT_ENABLE, 1, 0, 0, 0);
+		 LDO5_INIT_UV, LDO5_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(ldo6, 0,	600,   3500, 0, LDO6_ALWAYS_ON, LDO6_BOOT_ON, 1,
-		 LDO6_INIT_UV, LDO6_INIT_SLP_UV, LDO6_INIT_ENABLE, 1, 0, 0, 0);
+		 LDO6_INIT_UV, LDO6_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(ldo7, 0,	900,   3500, 0, LDO7_ALWAYS_ON, LDO7_BOOT_ON, 1,
-		 LDO7_INIT_UV, LDO7_INIT_SLP_UV, LDO7_INIT_ENABLE, 1, 0, 0, 0);
+		 LDO7_INIT_UV, LDO7_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(ldo8, 0,	900,   3500, 0, LDO8_ALWAYS_ON, LDO8_BOOT_ON, 1,
-		 LDO8_INIT_UV, LDO8_INIT_SLP_UV, LDO8_INIT_ENABLE, 1, 0, 0, 0);
+		 LDO8_INIT_UV, LDO8_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(ldo9, 0,	900,   3500, 0, LDO9_ALWAYS_ON, LDO9_BOOT_ON, 1,
-		 LDO9_INIT_UV, LDO9_INIT_SLP_UV, LDO9_INIT_ENABLE, 1, 0, 0, 0);
+		 LDO9_INIT_UV, LDO9_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(ldo10, 0,	900,   3500, 0, LDO10_ALWAYS_ON, LDO10_BOOT_ON, 1,
-		 LDO10_INIT_UV, LDO10_INIT_SLP_UV, LDO10_INIT_ENABLE, 1, 0, 0, 0);
+		 LDO10_INIT_UV, LDO10_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(ldortc1, 0,	1700,  3500, 0, LDORTC1_ALWAYS_ON, LDORTC1_BOOT_ON, 1,
-		 LDORTC1_INIT_UV, LDORTC1_INIT_SLP_UV, LDORTC1_INIT_ENABLE, 1, -1, -1, -1);
+		 LDORTC1_INIT_UV, LDORTC1_INIT_ENABLE, 1, -1, -1, -1);
 RICOH_PDATA_INIT(ldortc2, 0,	900,   3500, 0, LDORTC2_ALWAYS_ON, LDORTC2_BOOT_ON, 1,
-		 LDORTC2_INIT_UV, LDORTC2_INIT_SLP_UV, LDORTC2_INIT_ENABLE, 1, -1, -1, -1);
+		 LDORTC2_INIT_UV, LDORTC2_INIT_ENABLE, 1, -1, -1, -1);
 
 /*-------- if Ricoh RTC exists -----------*/
 #ifdef CONFIG_RTC_DRV_R5T619
@@ -241,11 +249,11 @@ static struct ricoh619_battery_platform_data ricoh619_battery_data = {
 	.type[0] = {
 		.ch_vfchg 	= 0x02,	/* VFCHG	= 0 - 4 (4.05v, 4.10v, 4.15v, 4.20v, 4.35v) */
 		.ch_vrchg 	= 0x4,	/* VRCHG	= 0 - 4 (3.85v, 3.90v, 3.95v, 4.00v, 4.10v) */
-		.ch_vbatovset 	= 0x0,	/* VBATOVSET	= 0 or 1 (0 : 4.38v(up)/3.95v(down) 1: 4.53v(up)/4.10v(down)) */
+		.ch_vbatovset 	= 0x1,	/* VBATOVSET	= 0 or 1 (0 : 4.38v(up)/3.95v(down) 1: 4.53v(up)/4.10v(down)) */
 		.ch_ichg 	= 0x09,	/* ICHG		= 0 - 0x1D (100mA - 3000mA) */
-		.ch_ilim_adp 	= 0x0e,	/* ILIM_ADP	= 0 - 0x1D (100mA - 3000mA) */
-		.ch_ilim_usb 	= 0x04,	/* ILIM_USB	= 0 - 0x1D (100mA - 3000mA) */
-		.ch_icchg 	= 0x03,	/* ICCHG	= 0 - 3 (50mA 100mA 150mA 200mA) */
+		.ch_ilim_adp 	= 0x18,	/* ILIM_ADP	= 0 - 0x1D (100mA - 3000mA) */
+		.ch_ilim_usb 	= 0x18,	/* ILIM_USB	= 0 - 0x1D (100mA - 3000mA) */
+		.ch_icchg 	= (CONFIG_RICOH61X_CHARGE_DONE_LIMIT),	/* ICCHG	= 0 - 3 (50mA 100mA 150mA 200mA) */
 		.fg_target_vsys = 3000,	/* This value is the target one to DSOC=0% */
 		.fg_target_ibat = 200, /* This value is the target one to DSOC=0% */
 		.fg_poff_vbat 	= 0, 	/* setting value of 0 per Vbat */
@@ -262,11 +270,11 @@ static struct ricoh619_battery_platform_data ricoh619_battery_data = {
 	.type[1] = {
 		.ch_vfchg 	= 0x03,	/* VFCHG	= 0 - 4 (4.05v, 4.10v, 4.15v, 4.20v, 4.35v) */
 		.ch_vrchg 	= 0x01,	/* VRCHG	= 0 - 4 (3.85v, 3.90v, 3.95v, 4.00v, 4.10v) */
-		.ch_vbatovset 	= 0x0,	/* VBATOVSET	= 0 or 1 (0 : 4.38v(up)/3.95v(down) 1: 4.53v(up)/4.10v(down)) */
+		.ch_vbatovset 	= 0x1,	/* VBATOVSET	= 0 or 1 (0 : 4.38v(up)/3.95v(down) 1: 4.53v(up)/4.10v(down)) */
 		.ch_ichg 	= 0x03,	/* ICHG		= 0 - 0x1D (100mA - 3000mA) */
-		.ch_ilim_adp 	= 0x0e,	/* ILIM_ADP	= 0 - 0x1D (100mA - 3000mA) */
-		.ch_ilim_usb 	= 0x04,	/* ILIM_USB	= 0 - 0x1D (100mA - 3000mA) */
-		.ch_icchg 	= 0x00,	/* ICCHG	= 0 - 3 (50mA 100mA 150mA 200mA) */
+		.ch_ilim_adp 	= 0x18,	/* ILIM_ADP	= 0 - 0x1D (100mA - 3000mA) */
+		.ch_ilim_usb 	= 0x18,	/* ILIM_USB	= 0 - 0x1D (100mA - 3000mA) */
+		.ch_icchg 	= (CONFIG_RICOH61X_CHARGE_DONE_LIMIT),	/* ICCHG	= 0 - 3 (50mA 100mA 150mA 200mA) */
 		.fg_target_vsys = 3000,	/* This value is the target one to DSOC=0% */
 		.fg_target_ibat = 100, /* This value is the target one to DSOC=0% */
 		.fg_poff_vbat 	= 0, 	/* setting value of 0 per Vbat */
@@ -280,6 +288,52 @@ static struct ricoh619_battery_platform_data ricoh619_battery_data = {
 		.jt_ichg_h 	= 0x04,	/* ICHG Hi   	= 0 - 0x1D (100mA - 3000mA) */
 		.jt_ichg_l 	= 0x01,	/* ICHG Low   	= 0 - 0x1D (100mA - 3000mA) */
 	},
+	/*the battery for 300mAh or 320mAh*/
+	.type[2] = {
+		.ch_vfchg 	= 0x03,	/* VFCHG	= 0 - 4 (4.05v, 4.10v, 4.15v, 4.20v, 4.35v) */
+		.ch_vrchg 	= 0x04,	/* VRCHG	= 0 - 4 (3.85v, 3.90v, 3.95v, 4.00v, 4.10v) */
+		.ch_vbatovset 	= 0x1,	/* VBATOVSET	= 0 or 1 (0 : 4.38v(up)/3.95v(down) 1: 4.53v(up)/4.10v(down)) */
+		.ch_ichg 	= 0x09,	/* ICHG		= 0 - 0x1D (100mA - 3000mA) */
+		.ch_ilim_adp 	= 0x18,	/* ILIM_ADP	= 0 - 0x1D (100mA - 3000mA) */
+		.ch_ilim_usb 	= 0x18,	/* ILIM_USB	= 0 - 0x1D (100mA - 3000mA) */
+		.ch_icchg 	= (CONFIG_RICOH61X_CHARGE_DONE_LIMIT),	/* ICCHG	= 0 - 3 (50mA 100mA 150mA 200mA) */
+		.fg_target_vsys = 3000,	/* This value is the target one to DSOC=0% */
+		.fg_target_ibat = 100, /* This value is the target one to DSOC=0% */
+		.fg_poff_vbat 	= 0, 	/* setting value of 0 per Vbat */
+		.fg_rsense_val	= 100,	/* setting value of R Sense */
+		.jt_en 		= 0,	/* JEITA Enable	  = 0 or 1 (1:enable, 0:disable) */
+		.jt_hw_sw 	= 1,	/* JEITA HW or SW = 0 or 1 (1:HardWare, 0:SoftWare) */
+		.jt_temp_h 	= 50,	/* degree C */
+		.jt_temp_l 	= 12,	/* degree C */
+		.jt_vfchg_h 	= 0x03,	/* VFCHG High  	= 0 - 4 (4.05v, 4.10v, 4.15v, 4.20v, 4.35v) */
+		.jt_vfchg_l 	= 0,	/* VFCHG High  	= 0 - 4 (4.05v, 4.10v, 4.15v, 4.20v, 4.35v) */
+		.jt_ichg_h 	= 0x04,	/* ICHG Hi   	= 0 - 0x1D (100mA - 3000mA) */
+		.jt_ichg_l 	= 0x01,	/* ICHG Low   	= 0 - 0x1D (100mA - 3000mA) */
+	},
+	/*the battery for 200mAh*/
+	.type[3] = {
+		.ch_vfchg 	= 0x03,	/* VFCHG	= 0 - 4 (4.05v, 4.10v, 4.15v, 4.20v, 4.35v) */
+		.ch_vrchg 	= 0x04,	/* VRCHG	= 0 - 4 (3.85v, 3.90v, 3.95v, 4.00v, 4.10v) */
+		.ch_vbatovset 	= 0x1,	/* VBATOVSET	= 0 or 1 (0 : 4.38v(up)/3.95v(down) 1: 4.53v(up)/4.10v(down)) */
+		.ch_ichg 	= 0x07,	/* ICHG		= 0 - 0x1D (100mA - 3000mA) */
+		.ch_ilim_adp 	= 0x18,	/* ILIM_ADP	= 0 - 0x1D (100mA - 3000mA) */
+		.ch_ilim_usb 	= 0x18,	/* ILIM_USB	= 0 - 0x1D (100mA - 3000mA) */
+		.ch_icchg 	= 0x03,	/* ICCHG	= 0 - 3 (50mA 100mA 150mA 200mA) */
+		.fg_target_vsys = 3000,	/* This value is the target one to DSOC=0% */
+		.fg_target_ibat = 100, /* This value is the target one to DSOC=0% */
+		.fg_poff_vbat 	= 0, 	/* setting value of 0 per Vbat */
+		.fg_rsense_val	= 100,	/* setting value of R Sense */
+		.jt_en 		= 0,	/* JEITA Enable	  = 0 or 1 (1:enable, 0:disable) */
+		.jt_hw_sw 	= 1,	/* JEITA HW or SW = 0 or 1 (1:HardWare, 0:SoftWare) */
+		.jt_temp_h 	= 50,	/* degree C */
+		.jt_temp_l 	= 12,	/* degree C */
+		.jt_vfchg_h 	= 0x03,	/* VFCHG High  	= 0 - 4 (4.05v, 4.10v, 4.15v, 4.20v, 4.35v) */
+		.jt_vfchg_l 	= 0,	/* VFCHG High  	= 0 - 4 (4.05v, 4.10v, 4.15v, 4.20v, 4.35v) */
+		.jt_ichg_h 	= 0x04,	/* ICHG Hi   	= 0 - 0x1D (100mA - 3000mA) */
+		.jt_ichg_l 	= 0x01,	/* ICHG Low   	= 0 - 0x1D (100mA - 3000mA) */
+	},
+
+
 	/*
 	.type[2] = {
 		.ch_vfchg = 0x0,
@@ -327,6 +381,7 @@ static struct ricoh619_battery_platform_data ricoh619_battery_data = {
 
 #define RICOH619_DEV_REG 		\
 	RICOH_REG(DC1, dc1, 0),		\
+        RICOH_REG(DC1_SLP, dc1_slp, 0),	\
 	RICOH_REG(DC2, dc2, 0),		\
 	RICOH_REG(DC3, dc3, 0),		\
 	RICOH_REG(DC4, dc4, 0),		\

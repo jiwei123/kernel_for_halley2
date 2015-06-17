@@ -46,31 +46,6 @@
 #define LDORTC2_INIT_UV 1100
 /* ****************************PMU DC/LDO DEFAULT V END********************** */
 
-/* ****************************PMU DC/LDO SLP DEFAULT V********************** */
-#define DC1_INIT_SLP_UV     975
-#define DC2_INIT_SLP_UV     1200
-#define DC3_INIT_SLP_UV     1200
-#ifdef CONFIG_JZ_EPD_V12
-#define DC4_INIT_SLP_UV     1800
-#else
-#define DC4_INIT_SLP_UV     1800
-#endif
-#define DC5_INIT_SLP_UV     3300
-#define LDO1_INIT_SLP_UV    3400
-#define LDO2_INIT_SLP_UV    3300
-#define LDO3_INIT_SLP_UV    2500
-#define LDO4_INIT_SLP_UV    1800
-#define LDO5_INIT_SLP_UV    2500
-#define LDO6_INIT_SLP_UV    2800
-#define LDO7_INIT_SLP_UV    3000
-#define LDO8_INIT_SLP_UV    1800
-#define LDO9_INIT_SLP_UV    1800
-#define LDO10_INIT_SLP_UV   2800
-#define LDORTC1_INIT_SLP_UV 1800
-#define LDORTC2_INIT_SLP_UV 1100
-/* ****************************PMU DC/LDO SLP DEFAULT V END****************** */
-
-
 /* ****************************PMU DC/LDO ALWAYS ON************************** */
 #define DC1_ALWAYS_ON     1
 #define DC2_ALWAYS_ON     1
@@ -99,9 +74,9 @@
 #define DC5_BOOT_ON     1
 #define LDO1_BOOT_ON    1
 #define LDO2_BOOT_ON    1
-#define LDO3_BOOT_ON    1
+#define LDO3_BOOT_ON    0
 #define LDO4_BOOT_ON    1
-#define LDO5_BOOT_ON    1
+#define LDO5_BOOT_ON    0
 #define LDO6_BOOT_ON    1
 #define LDO7_BOOT_ON    0
 #define LDO8_BOOT_ON    0

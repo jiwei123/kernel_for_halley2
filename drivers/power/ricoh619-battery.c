@@ -19,7 +19,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-#define RICOH61x_BATTERY_VERSION "RICOH61x_BATTERY_VERSION: 2014.7.21 V3.1.1.1"
+#define RICOH61x_BATTERY_VERSION "RICOH61x_BATTERY_VERSION: 2015.1.19 V3.1.1.2"
 
 
 #include <linux/kernel.h>
@@ -38,6 +38,17 @@
 #include <linux/irq.h>
 
 
+#ifdef CONFIG_CHARGER_HOLD_WAKE_LOCK
+#include <linux/wakelock.h>
+
+struct wake_lock suspend_lock;
+int suspend_lock_locked;
+
+#endif
+
+//如果使能这个这个配置，则为PMU 电量计驱动，
+//否则便是ADC 电量计驱动，这里仅是引用PMU的状态
+#ifdef CONFIG_RICOH61X_BAT
 /* define for function */
 #define ENABLE_FUEL_GAUGE_FUNCTION
 #define ENABLE_LOW_BATTERY_DETECTION
@@ -46,9 +57,7 @@
 /* #define ENABLE_FG_KEEP_ON_MODE */
 #define ENABLE_OCV_TABLE_CALIB
 /* #define ENABLE_MASKING_INTERRUPT_IN_SLEEP */
-
-
-
+#endif
 
 /* FG setting */
 #define RICOH61x_REL1_SEL_VALUE		64
@@ -173,10 +182,13 @@ struct ricoh61x_battery_info {
 #endif
 	struct delayed_work	charge_monitor_work;
 	struct delayed_work	get_charge_work;
+	int			flag_get_charge_work;
 	struct delayed_work	jeita_work;
-
+#ifdef ENABLE_FUEL_GAUGE_FUNCTION
 	struct work_struct	irq_work;	/* for Charging & VADP/VUSB */
-
+#else
+	struct delayed_work irq_work;
+#endif
 	struct workqueue_struct *monitor_wqueue;
 	struct workqueue_struct *workqueue;	/* for Charging & VUSB/VADP */
 
@@ -234,6 +246,7 @@ int g_full_flag;
 int charger_irq;
 int g_soc;
 int g_fg_on_mode;
+int sum_time;
 
 /*This is for full state*/
 static int BatteryTableFlageDef=0;
@@ -242,8 +255,12 @@ static int Battery_Type(void)
 {
 #ifdef CONFIG_LARGE_CAPACITY_BATTERY
 	BatteryTypeDef = 0;
-#elif CONFIG_SMALL_CAPACITY_BATTERY
+#elif defined(CONFIG_SMALL_CAPACITY_BATTERY)
 	BatteryTypeDef = 1;
+#elif defined(CONFIG_300MAH_CAPACITY_BATTERY)||defined(CONFIG_320MAH_CAPACITY_BATTERY)
+	BatteryTypeDef = 2;
+#elif defined(CONFIG_200MAH_CAPACITY_BATTERY)
+	BatteryTypeDef = 3;
 #endif
 	return BatteryTypeDef;
 }
@@ -252,17 +269,35 @@ static int Battery_Table(void)
 {
 	return BatteryTableFlageDef;
 }
-
+#ifdef ENABLE_FUEL_GAUGE_FUNCTION
 static void ricoh61x_battery_work(struct work_struct *work)
 {
 	struct ricoh61x_battery_info *info = container_of(work,
 		struct ricoh61x_battery_info, monitor_work.work);
 
+	pr_debug("PMU: %s\n", __func__);
 	power_supply_changed(&info->battery);
 	queue_delayed_work(info->monitor_wqueue, &info->monitor_work,
 			   info->monitor_time);
 }
+#else
+static void update_battery(struct ricoh61x_battery_info *info, int status)
+{
+	struct power_supply *psy_battery = power_supply_get_by_name("battery");
+	struct jz_battery *jz_battery = container_of(psy_battery, struct jz_battery, battery);
 
+	set_charger_offline(jz_battery, USB);
+	if (status == POWER_SUPPLY_STATUS_NOT_CHARGING)
+		set_charger_offline(jz_battery, AC);
+	else
+		set_charger_online(jz_battery, AC);
+	jz_battery->status = status;
+}
+#endif
+extern void dwc2_gadget_plug_change(int plugin);
+static int get_power_supply_status(struct ricoh61x_battery_info *info);
+static int get_power_supply_Android_status(struct ricoh61x_battery_info *info);
+ int is_ac_online(void);
 #ifdef ENABLE_FUEL_GAUGE_FUNCTION
 static int measure_vbatt_FG(struct ricoh61x_battery_info *info, int *data);
 static int measure_Ibatt_FG(struct ricoh61x_battery_info *info, int *data);
@@ -274,7 +309,7 @@ static int get_check_fuel_gauge_reg(struct ricoh61x_battery_info *info,
 					 int Reg_h, int Reg_l, int enable_bit);
 static int calc_capacity_in_period(struct ricoh61x_battery_info *info,
 				 int *cc_cap, bool *is_charging, bool cc_rst);
-static int get_charge_priority(struct ricoh61x_battery_info *info, bool *data);
+ int get_charge_priority(struct ricoh61x_battery_info *info, bool *data);
 static int set_charge_priority(struct ricoh61x_battery_info *info, bool *data);
 static int get_power_supply_status(struct ricoh61x_battery_info *info);
 static int get_power_supply_Android_status(struct ricoh61x_battery_info *info);
@@ -1216,10 +1251,11 @@ static void ricoh61x_displayed_work(struct work_struct *work)
 						info->soca->displayed_soc
 							 = min(10000, info->soca->displayed_soc);
 						info->soca->displayed_soc = max(0, info->soca->displayed_soc);
-
+#if 0
 						if (info->soca->displayed_soc >= 9890) {
 							info->soca->displayed_soc = 99 * 100;
 						}
+#endif
 					}
 				}
 			} else {
@@ -1302,7 +1338,7 @@ static void ricoh61x_displayed_work(struct work_struct *work)
 		}
 	}
 
-	if (RICOH61x_SOCA_DISP == info->soca->status) {
+	else if (RICOH61x_SOCA_DISP == info->soca->status) {
 
 		info->soca->soc = calc_capacity_2(info);
 
@@ -1453,9 +1489,10 @@ static void ricoh61x_displayed_work(struct work_struct *work)
 			}
 		}
 
-		err = ricoh61x_read(info->dev->parent, PSWR_REG, &val);
-		val &= 0x7f;
-		info->soca->soc = val * 100;
+		//err = ricoh61x_read(info->dev->parent, PSWR_REG, &val);
+		//val &= 0x7f;
+		//info->soca->soc = val * 100;
+		info->soca->soc = info->soca->init_pswr * 100;
 		if (err < 0) {
 			dev_err(info->dev,
 				 "Error in reading PSWR_REG %d\n", err);
@@ -1509,6 +1546,8 @@ static void ricoh61x_displayed_work(struct work_struct *work)
 				dev_err(info->dev, "Error in writing PSWR_REG\n");
 			g_soc = val;
 
+			err = calc_capacity_in_period(info, &cc_cap, &is_charging,true);
+			info->soca->init_pswr = val;
 			if ((info->soca->soc == 0) && (calculated_ocv
 					< get_OCV_voltage(info, 0))) {
 				info->soca->displayed_soc = 0;
@@ -1675,9 +1714,7 @@ end_flow:
 		if (err < 0)
 			dev_err(info->dev, "Read cc_sum Error !!-----\n");
 	}
-	else if(g_fg_on_mode==0 && RICOH61x_SOCA_UNSTABLE != info->soca->status
-			&& RICOH61x_SOCA_LOW_VOL != info->soca->status
-			&& RICOH61x_SOCA_FULL != info->soca->status)  // Ross Function
+	else if(g_fg_on_mode==0 )  // Ross Function
 	{
 			err = set_pswr(info);
 			if(err<0)
@@ -1687,7 +1724,18 @@ end_flow:
 			if(err<0)
 				pr_debug("Wrong when calc_capacity\n");
 
-			if(cc_cap > 100)
+			if ((RICOH61x_SOCA_FULL != info->soca->status)
+					&& info->soca->Ibat_ave > -20 )
+			{
+				// Do not reset CC
+				//
+			}
+			else if (RICOH61x_SOCA_ZERO != info->soca->status)
+			{
+				// Do not reset CC
+				//
+			}
+			else if(cc_cap > 100 )
 				{
 					cc_left = cc_cap%100;
 					soc_diff = cc_cap/100;
@@ -1701,6 +1749,15 @@ end_flow:
 					if(err<0)
 							pr_debug("set error!\n");
 				}
+	}
+
+	info->flag_get_charge_work = info->flag_get_charge_work - 1;   // Monitor the get charge work if it is alived
+	if (info->flag_get_charge_work <=0)
+	{
+		pr_debug("PMU: get_charge_work abnormal hangup, restarting...\n");
+		cancel_delayed_work(&info->get_charge_work);
+		queue_delayed_work(info->monitor_wqueue, &info->get_charge_work,
+					 RICOH61x_CHARGE_CALC_TIME * HZ);
 	}
 
 	pr_debug("PMU:STATUS= %d: IBAT= %d: VSYS= %d: VBAT= %d: DSOC= %d: RSOC= %d:\n",
@@ -2003,6 +2060,7 @@ static void ricoh61x_get_charge_work(struct work_struct *work)
 		info->soca->Vbat_ave = Vbat_temp;
 		info->soca->Vsys_ave = Vsys_temp;
 		info->soca->Ibat_ave = Ibat_temp;
+		info->flag_get_charge_work = 5;   // Monitor the get charge work if it is alived
 	}
 
 	info->soca->chg_count = 0;
@@ -2129,6 +2187,8 @@ static int ricoh61x_init_fgsoca(struct ricoh61x_battery_info *info)
 
 	queue_delayed_work(info->monitor_wqueue, &info->get_charge_work,
 					 RICOH61x_CHARGE_MONITOR_TIME * HZ);
+	info->flag_get_charge_work = 5;   // Monitor the get charge work if it is alived
+
 	if (info->jt_en) {
 		if (info->jt_hw_sw) {
 			/* Enable JEITA function supported by H/W */
@@ -2160,12 +2220,35 @@ static void ricoh61x_changed_work(struct work_struct *work)
 {
 	struct ricoh61x_battery_info *info = container_of(work,
 		struct ricoh61x_battery_info, changed_work.work);
-
+#ifdef	ENABLE_FUEL_GAUGE_FUNCTION
+	pr_debug("PMU: %s\n", __func__);
 	power_supply_changed(&info->battery);
+#else
+	static int virgin = 1;
+	int insert = is_ac_online();
+	int status;
 
+	printk("ricoh619_charger:%s\n", __FUNCTION__);
+
+	if (virgin) {
+		virgin = 0;
+		pr_debug("ricoh619_charger: USB %s\n", insert ? "connect" : "disconnect");
+#ifdef CONFIG_USB_JZ_DWC2
+		dwc2_gadget_plug_change(insert);
+#endif
+	}
+	status = get_power_supply_Android_status(info);
+	if(info->status != status){
+		info->status = status;
+		update_battery(info, status);
+		power_supply_changed(&info->battery);
+	}
+	enable_irq(charger_irq + RICOH61x_IRQ_FCHGCMPINT);
+	enable_irq(charger_irq + RICOH61x_IRQ_FONCHGINT);
+#endif
 	return;
 }
-
+#ifdef ENABLE_FUEL_GAUGE_FUNCTION
 static int check_jeita_status(struct ricoh61x_battery_info *info, bool *is_jeita_updated)
 /*  JEITA Parameter settings
 *
@@ -2387,7 +2470,7 @@ static void ricoh61x_jeita_work(struct work_struct *work)
 
 	return;
 }
-
+#endif
 #ifdef ENABLE_FACTORY_MODE
 /*------------------------------------------------------*/
 /* Factory Mode						*/
@@ -2407,6 +2490,11 @@ static int ricoh61x_factory_mode(struct ricoh61x_battery_info *info)
 	if (!(val & 0x01)) /* No Adapter connected */
 		return ret;
 
+#ifdef CONFIG_CHARGER_HOLD_WAKE_LOCK
+    //when initial, check Adapter connecting, hold the wake_lock.
+    wake_lock(&suspend_lock);
+    suspend_lock_locked = 1;
+#endif
 	/* Rapid to Complete State change disable */
 	ret = ricoh61x_set_bits(info->dev->parent, CHGCTL1_REG, 0x40);
 
@@ -2473,7 +2561,7 @@ static void check_charging_state_work(struct work_struct *work)
 	return;
 }
 #endif /* ENABLE_FACTORY_MODE */
-
+#ifdef ENABLE_FUEL_GAUGE_FUNCTION
 static int Calc_Linear_Interpolation(int x0, int y0, int x1, int y1, int y)
 {
 	int	alpha;
@@ -2556,11 +2644,13 @@ static void ricoh61x_scaling_OCV_table(struct ricoh61x_battery_info *info, int c
 			}
 		}
 	}
+	pr_debug("PMU : %s : new table\n",__func__);
 	for (i = 0; i <= 10; i = i+1) {
 		temp = (battery_init_para[info->num][i*2]<<8)
 			 | (battery_init_para[info->num][i*2+1]);
 		/* conversion unit 1 Unit is 1.22mv (5000/4095 mv) */
 		temp = ((temp * 50000 * 10 / 4095) + 5) / 10;
+		pr_debug("PMU : %s : ocv_table %d is %d v\n",__func__, i, temp);
 	}
 
 }
@@ -2586,8 +2676,8 @@ static int ricoh61x_set_OCV_table(struct ricoh61x_battery_info *info)
 	//get ocv table
 	for (i = 0; i <= 10; i = i+1) {
 		info->soca->ocv_table_def[i] = get_OCV_voltage(info, i);
-	/*	pr_debug("PMU: %s : %d0%% voltage = %d uV\n",
-			 __func__, i, info->soca->ocv_table_def[i]);*/
+		pr_debug("PMU: %s : %d0%% voltage = %d uV\n",
+			 __func__, i, info->soca->ocv_table_def[i]);
 	}
 
 	temp =  (battery_init_para[info->num][24]<<8) | (battery_init_para[info->num][25]);
@@ -2622,7 +2712,7 @@ static int ricoh61x_set_OCV_table(struct ricoh61x_battery_info *info)
 	}
 
 	//for debug
-	//pr_debug("PMU : %s : target_vsys is %d target_ibat is %d\n",__func__,info->soca->target_vsys,info->soca->target_ibat * 20 / info->fg_rsense_val);
+	pr_debug("PMU : %s : target_vsys is %d target_ibat is %d\n",__func__,info->soca->target_vsys,info->soca->target_ibat * 20 / info->fg_rsense_val);
 
 	if ((info->soca->target_ibat == 0) || (info->soca->target_vsys == 0)) {	/* normal version */
 	} else {	/*Slice cutoff voltage version. */
@@ -2655,6 +2745,8 @@ static int ricoh61x_set_OCV_table(struct ricoh61x_battery_info *info)
 		goto err;
 	}
 	/////////////////////////////////
+
+
 	ret = ricoh61x_read_bank1(info->dev->parent, 0xDC, &val);
 	if (ret < 0) {
 		dev_err(info->dev, "batterry initialize error\n");
@@ -2709,6 +2801,7 @@ static int ricoh61x_set_OCV_table(struct ricoh61x_battery_info *info)
 		available_cap = battery_init_para[info->num][23]
 						+ (battery_init_para[info->num][22] << 8);
 
+
 		if (available_cap_ori == available_cap) {
 			ret = ricoh61x_bulk_writes_bank1(info->dev->parent,
 				BAT_INIT_TOP_REG, 22, battery_init_para[info->num]);
@@ -2739,17 +2832,17 @@ static int ricoh61x_set_OCV_table(struct ricoh61x_battery_info *info)
 err:
 	return ret;
 }
-
+#endif
 /* Initial setting of battery */
 static int ricoh61x_init_battery(struct ricoh61x_battery_info *info)
 {
 	int ret = 0;
+
+#ifdef ENABLE_FUEL_GAUGE_FUNCTION
 	uint8_t val;
 	uint8_t val2;
 	/* Need to implement initial setting of batery and error */
 	/* -------------------------- */
-#ifdef ENABLE_FUEL_GAUGE_FUNCTION
-
 	/* set relaxation state */
 	if (RICOH61x_REL1_SEL_VALUE > 240)
 		val = 0x0F;
@@ -2976,11 +3069,11 @@ static int ricoh61x_init_charger(struct ricoh61x_battery_info *info)
 	}
 		//debug messeage
 	err = ricoh61x_read(info->dev->parent, BATSET1_REG,&val);
-	//pr_debug("PMU : %s : after BATSET1_REG (0x%x) is 0x%x info->ch_vbatovset is 0x%x\n",__func__,BATSET1_REG,val,info->ch_vbatovset);
+	pr_debug("PMU : %s : after BATSET1_REG (0x%x) is 0x%x info->ch_vbatovset is 0x%x\n",__func__,BATSET1_REG,val,info->ch_vbatovset);
 
 		//debug messeage
 	err = ricoh61x_read(info->dev->parent, BATSET2_REG,&val);
-	//pr_debug("PMU : %s : before BATSET2_REG (0x%x) is 0x%x info->ch_vrchg is 0x%x info->ch_vfchg is 0x%x \n",__func__,BATSET2_REG,val,info->ch_vrchg,info->ch_vfchg);
+	pr_debug("PMU : %s : before BATSET2_REG (0x%x) is 0x%x info->ch_vrchg is 0x%x info->ch_vfchg is 0x%x \n",__func__,BATSET2_REG,val,info->ch_vrchg,info->ch_vfchg);
 
 
 	/* BATSET2_REG(0xBB) setting */
@@ -3042,7 +3135,7 @@ static int ricoh61x_init_charger(struct ricoh61x_battery_info *info)
 								 err);
 		goto free_device;
 	}
-
+#ifdef ENABLE_FUEL_GAUGE_FUNCTION
 	/* Set both edge for VUSB([3:2]=11b)/VADP([1:0]=11b) detect */
 	err = ricoh61x_read(info->dev->parent, RICOH61x_CHG_CTRL_DETMOD1, &val);
 	if (err < 0) {
@@ -3066,6 +3159,7 @@ static int ricoh61x_init_charger(struct ricoh61x_battery_info *info)
 								 err);
 		goto free_device;
 	}
+#endif
 
 
 	if (charge_status != POWER_SUPPLY_STATUS_FULL)
@@ -3094,7 +3188,7 @@ static int ricoh61x_init_charger(struct ricoh61x_battery_info *info)
 	} else {
 		vfchg_val = 4350;
 	}
-	//pr_debug("PMU : %s : test test val %d, val2 %d vfchg %d\n", __func__, val, val2, vfchg_val);
+	pr_debug("PMU : %s : test test val %d, val2 %d vfchg %d\n", __func__, val, val2, vfchg_val);
 
 	/* get  value */
 	err = ricoh61x_read(info->dev->parent, CHGISET_REG, &val);
@@ -3105,13 +3199,13 @@ static int ricoh61x_init_charger(struct ricoh61x_battery_info *info)
 	val &= 0xC0;
 	val2 = val >> 6;
 	icchg_val = 50 + val2 * 50;
-	//pr_debug("PMU : %s : test test val %d, val2 %d icchg %d\n", __func__, val, val2, icchg_val);
+	pr_debug("PMU : %s : test test val %d, val2 %d icchg %d\n", __func__, val, val2, icchg_val);
 
 	info->soca->OCV100_min = ( vfchg_val * 99 / 100 - (icchg_val * (rbat +20))/1000 - 20 ) * 1000;
 	info->soca->OCV100_max = ( vfchg_val * 101 / 100 - (icchg_val * (rbat +20))/1000 + 20 ) * 1000;
 
-//	pr_debug("PMU : %s : 100 min %d, 100 max %d vfchg %d icchg %d rbat %d\n",__func__,
-//	info->soca->OCV100_min,info->soca->OCV100_max,vfchg_val,icchg_val,rbat);
+	pr_debug("PMU : %s : 100 min %d, 100 max %d vfchg %d icchg %d rbat %d\n",__func__,
+	info->soca->OCV100_min,info->soca->OCV100_max,vfchg_val,icchg_val,rbat);
 
 #ifdef ENABLE_LOW_BATTERY_DETECTION
 	/* Set ADRQ=00 to stop ADC */
@@ -3255,13 +3349,17 @@ static int get_power_supply_Android_status(struct ricoh61x_battery_info *info)
 				return POWER_SUPPLY_STATUS_CHARGING;
 				break;
 
-		case	POWER_SUPPLY_STATUS_FULL:
-				if(info->soca->displayed_soc == 100 * 100) {
-					return POWER_SUPPLY_STATUS_FULL;
-				} else {
-					return POWER_SUPPLY_STATUS_CHARGING;
-				}
-				break;
+		case    POWER_SUPPLY_STATUS_FULL:
+#ifdef ENABLE_FUEL_GAUGE_FUNCTION
+                if(info->soca->displayed_soc == 100 * 100) {
+                    return POWER_SUPPLY_STATUS_FULL;
+                } else {
+                    return POWER_SUPPLY_STATUS_CHARGING;
+                }
+#else
+                return POWER_SUPPLY_STATUS_FULL;
+#endif
+                break;
 		default:
 				return POWER_SUPPLY_STATUS_UNKNOWN;
 				break;
@@ -3272,14 +3370,31 @@ static int get_power_supply_Android_status(struct ricoh61x_battery_info *info)
 
 static void charger_irq_work(struct work_struct *work)
 {
+#ifdef ENABLE_FUEL_GAUGE_FUNCTION
 	struct ricoh61x_battery_info *info
 		 = container_of(work, struct ricoh61x_battery_info, irq_work);
+#else
+	struct ricoh61x_battery_info *info
+		 = container_of(work, struct ricoh61x_battery_info, irq_work.work);
+#endif
 	int ret = 0;
 	uint8_t val = 0;
+	int chg_status;
 	//uint8_t adp_current_val = 0x0E;
 	//uint8_t usb_current_val = 0x04;
 
+	pr_debug("PMU:%s In\n", __func__);
+
+#ifdef ENABLE_FUEL_GAUGE_FUNCTION
 	power_supply_changed(&info->battery);
+#else
+	chg_status = get_power_supply_Android_status(info);
+	if (info->status != chg_status) {
+		info->status = chg_status;
+		update_battery(info, chg_status);
+		power_supply_changed(&info->battery);
+	}
+#endif
 
 	mutex_lock(&info->lock);
 
@@ -3296,15 +3411,17 @@ static void charger_irq_work(struct work_struct *work)
 	}
 #endif
 	info->chg_ctr = 0;
+	chg_status = info->chg_stat1;
 	info->chg_stat1 = 0;
 
+#ifdef ENABLE_FUEL_GAUGE_FUNCTION
 	/* Enable Interrupt for VADP/VUSB */
 	ret = ricoh61x_write(info->dev->parent, RICOH61x_INT_MSK_CHGCTR, 0xfc);
 	if (ret < 0)
 		dev_err(info->dev,
 			 "%s(): Error in enable charger mask INT %d\n",
 			 __func__, ret);
-
+#endif
 	/* Enable Interrupt for Charging & complete */
 	ret = ricoh61x_write(info->dev->parent, RICOH61x_INT_MSK_CHGSTS1, 0xfc);
 	if (ret < 0)
@@ -3341,8 +3458,25 @@ static void charger_irq_work(struct work_struct *work)
 			pr_debug("%s : val = %d unknown\n",__func__, val);
 			break;
 	}
+//if charging ,hold a wake_lock
+#ifdef CONFIG_CHARGER_HOLD_WAKE_LOCK
+    if((val > 0) && (suspend_lock_locked == 0)) {
+        wake_lock(&suspend_lock);
+        suspend_lock_locked = 1;
+    } else if((val == 0) && (suspend_lock_locked == 1)){
+        wake_unlock(&suspend_lock);
+        suspend_lock_locked = 0;
+    }
+#endif
 
 	mutex_unlock(&info->lock);
+	pr_debug("PMU:%s Out\n", __func__);
+#ifndef ENABLE_FUEL_GAUGE_FUNCTION
+	if((chg_status & 0x01) == 1)
+	    enable_irq(charger_irq + RICOH61x_IRQ_FONCHGINT);
+	if((chg_status & 0x02) == 2)
+	    enable_irq(charger_irq + RICOH61x_IRQ_FCHGCMPINT);
+#endif
 }
 
 #ifdef ENABLE_LOW_BATTERY_DETECTION
@@ -3352,6 +3486,8 @@ static void low_battery_irq_work(struct work_struct *work)
 		 struct ricoh61x_battery_info, low_battery_work.work);
 
 	int ret = 0;
+
+	pr_debug("PMU:%s In\n", __func__);
 
 	power_supply_changed(&info->battery);
 
@@ -3367,25 +3503,39 @@ static void low_battery_irq_work(struct work_struct *work)
 static irqreturn_t charger_in_isr(int irq, void *battery_info)
 {
 	struct ricoh61x_battery_info *info = battery_info;
+	pr_debug("PMU:%s\n", __func__);
 
 	info->chg_stat1 |= 0x01;
+#ifdef ENABLE_FUEL_GAUGE_FUNCTION
 	queue_work(info->workqueue, &info->irq_work);
+#else
+    printk("ricoh619_charger:%s\n",__func__);
+	disable_irq_nosync(charger_irq + RICOH61x_IRQ_FONCHGINT);
+	schedule_delayed_work(&info->irq_work, HZ/5);
+#endif
 	return IRQ_HANDLED;
 }
 
 static irqreturn_t charger_complete_isr(int irq, void *battery_info)
 {
 	struct ricoh61x_battery_info *info = battery_info;
+	pr_debug("PMU:%s\n", __func__);
 
 	info->chg_stat1 |= 0x02;
+#ifdef ENABLE_FUEL_GAUGE_FUNCTION
 	queue_work(info->workqueue, &info->irq_work);
-
+#else
+    printk("ricoh619_charger:%s\n",__func__);
+	disable_irq_nosync(charger_irq + RICOH61x_IRQ_FCHGCMPINT);
+	schedule_delayed_work(&info->irq_work, HZ/5);
+#endif
 	return IRQ_HANDLED;
 }
-
+#ifdef ENABLE_FUEL_GAUGE_FUNCTION
 static irqreturn_t charger_usb_isr(int irq, void *battery_info)
 {
 	struct ricoh61x_battery_info *info = battery_info;
+	pr_debug("PMU:%s\n", __func__);
 
 	info->chg_ctr |= 0x02;
 
@@ -3403,6 +3553,7 @@ static irqreturn_t charger_usb_isr(int irq, void *battery_info)
 static irqreturn_t charger_adp_isr(int irq, void *battery_info)
 {
 	struct ricoh61x_battery_info *info = battery_info;
+	pr_debug("PMU:%s\n", __func__);
 
 	info->chg_ctr |= 0x01;
 	queue_work(info->workqueue, &info->irq_work);
@@ -3415,7 +3566,7 @@ static irqreturn_t charger_adp_isr(int irq, void *battery_info)
 
 	return IRQ_HANDLED;
 }
-
+#endif
 
 #ifdef ENABLE_LOW_BATTERY_DETECTION
 /*************************************************************/
@@ -3427,6 +3578,8 @@ static irqreturn_t adc_vsysl_isr(int irq, void *battery_info)
 
 	struct ricoh61x_battery_info *info = battery_info;
 
+	pr_debug("PMU:%s\n", __func__);
+
 	queue_delayed_work(info->monitor_wqueue, &info->low_battery_work,
 					LOW_BATTERY_DETECTION_TIME*HZ);
 
@@ -3434,24 +3587,7 @@ static irqreturn_t adc_vsysl_isr(int irq, void *battery_info)
 }
 #endif
 
-/*
- * Get Charger Priority
- * - get higher-priority between VADP and VUSB
- * @ data: higher-priority is stored
- *         true : VUSB
- *         false: VADP
- */
-static int get_charge_priority(struct ricoh61x_battery_info *info, bool *data)
-{
-	int ret = 0;
-	uint8_t val = 0;
-
-	ret = ricoh61x_read(info->dev->parent, CHGCTL1_REG, &val);
-	val = val >> 7;
-	*data = (bool)val;
-
-	return ret;
-}
+#ifdef	ENABLE_FUEL_GAUGE_FUNCTION
 
 /*
  * Set Charger Priority
@@ -3473,7 +3609,6 @@ static int set_charge_priority(struct ricoh61x_battery_info *info, bool *data)
 	return ret;
 }
 
-#ifdef	ENABLE_FUEL_GAUGE_FUNCTION
 static int get_check_fuel_gauge_reg(struct ricoh61x_battery_info *info,
 					 int Reg_h, int Reg_l, int enable_bit)
 {
@@ -3868,8 +4003,30 @@ static int get_OCV_voltage(struct ricoh61x_battery_info *info, int index)
 	ret = ret * 100;
 	return ret;
 }
+static int measure_vsys_ADC(struct ricoh61x_battery_info *info, int *data)
+{
+	uint8_t data_l = 0, data_h = 0;
+	int ret;
+	ret = ricoh61x_read(info->dev->parent, VSYSDATAH_REG, &data_h);
+	if (ret < 0) {
+		dev_err(info->dev, "Error in reading the control register\n");
+	}
 
-#else
+	ret = ricoh61x_read(info->dev->parent, VSYSDATAL_REG, &data_l);
+	if (ret < 0) {
+		dev_err(info->dev, "Error in reading the control register\n");
+	}
+
+	*data = ((data_h & 0xff) << 4) | (data_l & 0x0f);
+	*data = *data * 1000 * 3 * 5 / 2 / 4095;
+	/* return unit should be 1uV */
+	*data = *data * 1000;
+
+	return 0;
+}
+#endif
+//#else
+#if 0
 /* battery voltage is get from ADC */
 static int measure_vbatt_ADC(struct ricoh61x_battery_info *info, int *data)
 {
@@ -3940,7 +4097,7 @@ err:
 	return -1;
 }
 #endif
-
+#if 0
 static int measure_vsys_ADC(struct ricoh61x_battery_info *info, int *data)
 {
 	uint8_t data_l = 0, data_h = 0;
@@ -3963,17 +4120,37 @@ static int measure_vsys_ADC(struct ricoh61x_battery_info *info, int *data)
 
 	return 0;
 }
-
+#endif
 static void ricoh61x_external_power_changed(struct power_supply *psy)
 {
 	struct ricoh61x_battery_info *info;
-
+#ifdef ENABLE_FUEL_GAUGE_FUNCTION
 	info = container_of(psy, struct ricoh61x_battery_info, battery);
 	queue_delayed_work(info->monitor_wqueue,
 			   &info->changed_work, HZ / 2);
+#else
+	int status;
+	int insert = is_ac_online();
+	info = container_of(psy, struct ricoh61x_battery_info, battery);
+
+	printk("ricoh619_charger: USB %s\n", insert ? "connect" : "disconnect");
+
+#ifdef CONFIG_USB_JZ_DWC2
+	dwc2_gadget_plug_change(insert);
+#endif
+//	queue_delayed_work(info->monitor_wqueue,
+//			   &info->changed_work, HZ / 5);
+	status = get_power_supply_Android_status(info);
+	if(info->status != status){
+		info->status = status;
+		update_battery(info, status);
+		power_supply_changed(&info->battery);
+	}
+#endif
 	return;
 }
 
+#ifdef ENABLE_FUEL_GAUGE_FUNCTION
 static int ricoh61x_batt_get_prop(struct power_supply *psy,
 				enum power_supply_property psp,
 				union power_supply_propval *val)
@@ -4009,15 +4186,16 @@ static int ricoh61x_batt_get_prop(struct power_supply *psy,
 
 	/* this setting is same as battery driver of 584 */
 	case POWER_SUPPLY_PROP_PRESENT:
-		val->intval = 1;/*info->present;*/
+		val->intval = 1 /*info->present*/;
 		break;
 
 	/* current voltage is got from fuel gauge */
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 		/* return real vbatt Voltage */
 #ifdef	ENABLE_FUEL_GAUGE_FUNCTION
-		if (info->soca->ready_fg)
+		if (info->soca->ready_fg) {
 			ret = measure_vbatt_FG(info, &data);
+		}
 		else {
 			//val->intval = -EINVAL;
 			data = info->cur_voltage * 1000;
@@ -4113,18 +4291,98 @@ static int ricoh61x_batt_get_prop(struct power_supply *psy,
 
 	return ret;
 }
+#else
+static int ricoh61x_charger_get_prop(struct power_supply *psy,
+				enum power_supply_property psp,
+				union power_supply_propval *val)
+{
+	struct ricoh61x_battery_info *info = dev_get_drvdata(psy->dev->parent);
+	int ret = 0;
+	uint8_t status;
 
+	mutex_lock(&info->lock);
+
+	switch (psp) {
+	case POWER_SUPPLY_PROP_ONLINE:
+		ret = ricoh61x_read(info->dev->parent, CHGSTATE_REG, &status);
+		if (ret < 0) {
+			dev_err(info->dev, "Error in reading the control register\n");
+			mutex_unlock(&info->lock);
+			return ret;
+		}
+		if (psy->type == POWER_SUPPLY_TYPE_MAINS)
+			val->intval = (status & 0x40 ? 1 : 0);
+		else if (psy->type == POWER_SUPPLY_TYPE_USB)
+			val->intval = (status & 0x80 ? 1 : 0);
+		break;
+
+	case POWER_SUPPLY_PROP_STATUS:
+		ret = get_power_supply_Android_status(info);
+		val->intval = ret;
+		info->status = ret;
+		/* dev_dbg(info->dev, "Power Supply Status is %d\n",
+							info->status); */
+		break;
+
+	default:
+		mutex_unlock(&info->lock);
+		return -ENODEV;
+	}
+
+	mutex_unlock(&info->lock);
+
+	return ret;
+}
+
+static void pmu_work_enable(void *pmu_interface)
+{
+	struct ricoh61x_battery_info *info = (struct ricoh61x_battery_info *)pmu_interface;
+
+	pr_debug("ricoh619_charger: pmu_work_enable\n");
+	disable_irq_nosync(charger_irq + RICOH61x_IRQ_FCHGCMPINT); /* avoid unbalance */
+	disable_irq_nosync(charger_irq + RICOH61x_IRQ_FONCHGINT);
+	schedule_delayed_work(&info->changed_work, msecs_to_jiffies(200));
+}
+
+static void ricoh619_callback_init(struct ricoh61x_battery_info *info)
+{
+	struct power_supply *psy = power_supply_get_by_name("battery");
+	struct jz_battery *jz_battery;
+
+	if (psy == NULL) {
+		pr_err("ricoh619_charger: Battery device not yet registered !\n");
+		return;
+	}
+
+	jz_battery = container_of(psy, struct jz_battery, battery);
+
+	jz_battery->pmu_interface = info;
+	jz_battery->get_pmu_status = get_power_supply_Android_status;
+	jz_battery->pmu_work_enable = pmu_work_enable;
+}
+static int is_ac_online(void)
+{
+	union power_supply_propval ac_val;
+	struct power_supply *psy_ac = power_supply_get_by_name("ac");
+	if (!psy_ac) {
+        pr_err("ricoh619_charger: AC Adapter not yet registered !\n");
+        return 0;
+	}
+	psy_ac->get_property(psy_ac, POWER_SUPPLY_PROP_ONLINE, &ac_val);
+	return ac_val.intval;
+}
+#endif
+#ifdef	ENABLE_FUEL_GAUGE_FUNCTION
 static enum power_supply_property ricoh61x_batt_props[] = {
 	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 
-#ifdef	ENABLE_FUEL_GAUGE_FUNCTION
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_TEMP,
 	POWER_SUPPLY_PROP_TIME_TO_EMPTY_NOW,
 	POWER_SUPPLY_PROP_TIME_TO_FULL_NOW,
-#endif
+
 	POWER_SUPPLY_PROP_TECHNOLOGY,
 	POWER_SUPPLY_PROP_HEALTH,
 };
@@ -4148,7 +4406,15 @@ struct power_supply	powerusb = {
 		.num_properties = ARRAY_SIZE(ricoh61x_power_props),
 		.get_property = ricoh61x_batt_get_prop,
 };
-
+#else
+static enum power_supply_property ricoh61x_charger[] = {
+	POWER_SUPPLY_PROP_ONLINE,
+	POWER_SUPPLY_PROP_STATUS,
+};
+static char *supply_list[] = {
+        "battery",
+};
+#endif
 static int ricoh61x_battery_probe(struct platform_device *pdev)
 {
 	struct ricoh61x_battery_info *info;
@@ -4157,6 +4423,10 @@ static int ricoh61x_battery_probe(struct platform_device *pdev)
 	int ret, temp;
 
 	pr_debug("PMU: %s : version is %s\n", __func__,RICOH61x_BATTERY_VERSION);
+
+#ifdef CONFIG_CHARGER_HOLD_WAKE_LOCK
+    wake_lock_init(&suspend_lock, WAKE_LOCK_SUSPEND, "ricoh61x-charger");
+#endif
 
 	info = kzalloc(sizeof(struct ricoh61x_battery_info), GFP_KERNEL);
 	if (!info)
@@ -4173,7 +4443,6 @@ static int ricoh61x_battery_probe(struct platform_device *pdev)
 
 	/* check rage of b,.attery type */
 	type_n = Battery_Type();
-//	printk("the Battery_Type is type[%d]\n",type_n);
 	temp = sizeof(pdata->type)/(sizeof(struct ricoh619_battery_type_data));
 	if(type_n  >= temp)
 	{
@@ -4215,13 +4484,14 @@ static int ricoh61x_battery_probe(struct platform_device *pdev)
 	info->jt_ichg_h = pdata->type[type_n].jt_ichg_h;
 	info->jt_ichg_l = pdata->type[type_n].jt_ichg_l;
 
+#ifdef	ENABLE_FUEL_GAUGE_FUNCTION
 	temp = get_OCV_init_Data(info, 11) * info->fg_rsense_val / 20;
 	battery_init_para[info->num][22] = (temp >> 8);
 	battery_init_para[info->num][23] = (temp & 0xff);
 	temp = get_OCV_init_Data(info, 12) * 20 / info->fg_rsense_val;
 	battery_init_para[info->num][24] = (temp >> 8);
 	battery_init_para[info->num][25] = (temp & 0xff);
-
+#endif
 	/*
 	pr_debug("%s setting value\n", __func__);
 	pr_debug("%s info->ch_vfchg = 0x%x\n", __func__, info->ch_vfchg);
@@ -4251,7 +4521,7 @@ static int ricoh61x_battery_probe(struct platform_device *pdev)
 
 	mutex_init(&info->lock);
 	platform_set_drvdata(pdev, info);
-
+#ifdef ENABLE_FUEL_GAUGE_FUNCTION
 	info->battery.name = "battery";
 	info->battery.type = POWER_SUPPLY_TYPE_BATTERY;
 	info->battery.properties = ricoh61x_batt_props;
@@ -4260,7 +4530,18 @@ static int ricoh61x_battery_probe(struct platform_device *pdev)
 	info->battery.set_property = NULL;
 	info->battery.external_power_changed
 		 = ricoh61x_external_power_changed;
-
+#else
+	info->battery.name = "ricoh619_charger";
+	info->battery.type = POWER_SUPPLY_TYPE_MAINS;
+	info->battery.properties = ricoh61x_charger;
+	info->battery.num_properties = ARRAY_SIZE(ricoh61x_charger);
+	info->battery.get_property = ricoh61x_charger_get_prop;
+	info->battery.set_property = NULL;
+	info->battery.supplied_to = supply_list;
+	info->battery.num_supplicants = ARRAY_SIZE(supply_list);
+	info->battery.external_power_changed
+		 = ricoh61x_external_power_changed;
+#endif
 	/* Disable Charger/ADC interrupt */
 	ret = ricoh61x_clr_bits(info->dev->parent, RICOH61x_INTC_INTEN,
 							 CHG_INT | ADC_INT);
@@ -4287,7 +4568,7 @@ static int ricoh61x_battery_probe(struct platform_device *pdev)
 
 	if (ret)
 		info->battery.dev->parent = &pdev->dev;
-
+#ifdef	ENABLE_FUEL_GAUGE_FUNCTION
 	ret = power_supply_register(&pdev->dev, &powerac);
 	ret = power_supply_register(&pdev->dev, &powerusb);
 
@@ -4306,12 +4587,30 @@ static int ricoh61x_battery_probe(struct platform_device *pdev)
 	INIT_DEFERRABLE_WORK(&info->get_charge_work,
 					 ricoh61x_get_charge_work);
 	INIT_DEFERRABLE_WORK(&info->jeita_work, ricoh61x_jeita_work);
+	INIT_WORK(&info->irq_work, charger_irq_work);
+#else
+	INIT_DELAYED_WORK(&info->irq_work, charger_irq_work);
+#endif
 	INIT_DELAYED_WORK(&info->changed_work, ricoh61x_changed_work);
 
 	/* Charger IRQ workqueue settings */
 	charger_irq = pdata->irq;
 
-
+	ret = request_threaded_irq(charger_irq + RICOH61x_IRQ_FCHGCMPINT, NULL,
+						charger_complete_isr,
+						IRQF_ONESHOT, "r5t61x_charger_comp",
+								info);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "Can't get CHG_COMP IRQ for chrager: %d\n",
+									 ret);
+		goto out;
+	}
+#ifndef ENABLE_FUEL_GAUGE_FUNCTION
+	else {
+		enable_irq_wake(charger_irq + RICOH61x_IRQ_FCHGCMPINT);
+		disable_irq_nosync(charger_irq + RICOH61x_IRQ_FCHGCMPINT); /* avoid unbalance */
+	}
+#endif
 	ret = request_threaded_irq(charger_irq + RICOH61x_IRQ_FONCHGINT,
 					NULL, charger_in_isr, IRQF_ONESHOT,
 						"r5t61x_charger_in", info);
@@ -4320,20 +4619,17 @@ static int ricoh61x_battery_probe(struct platform_device *pdev)
 									ret);
 		goto out;
 	}
-
-	ret = request_threaded_irq(charger_irq + RICOH61x_IRQ_FCHGCMPINT,
-						NULL, charger_complete_isr,
-					IRQF_ONESHOT, "r5t61x_charger_comp",
-								info);
-	if (ret < 0) {
-		dev_err(&pdev->dev, "Can't get CHG_COMP IRQ for chrager: %d\n",
-									 ret);
-		goto out;
+#ifndef ENABLE_FUEL_GAUGE_FUNCTION
+	else {
+		enable_irq_wake(charger_irq + RICOH61x_IRQ_FONCHGINT);
+		disable_irq_nosync(charger_irq + RICOH61x_IRQ_FONCHGINT); /* avoid unbalance */
 	}
-
+#endif
+#ifdef ENABLE_FUEL_GAUGE_FUNCTION
 	ret = request_threaded_irq(charger_irq + RICOH61x_IRQ_FVUSBDETSINT,
 					NULL, charger_usb_isr, IRQF_ONESHOT,
 						"r5t61x_usb_det", info);
+
 	if (ret < 0) {
 		dev_err(&pdev->dev, "Can't get USB_DET IRQ for chrager: %d\n",
 									 ret);
@@ -4348,7 +4644,7 @@ static int ricoh61x_battery_probe(struct platform_device *pdev)
 			"Can't get ADP_DET IRQ for chrager: %d\n", ret);
 		goto out;
 	}
-
+#endif
 
 #ifdef ENABLE_LOW_BATTERY_DETECTION
 	ret = request_threaded_irq(charger_irq + RICOH61x_IRQ_VSYSLIR,
@@ -4370,14 +4666,18 @@ static int ricoh61x_battery_probe(struct platform_device *pdev)
 
 #ifdef	ENABLE_FUEL_GAUGE_FUNCTION
 	ret = ricoh61x_init_fgsoca(info);
-#endif
 	queue_delayed_work(info->monitor_wqueue, &info->monitor_work,
 					RICOH61x_MONITOR_START_TIME*HZ);
-
+#else
+	ricoh619_callback_init(info);
+#endif
 
 	/* Enable Charger/ADC interrupt */
 	ricoh61x_set_bits(info->dev->parent, RICOH61x_INTC_INTEN, CHG_INT | ADC_INT);
 
+#ifndef ENABLE_FUEL_GAUGE_FUNCTION
+	schedule_delayed_work(&info->changed_work, 0);
+#endif
 	return 0;
 
 out:
@@ -4391,9 +4691,10 @@ static int ricoh61x_battery_remove(struct platform_device *pdev)
 	uint8_t val;
 	int ret;
 	int err;
+#ifdef ENABLE_FUEL_GAUGE_FUNCTION
 	int cc_cap = 0;
 	bool is_charging = true;
-
+#endif
 	if (g_fg_on_mode
 		 && (info->soca->status == RICOH61x_SOCA_STABLE)) {
 		err = ricoh61x_write(info->dev->parent, PSWR_REG, 0x7f);
@@ -4414,11 +4715,12 @@ static int ricoh61x_battery_remove(struct platform_device *pdev)
 			dev_err(info->dev, "Error in writing PSWR_REG\n");
 
 		g_soc = val;
-
+#ifdef ENABLE_FUEL_GAUGE_FUNCTION
 		ret = calc_capacity_in_period(info, &cc_cap,
 							 &is_charging, true);
 		if (ret < 0)
 			dev_err(info->dev, "Read cc_sum Error !!-----\n");
+#endif
 	}
 
 	if (g_fg_on_mode == 0) {
@@ -4434,19 +4736,22 @@ static int ricoh61x_battery_remove(struct platform_device *pdev)
 		dev_err(info->dev, "Error in writing the control register\n");
 	}
 
-	free_irq(charger_irq + RICOH61x_IRQ_FONCHGINT, &info);
 	free_irq(charger_irq + RICOH61x_IRQ_FCHGCMPINT, &info);
+#ifdef	ENABLE_FUEL_GAUGE_FUNCTION
+	free_irq(charger_irq + RICOH61x_IRQ_FONCHGINT, &info);
 	free_irq(charger_irq + RICOH61x_IRQ_FVUSBDETSINT, &info);
 	free_irq(charger_irq + RICOH61x_IRQ_FVADPDETSINT, &info);
+#endif
 #ifdef ENABLE_LOW_BATTERY_DETECTION
 	free_irq(charger_irq + RICOH61x_IRQ_VSYSLIR, &info);
 #endif
-
+#ifdef	ENABLE_FUEL_GAUGE_FUNCTION
 	cancel_delayed_work(&info->monitor_work);
 	cancel_delayed_work(&info->charge_stable_work);
 	cancel_delayed_work(&info->charge_monitor_work);
 	cancel_delayed_work(&info->get_charge_work);
 	cancel_delayed_work(&info->displayed_work);
+#endif
 	cancel_delayed_work(&info->changed_work);
 #ifdef ENABLE_LOW_BATTERY_DETECTION
 	cancel_delayed_work(&info->low_battery_work);
@@ -4454,17 +4759,23 @@ static int ricoh61x_battery_remove(struct platform_device *pdev)
 #ifdef ENABLE_FACTORY_MODE
 	cancel_delayed_work(&info->factory_mode_work);
 #endif
+#ifdef	ENABLE_FUEL_GAUGE_FUNCTION
 	cancel_delayed_work(&info->jeita_work);
 	cancel_work_sync(&info->irq_work);
-
+#else
+	cancel_delayed_work(&info->irq_work);
+#endif
+#ifdef	ENABLE_FUEL_GAUGE_FUNCTION
 	flush_workqueue(info->monitor_wqueue);
 	flush_workqueue(info->workqueue);
+#endif
 #ifdef ENABLE_FACTORY_MODE
 	flush_workqueue(info->factory_mode_wqueue);
 #endif
-
+#ifdef	ENABLE_FUEL_GAUGE_FUNCTION
 	destroy_workqueue(info->monitor_wqueue);
 	destroy_workqueue(info->workqueue);
+#endif
 #ifdef ENABLE_FACTORY_MODE
 	destroy_workqueue(info->factory_mode_wqueue);
 #endif
@@ -4478,6 +4789,7 @@ static int ricoh61x_battery_remove(struct platform_device *pdev)
 #ifdef CONFIG_PM
 static int ricoh61x_battery_suspend(struct device *dev)
 {
+#ifdef ENABLE_FUEL_GAUGE_FUNCTION
 	struct ricoh61x_battery_info *info = dev_get_drvdata(dev);
 	uint8_t val;
 	int ret;
@@ -4581,12 +4893,13 @@ static int ricoh61x_battery_suspend(struct device *dev)
 	cancel_delayed_work_sync(&info->jeita_work);
 /*	flush_work(&info->irq_work); */
 
-
+#endif
 	return 0;
 }
 
 static int ricoh61x_battery_resume(struct device *dev)
 {
+#ifdef ENABLE_FUEL_GAUGE_FUNCTION
 	struct ricoh61x_battery_info *info = dev_get_drvdata(dev);
 	uint8_t val;
 	int ret;
@@ -4644,6 +4957,7 @@ static int ricoh61x_battery_resume(struct device *dev)
 			info->soca->displayed_soc = 0;
 	} else {
 		info->soca->soc = info->soca->suspend_soc;
+		info->soca->target_use_cap = 0;
 
 		if (RICOH61x_SOCA_START == info->soca->status
 			|| RICOH61x_SOCA_UNSTABLE == info->soca->status
@@ -4735,7 +5049,7 @@ static int ricoh61x_battery_resume(struct device *dev)
 		}
 	}
 
-
+#endif
 	return 0;
 }
 
@@ -4759,6 +5073,7 @@ static struct platform_driver ricoh61x_battery_driver = {
 
 static int __init ricoh61x_battery_init(void)
 {
+	pr_debug("PMU: %s\n", __func__);
 	return platform_driver_register(&ricoh61x_battery_driver);
 }
 module_init(ricoh61x_battery_init);

@@ -342,24 +342,58 @@ config CHARGER_SMB347
 	  Say Y to include support for Summit Microelectronics SMB347
 	  Battery Charger.
 
-config BATTERY_RICOH619
+menuconfig BATTERY_RICOH619
 	tristate "Ricoh R5T619 PMIC battery driver"
 	depends on MFD_RICOH619 && I2C && GENERIC_HARDIRQS
 	help
 	  Say Y to enable support for the battery control of the Ricoh R5T619
 	  Power Management device.
-choice
-	prompt "BATTERY_RICOH619 battery select"
-	depends on BATTERY_RICOH619
-	default LARGE_CAPACITY_BATTERY
+
+if BATTERY_RICOH619
+config RICOH61X_BAT
+	  bool "Ricoh R5T619 coulometer driver"
+	  help
+	    Say Y to enable ricoh619 coulometer
+
+config CHARGER_HOLD_WAKE_LOCK
+      bool "hold a wake lock when charging."
+      default y
+
+config RICOH61X_CHARGE_DONE_LIMIT
+	  int "Level for pmu charge done limit"
+	  range 0 3
+	  default 3
+	  help
+	    level 0 for 50mA, level 1 for 100mA, level 2 for 150mA, level 3 for 200mA
+		Be careful for the hardware limit R
 
 config LARGE_CAPACITY_BATTERY
 	  bool "Large capacity battery for 2000mA 4000mA"
+	  help
+	  Say "Y" to enable large capacity battery.
+
+config 320MAH_CAPACITY_BATTERY
+	  bool "Used 320mAh capacity battery"
+	  help
+	  Say "Y" to enable 320mAh capacity battery.
+
+config 300MAH_CAPACITY_BATTERY
+	  bool "Used 300mAh capacity battery"
+	  help
+	  Say "Y" to enable 300mAh capacity battery.
+
+config 200MAH_CAPACITY_BATTERY
+	  bool "Used 200mAh capacity battery"
+	  help
+	  Say "Y" to enable 200mAh capacity battery
+
 
 config SMALL_CAPACITY_BATTERY
 	  bool "Small capacity battery for 260mA 500mA"
-endchoice
+	  help
+	  Say "Y" to enable small capacity battery.
 
+endif
 
 config CHARGER_TPS65090
 	tristate "TPS65090 battery charger driver"

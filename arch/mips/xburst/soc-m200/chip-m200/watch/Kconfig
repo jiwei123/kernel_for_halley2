@@ -13,11 +13,12 @@ config WATCH_AW808
        depends on BOARD_WATCH
 endchoice
 
+if WATCH_AW808
+source "arch/mips/xburst/soc-m200/chip-m200/watch/aw808/Kconfig"
+endif
+
 config BOARD_NAME
 	string "BOARD_NAME"
 	default "newton2" if WATCH_NEWTON2
 	default "aw808" if WATCH_AW808
 
-if WATCH_AW808
-source "arch/mips/xburst/soc-m200/chip-m200/watch/aw808/Kconfig"
-endif
