@@ -123,5 +123,8 @@ extern struct jz_adc_platform_data adc_platform_data;
 #if IS_ENABLED(CONFIG_SND_ASOC_INGENIC_NEWTON_ICDC)
 extern struct platform_device snd_newton_device;
 #endif
+#if IS_ENABLED(CONFIG_SND_ASOC_INGENIC_WATCH_ICDC)
+extern struct platform_device snd_watch_device;
+#endif
 
 #endif	/* __BOARD_BASE_H__ */

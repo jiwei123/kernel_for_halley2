@@ -222,6 +222,9 @@ static struct jz_platform_device platform_devices_array[] __initdata = {
 #if IS_ENABLED(CONFIG_SND_ASOC_INGENIC_NEWTON_ICDC)
        DEF_DEVICE(&snd_newton_device, NULL, 0),
 #endif
+#if IS_ENABLED(CONFIG_SND_ASOC_INGENIC_WATCH_ICDC)
+       DEF_DEVICE(&snd_watch_device, NULL, 0),
+#endif
 };
 
 static int __init board_base_init(void)
