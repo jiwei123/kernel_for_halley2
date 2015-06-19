@@ -969,6 +969,12 @@ static int  ricoh61x_i2c_remove(struct i2c_client *client)
 #ifdef CONFIG_PM
 static int ricoh61x_i2c_suspend(struct i2c_client *client, pm_message_t state)
 {
+	struct ricoh61x *ricoh61x = i2c_get_clientdata(client);
+
+	/* if ricoh61x not resume do not handle interrupt.
+	 * the mutex_lock sync the device and interrupt service. ricoh61x_irq check is locked or not
+	 * */
+	mutex_lock(&ricoh61x->irq_lock);
 #if 0
 	if (client->irq)
 		disable_irq(client->irq);
@@ -978,8 +984,9 @@ static int ricoh61x_i2c_suspend(struct i2c_client *client, pm_message_t state)
 
 static int ricoh61x_i2c_resume(struct i2c_client *client)
 {
+	struct ricoh61x *ricoh61x = i2c_get_clientdata(client);
 	printk(KERN_INFO "PMU: %s:\n", __func__);
-
+	mutex_unlock(&ricoh61x->irq_lock);
 #if 0
         uint8_t reg_val;
 	int ret;
