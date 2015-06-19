@@ -269,6 +269,10 @@ static int __init board_base_init(void)
 	i2c_register_board_info(2, jz_i2c2_devs, jz_i2c2_devs_size);
 #endif
 
+#if (defined(CONFIG_SOFT_I2C3_GPIO_V12_JZ) || defined(CONFIG_I2C3_V12_JZ))
+    i2c_register_board_info(3, jz_i2c3_devs, jz_i2c3_devs_size);
+#endif
+
 #ifdef CONFIG_SPI_V12_JZ
 #ifdef CONFIG_SPI0_V12_JZ
 	spi_register_board_info(jz_spi0_board_info, ARRAY_SIZE(jz_spi0_board_info));

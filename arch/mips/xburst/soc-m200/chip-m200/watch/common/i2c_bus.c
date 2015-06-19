@@ -1,8 +1,11 @@
 #include <linux/platform_device.h>
 #include <linux/i2c.h>
+#include <linux/delay.h>
 #include <linux/i2c-gpio.h>
 #include <linux/interrupt.h>
 #include <linux/i2c/pca953x.h>
+#include <linux/regulator/consumer.h>
+#include <linux/err.h>
 #include "board_base.h"
 
 /* *****************************sensor hub start************************** */
@@ -107,6 +110,148 @@ static struct ft5336_platform_data ft5336_tsc_pdata = {
 #endif
 /* *****************************touchscreen end*************************** */
 
+/* *****************************pixart pah8001 start********************** */
+
+#ifdef CONFIG_SENSORS_PIXART_PAH8001
+#include <linux/input/pah8001.h>
+#endif
+
+#ifdef  CONFIG_SENSORS_PIXART_PAH8001
+#if !defined(PAH8001_VDD_NAME)
+#define PAH8001_VDD_NAME    NULL
+#endif
+#if !defined(PAH8001_VIO_NAME)
+#define PAH8001_VIO_NAME    NULL
+#endif
+
+static struct regulator *pah8001_power_vdd = NULL;
+static struct regulator *pah8001_power_vio = NULL;
+static atomic_t pah8001_powered = ATOMIC_INIT(0);
+static int pah8001_early_init(struct device *dev)
+{
+    int res;
+
+    if (!pah8001_power_vdd) {
+        pah8001_power_vdd = regulator_get(dev, PAH8001_VDD_NAME);
+        if (IS_ERR(pah8001_power_vdd)) {
+            pr_err("%s -> get regulator VDD failed\n", __func__);
+            res = -ENODEV;
+            goto err_vdd;
+        }
+    }
+
+    if (!pah8001_power_vio) {
+        pah8001_power_vio = regulator_get(dev, PAH8001_VIO_NAME);
+        if (IS_ERR(pah8001_power_vio)) {
+            pr_err("%s -> get regulator VIO failed\n", __func__);
+            res = -ENODEV;
+            goto err_vio;
+        }
+    }
+
+    return 0;
+
+err_vio:
+    regulator_put(pah8001_power_vdd);
+    pah8001_power_vdd = NULL;
+err_vdd:
+    pah8001_power_vio = NULL;
+    return res;
+}
+
+static int pah8001_exit(struct device *dev)
+{
+    if (pah8001_power_vio != NULL && !IS_ERR(pah8001_power_vio)) {
+        regulator_put(pah8001_power_vio);
+        pah8001_power_vio = NULL;       //Must set pointer to NULL
+    }
+
+    if (pah8001_power_vdd != NULL && !IS_ERR(pah8001_power_vdd)) {
+        regulator_put(pah8001_power_vdd);
+        pah8001_power_vdd = NULL;       //Must set pointer to NULL
+    }
+
+    atomic_set(&pah8001_powered, 0);
+
+    return 0;
+}
+
+static int pah8001_power_on(void)
+{
+    int res;
+    int ret;
+    if (!atomic_read(&pah8001_powered)) {
+        if (!IS_ERR(pah8001_power_vdd)) {
+            ret = regulator_enable(pah8001_power_vdd);
+        } else {
+            pr_err("%s -> VDD power unavailable!\n", __func__);
+            res = -ENODEV;
+            goto err_vdd;
+        }
+        msleep(1);
+        if (!IS_ERR(pah8001_power_vio)) {
+            ret = regulator_enable(pah8001_power_vio);
+        } else {
+            pr_err("%s -> VIO power unavailable!\n", __func__);
+            res = -ENODEV;
+            goto err_vio;
+        }
+        msleep(1);
+
+        atomic_set(&pah8001_powered, 1);
+    }
+
+    return 0;
+
+err_vio:
+    regulator_disable(pah8001_power_vdd);
+err_vdd:
+    return res;
+}
+
+static int pah8001_power_off(void)
+{
+    int res;
+    int ret;
+    if (atomic_read(&pah8001_powered)) {
+        if (!IS_ERR(pah8001_power_vio)) {
+            ret = regulator_disable(pah8001_power_vio);
+        } else {
+            pr_err("%s -> VIO power unavailable!\n", __func__);
+            res = -ENODEV;
+            goto err_vio;
+        }
+
+        if (!IS_ERR(pah8001_power_vdd)) {
+            ret = regulator_disable(pah8001_power_vdd);
+        } else {
+            pr_err("%s -> VDD power unavailable!\n", __func__);
+            res = -ENODEV;
+            goto err_vdd;
+        }
+
+        atomic_set(&pah8001_powered, 0);
+    }
+
+    return 0;
+
+err_vio:
+err_vdd:
+    return res;
+}
+
+static struct pah8001_platform_data pah8001_pdata = {
+    .gpio_int = GPIO_PAH8001_INT,
+    .gpio_reset = GPIO_PAH8001_RESET,
+    .gpio_pd = GPIO_PAH8001_PD,
+    .board_init = pah8001_early_init,
+    .board_exit = pah8001_exit,
+    .power_on = pah8001_power_on,
+    .power_off = pah8001_power_off,
+};
+#endif
+/* *****************************pixart pah8001 end************************ */
+
 #if (defined(CONFIG_I2C_GPIO) || defined(CONFIG_I2C0_V12_JZ))
 struct i2c_board_info jz_i2c0_devs[] __initdata = {
 #ifdef CONFIG_TOUCHSCREEN_GWTC9XXXB
@@ -151,7 +296,7 @@ struct i2c_board_info jz_i2c0_devs[] __initdata = {
 	},
 #endif /*CONFIG_BCM2079X_NFC*/
 };
-#endif
+#endif  /*I2C0*/
 
 
 #ifdef CONFIG_GPIO_PCA953X
@@ -190,8 +335,20 @@ struct i2c_board_info jz_i2c2_devs[] __initdata = {
 	},
 #endif
 };
-#endif  /*I2C1*/
+#endif  /*I2C2*/
 
+#if (defined(CONFIG_I2C_GPIO) || defined(CONFIG_I2C3_V12_JZ))
+struct i2c_board_info jz_i2c3_devs[] __initdata = {
+
+#ifdef  CONFIG_SENSORS_PIXART_PAH8001
+    {
+        I2C_BOARD_INFO("pixart_ofn", 0x33),
+        .irq = (IRQ_GPIO_BASE + GPIO_PAH8001_INT),
+        .platform_data = &pah8001_pdata,
+    },
+#endif
+};
+#endif  /*I2C3*/
 
 #if     defined(CONFIG_SOFT_I2C0_GPIO_V12_JZ) || defined(CONFIG_I2C0_V12_JZ)
 int jz_i2c0_devs_size = ARRAY_SIZE(jz_i2c0_devs);
@@ -203,6 +360,10 @@ int jz_i2c1_devs_size = ARRAY_SIZE(jz_i2c1_devs);
 
 #if     defined(CONFIG_SOFT_I2C2_GPIO_V12_JZ) || defined(CONFIG_I2C2_V12_JZ)
 int jz_i2c2_devs_size = ARRAY_SIZE(jz_i2c2_devs);
+#endif
+
+#if     defined(CONFIG_SOFT_I2C3_GPIO_V12_JZ) || defined(CONFIG_I2C3_V12_JZ)
+int jz_i2c3_devs_size = ARRAY_SIZE(jz_i2c3_devs);
 #endif
 /*
  * define gpio i2c,if you use gpio i2c,

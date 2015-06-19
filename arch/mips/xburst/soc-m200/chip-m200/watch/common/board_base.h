@@ -28,6 +28,10 @@ extern int jz_i2c1_devs_size;
 extern struct i2c_board_info jz_i2c2_devs[];
 extern int jz_i2c2_devs_size;
 #endif
+#if (defined(CONFIG_I2C_GPIO) || defined(CONFIG_I2C3_V12_JZ))
+extern struct i2c_board_info jz_i2c3_devs[];
+extern int jz_i2c3_devs_size;
+#endif
 #ifdef CONFIG_I2C_GPIO
 #ifndef CONFIG_I2C0_V12_JZ
 extern struct platform_device i2c0_gpio_device;
