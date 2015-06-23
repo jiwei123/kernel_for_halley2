@@ -12,9 +12,9 @@ config HAPTICS_DRV2605
 
 if HAPTICS_DRV2605
 choice
-	 prompt "motor types"
-		  depends on HAPTICS_DRV2605
-		  default HAPTICS_LRA_SEMCO1030
+    prompt "motor types"
+    depends on HAPTICS_DRV2605
+    default HAPTICS_LRA_SEMCO1030
 config HAPTICS_LRA_SEMCO1030
     bool "HAPTICS_LRA_SEMCO1030"
 
