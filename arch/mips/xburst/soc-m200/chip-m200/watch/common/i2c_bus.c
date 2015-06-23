@@ -95,6 +95,125 @@ static struct jztsc_platform_data ite7258_tsc_pdata = {
 };
 #endif  /* CONFIG_TOUCHSCREEN_ITE7258 */
 
+/* *****************************haptics drv2605 start********************* */
+#if defined(CONFIG_HAPTICS_DRV2605)
+#include <linux/haptics/drv2605.h>
+#elif defined(CONFIG_HAPTICS_DRV2604)
+#include <linux/haptics/drv2604.h>
+#elif defined(CONFIG_HAPTICS_DRV2604L)
+#include <linux/haptics/drv2604l.h>
+#elif defined(CONFIG_HAPTICS_DRV2667)
+#include <linux/haptics/drv2667.h>
+#endif
+
+#if defined(CONFIG_HAPTICS_DRV2605)
+static struct drv2605_platform_data drv2605_plat_data = {
+    .GpioEnable = DRV2605_ENABLE, //enable the chip
+    .GpioTrigger = 0,//external trigger pin, (0: internal trigger)
+#if defined(CONFIG_HAPTICS_LRA_SEMCO1030)
+    //rated = 1.5Vrms, ov=2.1Vrms, f=204hz
+    .loop = CLOSE_LOOP,
+    .RTPFormat = Signed,
+    .BIDIRInput = BiDirectional,
+    .actuator = {
+        .device_type = LRA,
+        .rated_vol = 0x3d,
+        .g_effect_bank = LIBRARY_F,
+        .over_drive_vol = 0x87,
+        .LRAFreq = 204,
+    },
+    .a2h = {
+        .a2h_min_input = AUDIO_HAPTICS_MIN_INPUT_VOLTAGE,
+        .a2h_max_input = AUDIO_HAPTICS_MAX_INPUT_VOLTAGE,
+        .a2h_min_output = AUDIO_HAPTICS_MIN_OUTPUT_VOLTAGE,
+        .a2h_max_output = AUDIO_HAPTICS_MAX_OUTPUT_VOLTAGE,
+    },
+#elif defined(CONFIG_HAPTICS_ERM_EVOWAVE_Z4TJGB1512658)
+    //rated vol = 3.0 v, ov = 3.6 v, risetime = 150 ms
+    .loop = CLOSE_LOOP,
+    .RTPFormat = Signed,
+    .BIDIRInput = BiDirectional,
+    .actuator = {
+        .device_type = ERM,
+        .g_effect_bank = LIBRARY_E,
+        .rated_vol = 0x8d,
+        .over_drive_vol = 0xa9,
+    },
+    .a2h = {
+        .a2h_min_input = AUDIO_HAPTICS_MIN_INPUT_VOLTAGE,
+        .a2h_max_input = AUDIO_HAPTICS_MAX_INPUT_VOLTAGE,
+        .a2h_min_output = AUDIO_HAPTICS_MIN_OUTPUT_VOLTAGE,
+        .a2h_max_output = AUDIO_HAPTICS_MAX_OUTPUT_VOLTAGE,
+    },
+#else
+#error "please define actuator type"
+#endif
+};
+#elif defined(CONFIG_HAPTICS_DRV2604)
+static struct drv2604_platform_data drv2604_plat_data = {
+    .GpioEnable = 0, //enable the chip
+    .GpioTrigger = 0,//external trigger pin, (0: internal trigger)
+#if defined(CONFIG_HAPTICS_LRA_SEMCO1030)
+    //rated = 1.5Vrms, ov=2.1Vrms, f=204hz
+    .loop = CLOSE_LOOP,
+    .RTPFormat = Signed,
+    .BIDIRInput = BiDirectional,
+    .actuator = {
+        .device_type = LRA,
+        .rated_vol = 0x3d,
+        .over_drive_vol = 0x87,
+        .LRAFreq = 204,
+    },
+#elif defined(CONFIG_HAPTICS_ERM_EVOWAVE_Z4TJGB1512658)
+    //rated vol = 3.0 v, ov = 3.6 v, risetime = 150 ms
+    .loop = CLOSE_LOOP,
+    .RTPFormat = Signed,
+    .BIDIRInput = BiDirectional,
+    .actuator = {
+        .device_type = ERM,
+        .rated_vol = 0x8d,
+        .over_drive_vol = 0xa9,
+    },
+#else
+#error "please define actuator type"
+#endif
+};
+#elif defined(CONFIG_HAPTICS_DRV2604L)
+static struct DRV2604L_platform_data drv2604l_plat_data = {
+    .GpioEnable = 0, //enable the chip
+    .GpioTrigger = 0,//external trigger pin, (0: internal trigger)
+#if defined(CONFIG_HAPTICS_LRA_SEMCO1030)
+    //rated = 1.5Vrms, ov=2.1Vrms, f=204hz
+    .loop = CLOSE_LOOP,
+    .RTPFormat = Signed,
+    .BIDIRInput = BiDirectional,
+    .actuator = {
+        .device_type = LRA,
+        .rated_vol = 0x3d,
+        .over_drive_vol = 0x87,
+        .LRAFreq = 204,
+    },
+#elif defined(CONFIG_HAPTICS_ERM_EVOWAVE_Z4TJGB1512658)
+    //rated vol = 3.0 v, ov = 3.6 v, risetime = 150 ms
+    .loop = CLOSE_LOOP,
+    .RTPFormat = Signed,
+    .BIDIRInput = BiDirectional,
+    .actuator = {
+        .device_type = ERM,
+        .rated_vol = 0x8d,
+        .over_drive_vol = 0xa9,
+    },
+#else
+#error "please define actuator type"
+#endif
+};
+#elif defined(CONFIG_HAPTICS_DRV2667)
+static struct drv2667_platform_data drv2667_plat_data = {
+    .inputGain = DRV2667_GAIN_50VPP,
+    .boostTimeout = DRV2667_IDLE_TIMEOUT_20MS,
+};
+#endif	/* CONFIG_HAPTICS_DRV2605 */
+/* *****************************haptics drv2605 end*********************** */
 
 #ifdef CONFIG_TOUCHSCREEN_FT5336
 #include <linux/i2c/ft5336_ts.h>
@@ -345,6 +464,28 @@ struct i2c_board_info jz_i2c3_devs[] __initdata = {
         I2C_BOARD_INFO("pixart_ofn", 0x33),
         .irq = (IRQ_GPIO_BASE + GPIO_PAH8001_INT),
         .platform_data = &pah8001_pdata,
+    },
+#endif
+
+#if defined(CONFIG_HAPTICS_DRV2605)
+    {
+        I2C_BOARD_INFO(HAPTICS_DEVICE_NAME, 0x5a),
+        .platform_data = &drv2605_plat_data,
+    },
+#elif defined(CONFIG_HAPTICS_DRV2604)
+    {
+        I2C_BOARD_INFO(HAPTICS_DEVICE_NAME, 0x5a),
+        .platform_data = &drv2604_plat_data,
+    },
+#elif defined(CONFIG_HAPTICS_DRV2604L)
+    {
+        I2C_BOARD_INFO(HAPTICS_DEVICE_NAME, 0x5a),
+        .platform_data = &drv2604l_plat_data,
+    },
+#elif defined(CONFIG_HAPTICS_DRV2667)
+    {
+        I2C_BOARD_INFO(HAPTICS_DEVICE_NAME, 0x59),
+        .platform_data = &drv2667_plat_data,
     },
 #endif
 };
