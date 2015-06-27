@@ -257,6 +257,35 @@ uint32_t adc_read_reg(struct device *dev,uint8_t addr_offset)
 
 EXPORT_SYMBOL_GPL(jz_adc_set_config);
 
+void jz_adc_fast_enable(struct device *dev, unsigned int aux_config)
+{
+	struct jz_adc *adc = dev_get_drvdata(dev);
+	uint32_t cfg;
+
+	jz_adc_enable(adc);
+	cfg = readl(adc->base + JZ_REG_ADC_CFG);
+	cfg &= ~(ADCFG_CMD_MASK);
+	cfg |= aux_config;
+	writel(cfg, adc->base + JZ_REG_ADC_CFG);
+
+	cfg = readb(adc->base + JZ_REG_ADC_ENABLE);
+	cfg |= BIT(0);
+	writeb(cfg, adc->base + JZ_REG_ADC_ENABLE);
+}
+EXPORT_SYMBOL_GPL(jz_adc_fast_enable);
+
+void jz_adc_fast_disable(struct device *dev) {
+	struct jz_adc *adc = dev_get_drvdata(dev);
+	uint32_t cfg;
+
+	cfg = readb(adc->base + JZ_REG_ADC_ENABLE);
+	cfg &= ~BIT(0);
+	writeb(cfg, adc->base + JZ_REG_ADC_ENABLE);
+
+	jz_adc_enable(adc);
+}
+EXPORT_SYMBOL_GPL(jz_adc_fast_disable);
+
 static void jz_adc_clk_div(struct jz_adc *adc, const unsigned char clkdiv,
 		const unsigned char clkdiv_us, const unsigned short clkdiv_ms)
 {
@@ -266,6 +295,7 @@ static void jz_adc_clk_div(struct jz_adc *adc, const unsigned char clkdiv,
 	writel(val, adc->base + JZ_REG_ADC_CLKDIV);
 }
 
+#if defined(CONFIG_MFD_JZ_SADC_AUX1_HRTIMER)
 static struct resource jz_hwmon_resources[] = {
 	{
 		.start = JZ_ADC_IRQ_AUXIN,
@@ -277,7 +307,9 @@ static struct resource jz_hwmon_resources[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 };
+#endif
 
+#if defined(CONFIG_JZ_BATTERY) || defined(CONFIG_JZ_BATTERY_LUT)
 static struct resource jz_battery_resources[] = {
 	{
 		.start = JZ_ADC_IRQ_BATTERY,
@@ -289,6 +321,7 @@ static struct resource jz_battery_resources[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 };
+#endif
 
 /*
  *
@@ -326,6 +359,7 @@ static struct resource jz_ts_resources[] = {
 	},
 };
 static struct mfd_cell jz_adc_cells[] = {
+#if defined(CONFIG_MFD_JZ_SADC_AUX1_HRTIMER)
 	{
 		.id = 0,
 		.name = "jz-hwmon",
@@ -335,6 +369,9 @@ static struct mfd_cell jz_adc_cells[] = {
 		.enable	= jz_adc_cell_enable,
 		.disable = jz_adc_cell_disable,
 	},
+#endif
+
+#if defined(CONFIG_JZ_BATTERY) || defined(CONFIG_JZ_BATTERY_LUT)
 	{
 		.id = 1,
 		.name = "jz-battery",
@@ -344,6 +381,7 @@ static struct mfd_cell jz_adc_cells[] = {
 		.enable = jz_adc_cell_enable,
 		.disable = jz_adc_cell_disable,
 	},
+#endif
 	{
 		.id = 2,
 		.name = "jz-ts",
@@ -355,7 +393,7 @@ static struct mfd_cell jz_adc_cells[] = {
 	},
 };
 
-static int __devinit jz_adc_probe(struct platform_device *pdev)
+static int jz_adc_probe(struct platform_device *pdev)
 {
 	int ret;
 	int i;
@@ -462,7 +500,7 @@ static int __devinit jz_adc_probe(struct platform_device *pdev)
 		}
 	}
 	ret = mfd_add_devices(&pdev->dev, 0, jz_adc_cells,
-			ARRAY_SIZE(jz_adc_cells), mem_base, adc->irq_base);
+			ARRAY_SIZE(jz_adc_cells), mem_base, adc->irq_base, NULL);
 	if (ret < 0) {
 		goto err_clk_put;
 	}
@@ -484,7 +522,7 @@ err_free:
 	return ret;
 }
 
-static int __devexit jz_adc_remove(struct platform_device *pdev)
+static int jz_adc_remove(struct platform_device *pdev)
 {
 	struct jz_adc *adc = platform_get_drvdata(pdev);
 
@@ -508,7 +546,7 @@ static int __devexit jz_adc_remove(struct platform_device *pdev)
 
 struct platform_driver jz_adc_driver = {
 	.probe	= jz_adc_probe,
-	.remove	= __devexit_p(jz_adc_remove),
+	.remove	= jz_adc_remove,
 	.driver = {
 		.name	= "jz-adc",
 		.owner	= THIS_MODULE,

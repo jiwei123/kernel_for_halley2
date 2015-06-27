@@ -1,11 +1,10 @@
 #include <linux/platform_device.h>
-#if 0
+#ifdef CONFIG_JZ_BATTERY_LUT
+#include <linux/power/jz-battery-lut.h>
+#else
 #include <linux/power/jz_battery.h>
-#include <linux/power/li_ion_charger.h>
-#include <linux/jz_adc.h>
-#include <linux/tsc.h>
-#include <linux/android_pmem.h>
 #endif
+#include <linux/jz_adc.h>
 #include <linux/i2c.h>
 #include <linux/i2c-gpio.h>
 #include <linux/input.h>
@@ -193,8 +192,8 @@ static struct jz_platform_device platform_devices_array[] __initdata = {
 #ifdef CONFIG_JZ_EFUSE_V12
 	DEF_DEVICE(&jz_efuse_device, &jz_efuse_pdata, sizeof(struct jz_efuse_platform_data)),
 #endif
-#ifdef CONFIG_JZ_BATTERY
-	DEF_DEVICE(&jz_adc_device, &adc_platform_data, sizeof(struct jz_adc_platform_data));
+#ifdef CONFIG_MFD_JZ_SADC_V12
+	DEF_DEVICE(&jz_adc_device, &adc_platform_data, sizeof(struct jz_adc_platform_data)),
 #endif
 #ifdef CONFIG_SPI0_V12_JZ
        DEF_DEVICE(&jz_spi0_device, &spi0_info_cfg, sizeof(struct jz_spi_info));

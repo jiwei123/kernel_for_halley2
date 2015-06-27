@@ -268,6 +268,13 @@ config MFD_JZ_SADC_V12
 	  Say yes here if you want support for the SADC unit in the M200 SoC.
 	  This driver is necessary for jz_battery driver.
 
+config MFD_JZ_SADC_AUX1_HRTIMER
+	tristate "Support for the M200 SADC aux1 with hrtimer"
+	select MFD_CORE
+	depends on SOC_M200 && MFD_JZ_SADC_V12
+	help
+	  Say yes here if you want support for the sample the adc chanel aux1 with hrtimer in the M200 SoC.
+
 config MFD_88PM800
 	tristate "Marvell 88PM800"
 	depends on I2C=y && GENERIC_HARDIRQS

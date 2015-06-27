@@ -1,9 +1,11 @@
 
 #include <linux/platform_device.h>
+#ifdef CONFIG_MFD_JZ_SADC_V12
+#include <linux/jz_adc.h>
 #ifdef CONFIG_JZ_BATTERY
 #include <linux/power/jz_battery.h>
 #include <linux/power/li_ion_charger.h>
-#include <linux/jz_adc.h>
+#endif
 #endif
 #ifdef CONFIG_JZ_EFUSE_V12
 #include <mach/jz_efuse.h>
@@ -46,7 +48,7 @@ struct platform_device snd_watch_device = {
 #endif
 
 #ifdef CONFIG_JZ_BATTERY
-static struct jz_battery_info  dorado_battery_info = {
+static struct jz_battery_info  watch_battery_info = {
 	.max_vol        = 4050,
 	.min_vol        = 3600,
 	.usb_max_vol    = 4100,
@@ -57,10 +59,15 @@ static struct jz_battery_info  dorado_battery_info = {
 	.ac_chg_current = 800,
 	.usb_chg_current = 400,
 };
-struct jz_adc_platform_data adc_platform_data = {
-	battery_info = dorado_battery_info;
-}
 #endif
+#ifdef CONFIG_MFD_JZ_SADC_V12
+struct jz_adc_platform_data adc_platform_data = {
+#ifdef CONFIG_JZ_BATTERY
+	battery_info = watch_battery_info;
+#endif
+};
+#endif
+
 #if defined(CONFIG_USB_JZ_DWC2)
 #if defined(GPIO_USB_ID) && defined(GPIO_USB_ID_LEVEL)
 struct jzdwc_pin dwc2_id_pin = {

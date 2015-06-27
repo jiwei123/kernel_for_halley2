@@ -121,7 +121,7 @@ extern struct platform_device byd_8991_device;
 #ifdef CONFIG_LCD_TRULY_TFT240240_2_E
 extern struct platform_device truly_tft240240_device;
 #endif
-#ifdef CONFIG_JZ_BATTERY
+#ifdef CONFIG_MFD_JZ_SADC_V12
 extern struct jz_adc_platform_data adc_platform_data;
 #endif
 #if IS_ENABLED(CONFIG_SND_ASOC_INGENIC_NEWTON_ICDC)

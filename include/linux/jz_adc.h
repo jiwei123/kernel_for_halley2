@@ -2,8 +2,11 @@
 #define __LINUX_JZ_ADC_H__
 
 #include <linux/device.h>
+#ifdef CONFIG_JZ_BATTERY_LUT
+#include <linux/power/jz-battery-lut.h>
+#else
 #include <linux/power/jz_battery.h>
-
+#endif
 /*
  * SAR A/D Controller(SADC) address definition
  */
@@ -45,9 +48,8 @@
 #define BIT30 	        (1 << 30)
 #define BIT31 	        (1 << 31)
 
-
-
-
+/* Generate the bit field mask from msb to lsb */
+#define BITS_H2L(msb, lsb)  ((0xFFFFFFFF >> (32-((msb)-(lsb)+1))) << (lsb))
 
 #define SADC_ENA	(SADC_BASE + 0x00)  /* ADC Enable Register */
 #define SADC_CFG	(SADC_BASE + 0x04)  /* ADC Configure Register */
@@ -297,7 +299,10 @@ struct jz_ts_info{
 	void		*private_data;
 };
 
-
+enum aux_chan {
+    SADC_AUX1,
+    SADC_AUX2,
+};
 
 /*
  * jz_adc_set_config - Configure a JZ adc device
@@ -309,7 +314,7 @@ struct jz_ts_info{
  * ADC mfd cells to confgure their options in the shared config register.
  */
 
-#if 0
+#if 1
 	int jz_adc_set_config(struct device *dev, uint32_t mask, uint32_t val);
 #endif
 
