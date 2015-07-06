@@ -33,7 +33,7 @@
 #include "jz_mipi_dsi_lowlevel.h"
 #include "jz_mipi_dsih_hal.h"
 #include "jz_mipi_dsi_regs.h"
-
+extern struct jzfb_platform_data jzfb_pdata;
 
 
 #define DSI_IOBASE      0x13014000
@@ -530,7 +530,7 @@ int jz_mipi_dsi_set_client(struct dsi_device *dsi, int power)
     case FB_BLANK_NORMAL:
         /* TODO. */
         break;
-    
+
     default:
         break;
     }
@@ -586,7 +586,7 @@ static int jz_mipi_dsi_blank_mode(struct dsi_device *dsi, int power)
         /* TODO. */
         break;
 
-    
+
     default:
         break;
     }
@@ -788,7 +788,14 @@ struct dsi_device * jzdsi_init(struct jzdsi_data *pdata)
 	dsi->video_config->v_sync_lines = pdata->modes->vsync_len;
 	dsi->video_config->v_back_porch_lines = pdata->modes->lower_margin;
 	dsi->video_config->v_total_lines = pdata->modes->yres + pdata->modes->upper_margin + pdata->modes->lower_margin + pdata->modes->vsync_len;
+	dsi->video_config->byte_clock = dsi->video_config->h_total_pixels * dsi->video_config->v_total_lines * jzfb_pdata.modes->refresh * jzfb_pdata.bpp / dsi->video_config->no_of_lanes / 8 / 1000 ;
+	dsi->video_config->byte_clock = (dsi->video_config->byte_clock * 3) >> 1; /* DATALANE_BPS is set 1.5 times than real needed in order to avoid lcd tearing */
 	dsi->master_ops = &jz_master_ops;
+
+	if (dsi->video_config->byte_clock * 8 > dsi->dsi_config->max_bps * 1000) {
+		dsi->video_config->byte_clock = dsi->dsi_config->max_bps * 1000 / 8;
+		pr_info("+++++++++++++warning: DATALANE_BPS is over lcd max_bps allowed ,auto set it lcd max_bps\n");
+	}
 
 	dsi->clk = clk_get(NULL, "dsi");
 	if (IS_ERR(dsi->clk)) {
