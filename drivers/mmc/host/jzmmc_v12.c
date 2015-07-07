@@ -29,6 +29,8 @@
 #include <linux/slab.h>
 #include <linux/stat.h>
 #include <linux/module.h>
+#include <soc/gpio.h>
+#include <mach/platform.h>
 #include "jzmmc_v12.h"
 
 /**
@@ -67,6 +69,13 @@ struct desc_hd {
 	struct sdma_desc *dma_desc;
 	dma_addr_t dma_desc_phys_addr;
 	struct desc_hd *next;
+};
+
+struct jz_i2c_gpios {
+    char name[20];
+    int port;
+    int func;
+    unsigned long pins;
 };
 
 static LIST_HEAD(manual_list);
@@ -1670,6 +1679,68 @@ static void jzmmc_gpio_deinit(struct jzmmc_host *host)
 	}
 }
 
+static inline void set_mmc0_internal_pull(void)
+{
+#if (defined(CONFIG_JZMMC_V12_MMC0))
+    struct jz_i2c_gpios gpios =
+#if defined(CONFIG_JZMMC_V12_MMC0_PA_4BIT)
+    MSC0_PORTA_4BIT;
+#elif (defined(CONFIG_JZMMC_V12_MMC0_PA_8BIT))
+    MSC0_PORTA_8BIT;
+#elif (defined(CONFIG_JZMMC_V12_MMC0_PE_4BIT))
+    MSC0_PORTE;
+#endif
+
+#if (defined(CONFIG_JZMMC_V12_MMC0_PA_4BIT) || defined(CONFIG_JZMMC_V12_MMC0_PA_8BIT))
+    gpios.pins = (gpios.pins & ~(1<<18)); //mmc clk not pull up
+#elif (defined(CONFIG_JZMMC_V12_MMC0_PE_4BIT))
+    gpios.pins = (gpios.pins & ~(1<<28)); //mmc clk not pull up
+#endif
+
+    jzgpio_ctrl_pull(gpios.port, 1, gpios.pins);
+#endif
+}
+
+static inline void set_mmc1_internal_pull(void)
+{
+#if (defined(CONFIG_JZMMC_V12_MMC1))
+    struct jz_i2c_gpios gpios =
+#if defined(CONFIG_JZMMC_V12_MMC1_PD_4BIT)
+    MSC1_PORTD;
+#elif (defined(CONFIG_JZMMC_V12_MMC1_PE_4BIT))
+    MSC1_PORTE;
+#endif
+
+#if defined(CONFIG_JZMMC_V12_MMC1_PD_4BIT)
+    gpios.pins = (gpios.pins & ~(1<<24)); //mmc clk not pull up
+#elif (defined(CONFIG_JZMMC_V12_MMC1_PE_4BIT))
+    gpios.pins = (gpios.pins & ~(1<<28)); //mmc clk not pull up
+#endif
+
+    jzgpio_ctrl_pull(gpios.port, 1, gpios.pins);
+#endif
+}
+
+static inline void set_mmc2_internal_pull(void)
+{
+#if (defined(CONFIG_JZMMC_V12_MMC2))
+    struct jz_i2c_gpios gpios =
+#if defined(CONFIG_JZMMC_V12_MMC2_PB_4BIT)
+    MSC2_PORTB;
+#elif (defined(CONFIG_JZMMC_V12_MMC2_PE_4BIT))
+    MSC2_PORTE;
+#endif
+
+#if defined(CONFIG_JZMMC_V12_MMC2_PB_4BIT)
+    gpios.pins = (gpios.pins & ~(1<<28)); //mmc clk not pull up
+#elif (defined(CONFIG_JZMMC_V12_MMC2_PE_4BIT))
+    gpios.pins = (gpios.pins & ~(1<<28)); //mmc clk not pull up
+#endif
+
+    jzgpio_ctrl_pull(gpios.port, 1, gpios.pins);
+#endif
+}
+
 static int __init jzmmc_probe(struct platform_device *pdev)
 {
 	int irq;
@@ -1761,6 +1832,22 @@ static int __init jzmmc_probe(struct platform_device *pdev)
 
 	dev_info(host->dev, "register success!\n");
 	jzmmc_clk_autoctrl(host, 1);
+	if(host->mmc->index == 0) {
+#ifdef CONFIG_MMC0_INTERNAL_PULL
+	    set_mmc0_internal_pull();
+#endif
+	}
+    if(host->mmc->index == 1) {
+#ifdef CONFIG_MMC1_INTERNAL_PULL
+        set_mmc1_internal_pull();
+#endif
+    }
+    if(host->mmc->index == 2) {
+#ifdef CONFIG_MMC2_INTERNAL_PULL
+        set_mmc2_internal_pull();
+#endif
+    }
+
 	return 0;
 
 err_sysfs_create:

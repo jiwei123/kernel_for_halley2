@@ -198,12 +198,12 @@ static void wifi_le_restore_io(void)
 {
 	/*when wifi is up ,set WL_MSC1_D0 , WL_MSC1_D1, WL_MSC1_D2, WL_MSC1_D3,
 		 WL_MSC1_CLK, WL_MSC1_CMD pins to GPIO_FUNC_0*/
-	jzgpio_set_func(GPIO_PORT_E, GPIO_FUNC_2, 0x1 << 20);
-	jzgpio_set_func(GPIO_PORT_E, GPIO_FUNC_2, 0x1 << 21);
-	jzgpio_set_func(GPIO_PORT_E, GPIO_FUNC_2, 0x1 << 22);
-	jzgpio_set_func(GPIO_PORT_E, GPIO_FUNC_2, 0x1 << 23);
-	jzgpio_set_func(GPIO_PORT_E, GPIO_FUNC_2, 0x1 << 28);
-	jzgpio_set_func(GPIO_PORT_E, GPIO_FUNC_2, 0x1 << 29);
+	jzgpio_set_func_pull(GPIO_PORT_E, GPIO_FUNC_2, 0x1 << 20);
+	jzgpio_set_func_pull(GPIO_PORT_E, GPIO_FUNC_2, 0x1 << 21);
+	jzgpio_set_func_pull(GPIO_PORT_E, GPIO_FUNC_2, 0x1 << 22);
+	jzgpio_set_func_pull(GPIO_PORT_E, GPIO_FUNC_2, 0x1 << 23);
+	jzgpio_set_func_nopull(GPIO_PORT_E, GPIO_FUNC_2, 0x1 << 28);
+	jzgpio_set_func_pull(GPIO_PORT_E, GPIO_FUNC_2, 0x1 << 29);
 }
 
 int bcm_wlan_init(void)
@@ -229,7 +229,7 @@ int bcm_wlan_init(void)
 	return 0;
 }
 EXPORT_SYMBOL(bcm_wlan_init);
-
+#if 0
 static int wifi_le_pull_io(void)
 {
 #if (defined(CONFIG_JZMMC_V12_MMC1) && defined(CONFIG_JZMMC_V12_MMC1_PE_4BIT))
@@ -252,7 +252,7 @@ static int wifi_le_pull_io(void)
 #endif
     return 0;
 }
-
+#endif
 
 int bcm_wlan_power_on(int flag)
 {
@@ -277,7 +277,7 @@ int bcm_wlan_power_on(int flag)
 start:
 	pr_debug("wlan power on:%d\n", flag);
 	wifi_le_restore_io();
-	wifi_le_pull_io();
+	//wifi_le_pull_io();
 	bcm_power_on();
 
 	msleep(200);

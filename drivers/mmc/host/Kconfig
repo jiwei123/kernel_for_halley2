@@ -40,6 +40,10 @@ config MMC0_MAX_FREQ
 	help
 	  The max frequency of msc0, it should NOT be higher than 50mHz.
 	  If unsure, say N.
+config MMC0_INTERNAL_PULL
+	bool "set mmc0 to internal pull"
+	default n
+	depends on JZMMC_V12_MMC0
 
 config MMC0_PIO_MODE
 	bool "Use PIO mode for MSC0"
@@ -70,6 +74,11 @@ config MMC1_MAX_FREQ
 	  The max frequency of msc1, it should not be higher than 50 Mhz
 	  If unsure, say N.
 
+config MMC1_INTERNAL_PULL
+	bool "set mmc1 to internal pull"
+	default n
+	depends on JZMMC_V12_MMC1
+
 config MMC1_PIO_MODE
 	bool "Use PIO mode for MSC1"
 	depends on JZMMC_V12_MMC1 && MMC_BLOCK_BOUNCE
@@ -98,6 +107,11 @@ config MMC2_MAX_FREQ
 	help
 	 The max frequency of msc2, it should not be higher than 50 Mhz,
 	 If unsure , say N.
+
+config MMC2_INTERNAL_PULL
+	bool "set mmc2 to internal pull"
+	default n
+	depends on JZMMC_V12_MMC2
 
 config MMC2_PIO_MODE
 	bool "Use PIO mode for MSC2"

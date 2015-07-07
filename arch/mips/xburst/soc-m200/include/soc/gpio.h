@@ -71,6 +71,10 @@ struct gpio_reg_func {
  */
 int jzgpio_set_func(enum gpio_port port,
 		    enum gpio_function func,unsigned long pins);
+int jzgpio_set_func_nopull(enum gpio_port port,
+            enum gpio_function func,unsigned long pins);
+int jzgpio_set_func_pull(enum gpio_port port,
+            enum gpio_function func,unsigned long pins);
 
 int jz_gpio_set_func(int gpio, enum gpio_function func);
 
