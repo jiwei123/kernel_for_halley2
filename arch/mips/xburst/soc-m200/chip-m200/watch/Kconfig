@@ -22,3 +22,16 @@ config BOARD_NAME
 	default "newton2" if WATCH_NEWTON2
 	default "aw808" if WATCH_AW808
 
+config ROOTLIST
+	bool "Export hardware information to proc/hardware/list"
+    default y
+	help
+      Export hardware information to proc/hardware/list,
+      When boot on Android then read this file and configure system
+
+config BLUETOOTH_NAME
+	string  "export bluetooth chip name"
+    depends on ROOTLIST
+    help
+      Export bluetooth chip name information to proc/hardware/list,
+      format : bluetooth:chip:bcm20710
