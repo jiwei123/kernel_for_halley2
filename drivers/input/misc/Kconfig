@@ -667,4 +667,10 @@ config SENSORS_PIXART_PAH8001_RESUME_RECONFIG
         help
             Say Y if you want to reconfig PAH8001 when resume
 
+config INPUT_SENSORS_SI1132
+	tristate "silicon libs si1132 UV(ultraviolet) sensor driver"
+	depends on I2C
+	help
+	  Say Y if you want to use si1132 sensor driver.
+
 endif
