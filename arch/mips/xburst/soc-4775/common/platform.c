@@ -106,12 +106,13 @@ struct jz_gpio_func_def platform_devio_array[] = {
 #ifdef CONFIG_SOUND_PCM_JZ47XX
 	PCM_PORTD,
 #endif
-#ifndef CONFIG_DISABLE_LVDS_FUNCTION
-	DISABLE_LCD_PORTC,
-#else
+
+#ifdef CONFIG_LCD_BYD_8991FTGF
 	LCD_PORTC,
 #endif
-
+#ifdef CONFIG_LCD_KFM701A21_1A
+	LCD_PORTC,
+#endif
 #ifdef CONFIG_JZ_EPD_GPIO_FUNCTION
 	EPD_PORTC,
 #endif
@@ -1053,5 +1054,12 @@ struct platform_device  jz_dwc_otg_device = {
 /* efuse */
 struct platform_device jz_efuse_device = {
        .name = "jz-efuse",
+};
+#endif
+
+#ifdef CONFIG_JZ_PWM
+struct platform_device jz_pwm_device = {
+	.name = "jz-pwm",
+	.id   = -1,
 };
 #endif

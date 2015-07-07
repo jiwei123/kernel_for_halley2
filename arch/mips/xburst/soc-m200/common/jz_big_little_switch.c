@@ -349,10 +349,13 @@ static const struct file_operations cpu_switch_proc_fops ={
 	.release = single_release,
 };
 
+static int cpu_wait_proc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file,NULL, PDE_DATA(inode));
+}
 
 static const struct file_operations cpu_wait_proc_fops ={
-	.read = seq_read,
-//	.open = clk_get_proc_open,
+	.open = cpu_wait_proc_open,
 	.write = cpu_wait_proc_write,
 	.llseek = seq_lseek,
 	.release = single_release,

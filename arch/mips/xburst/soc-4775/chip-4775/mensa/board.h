@@ -21,17 +21,33 @@ extern struct jzmmc_platform_data inand_pdata;
 extern struct jzmmc_platform_data tf_pdata;
 extern struct jzmmc_platform_data sdio_pdata;
 
-#ifdef CONFIG_FB_JZ4780_LCDC0
-extern struct jzfb_platform_data jzfb0_pdata;
+#ifdef CONFIG_JZ_PWM
+extern struct platform_device jz_pwm_device;
 #endif
-#ifdef CONFIG_FB_JZ4780_LCDC1
-extern struct jzfb_platform_data jzfb1_pdata;
+
+#ifdef CONFIG_FB_JZ_V11
+extern struct jzfb_platform_data jzfb_pdata;
 #endif
 /* panel and bl platform device */
 #ifdef CONFIG_LCD_KFM701A21_1A
 extern struct platform_device kfm701a21_1a_device;
 #endif
 
+#ifdef CONFIG_LCD_BYD_BM8766U
+extern struct platform_device byd_bm8766u_device;
+#endif
+
+#ifdef CONFIG_LCD_BYD_8991FTGF
+extern struct platform_device byd_8991_device;
+#endif
+
+#ifdef CONFIG_BCM4330_RFKILL
+extern struct platform_device bcm4330_bt_power_device;
+#endif
+
+#ifdef CONFIG_LCD_KD50G2_40NM_A2
+extern struct platform_device kd50g2_40nm_a2_device;
+#endif
 /**
  * lcd gpio
  **/
@@ -63,7 +79,7 @@ extern struct platform_device kfm701a21_1a_device;
 #define GPIO_HANDSET_EN_LEVEL -1
 
 #define	GPIO_HP_DETECT		GPIO_PA(17)	/*hp detect gpio*/
-#define GPIO_HP_INSERT_LEVEL    1	
+#define GPIO_HP_INSERT_LEVEL    1
 #define GPIO_MIC_SELECT		-1		/*mic select gpio*/
 #define GPIO_BUILDIN_MIC_LEVEL	-1		/*builin mic select level*/
 #define GPIO_MIC_DETECT		-1
@@ -134,21 +150,6 @@ extern struct snd_codec_data codec_data;
 
 extern struct platform_device backlight_device;
 
-#ifdef CONFIG_LCD_BYD_BM8766U
-extern struct platform_device byd_bm8766u_device;
-#endif
-
-#ifdef CONFIG_BM347WV_F_8991FTGF_HX8369
-extern struct platform_device byd_8991_device;
-#endif
-
-#ifdef CONFIG_BCM4330_RFKILL
-extern struct platform_device bcm4330_bt_power_device;
-#endif
-
-#ifdef CONFIG_LCD_KD50G2_40NM_A2
-extern struct platform_device kd50g2_40nm_a2_device;
-#endif
 
 /**
  * Digital pulse backlight

@@ -113,6 +113,7 @@ struct jzdsi_data jzdsi_pdata = {
 	.dsi_config.shut_down_polarity = 1,
 	.dsi_config.te_gpio = DSI_TE_GPIO,
 	.dsi_config.te_irq_level = IRQF_TRIGGER_RISING,
+	.max_bps = 1000 //1000 Mbps
 };
 
 struct jzfb_platform_data jzfb_pdata = {

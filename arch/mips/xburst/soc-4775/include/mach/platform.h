@@ -10,7 +10,6 @@
 #define __SOC_4775_H__
 
 /* devio define list */
-
 #define I2S_PORTEF                                                      \
 		{ .name = "i2s-sysclk",         .port = GPIO_PORT_E, .func = GPIO_FUNC_2, .pins = 0x1<<3, },    \
 		{ .name = "i2s-bitclk",         .port = GPIO_PORT_F, .func = GPIO_FUNC_1, .pins = 0x1<<0,},    \
@@ -87,9 +86,12 @@
 #define DISABLE_LCD_PORTC							\
 	{ .name = "lcd", .port = GPIO_PORT_C, .func = GPIO_OUTPUT0, .pins = 0x0fffffff, }
 
-#ifdef CONFIG_BM347WV_F_8991FTGF_HX8369
+#ifdef CONFIG_LCD_BYD_8991FTGF
 #define LCD_PORTC \
 	{ .name = "lcd", .port = GPIO_PORT_C, .func = GPIO_FUNC_0, .pins = 0x0fcff3fc, }
+#elif defined CONFIG_LCD_KFM701A21_1A
+#define LCD_PORTC \
+	{ .name = "lcd", .port = GPIO_PORT_C, .func = GPIO_FUNC_0, .pins = 0x3cff0fc, }
 #else
 #define LCD_PORTC \
 	{ .name = "lcd", .port = GPIO_PORT_C, .func = GPIO_FUNC_0, .pins = 0x0fffffff, }
@@ -190,6 +192,10 @@ extern struct platform_device jz_efuse_device;
 #endif
 #ifdef CONFIG_I2C_GPIO /*CONFIG_I2C_GPIO*/
 extern struct platform_device i2c0_gpio_device;
+#endif
+
+#ifdef CONFIG_JZ_PWM
+extern struct platform_device jz_pwm_device;
 #endif
 
 int jz_device_register(struct platform_device *pdev,void *pdata);

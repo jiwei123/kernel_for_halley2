@@ -320,8 +320,9 @@ static int __jz_efuse_write(uint32_t xaddr, uint32_t xlen, uint32_t* buf)
 		val |= 2;
 		efuse_writel(val, EFUSE_CTRL);
 		/* wait write done status */
-		while(!(efuse_readl(EFUSE_STATE) & 0x2) || gpio_get_value(efuse->gpio_vddq_en));
-		if (!gpio_get_value(efuse->gpio_vddq_en) &&
+		while(!(efuse_readl(EFUSE_STATE) & 0x2) ||
+				(gpio_get_value(efuse->gpio_vddq_en) != efuse->gpio_vddq_en_level));
+		if ((gpio_get_value(efuse->gpio_vddq_en)  != efuse->gpio_vddq_en_level) &&
 				!(efuse_readl(EFUSE_STATE) & 0x2)) {
 			efuse_writel(0, EFUSE_CTRL);
 			clk_disable(efuse->clk);

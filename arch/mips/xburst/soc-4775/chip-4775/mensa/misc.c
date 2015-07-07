@@ -7,7 +7,6 @@
 #include <linux/jz4780-adc.h>
 #include <linux/spi/spi.h>
 #include <linux/spi/spi_gpio.h>
-#include <linux/android_pmem.h>
 #include <mach/platform.h>
 #include <mach/jzsnd.h>
 #include <mach/jzmmc.h>
@@ -18,7 +17,9 @@
 #include <linux/power/jz4780-battery.h>
 #include <linux/i2c/ft6x06_ts.h>
 #include <linux/interrupt.h>
+#ifdef CONFIG_SND_JZ_SOC_AIC_CORE
 #include <sound/jz-aic.h>
+#endif
 #include "board.h"
 
 #ifdef CONFIG_KEYBOARD_GPIO
@@ -480,36 +481,6 @@ struct spi_nor_platform_data {
         /* Flash status register num, Max support 3 register */
         int st_regnum;
 };
-
-static struct spi_nor_block_info flash_block_info[] = {
-        {
-                .blocksize      = 64 * 1024,
-                .cmd_blockerase = 0xD8,
-                .be_maxbusy     = 1200  /* 1.2s */
-        },
-
-        {
-                .blocksize      = 32 * 1024,
-                .cmd_blockerase = 0x52,
-                .be_maxbusy     = 1000  /* 1s */
-        },
-};
-
-static struct spi_nor_platform_data spi_nor_pdata = {
-        .pagesize       = 256,
-        .sectorsize     = 4 * 1024,
-        .chipsize       = 16384 * 1024,
-
-        .block_info     = flash_block_info,
-        .num_block_info = ARRAY_SIZE(flash_block_info),
-
-        .addrsize       = 3,
-        .pp_maxbusy     = 3,            /* 3ms */
-        .se_maxbusy     = 400,          /* 400ms */
-        .ce_maxbusy     = 80 * 1000,    /* 80s */
-
-        .st_regnum      = 3,
-};
 #endif
 
 /* SSI */
@@ -654,6 +625,10 @@ static int __init board_init(void)
 #endif
 #endif
 
+/*pwm*/
+#ifdef CONFIG_JZ_PWM
+	platform_device_register(&jz_pwm_device);
+#endif
 
 /* sound */
 #ifdef CONFIG_SOUND_I2S_JZ47XX
@@ -687,7 +662,7 @@ static int __init board_init(void)
 #ifdef CONFIG_LCD_BYD_BM8766U
 	platform_device_register(&byd_bm8766u_device);
 #endif
-#ifdef CONFIG_BM347WV_F_8991FTGF_HX8369
+#ifdef CONFIG_LCD_BYD_8991FTGF
 	platform_device_register(&byd_8991_device);
 #endif
 #ifdef CONFIG_LCD_KFM701A21_1A
@@ -705,8 +680,8 @@ static int __init board_init(void)
 	jz_device_register(&jz_epd_device, &jz_epd_pdata);
 #endif
 /* lcdc framebuffer*/
-#ifdef CONFIG_FB_JZ4780_LCDC0
-	jz_device_register(&jz_fb0_device, &jzfb0_pdata);
+#ifdef CONFIG_FB_JZ_V11
+	jz_device_register(&jz_fb0_device, &jzfb_pdata);
 #endif
 
 /* uart */

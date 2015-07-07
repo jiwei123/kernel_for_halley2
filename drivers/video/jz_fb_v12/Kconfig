@@ -2,7 +2,7 @@
 
 menuconfig FB_JZ_V12
 	tristate "JZ LCDC framebuffer V1.2"
-	depends on FB
+	depends on FB && SOC_M200
 	select FB_CFB_FILLRECT
 	select FB_CFB_COPYAREA
 	select FB_CFB_IMAGEBLIT
@@ -23,12 +23,6 @@ config JZ_MIPI_DSI
 	bool "jz mipi dsi interface"
     depends on FB_JZ_V12
 	default n
-
-config DEFAULT_DATALANE_BPS
-	int "set default datalane Mbps"
-	range 90 1000
-	depends on JZ_MIPI_DSI
-	default 432
 
 config DSI_DPI_DEBUG
 	bool "only for tft.dpi interface debug and color test pattern"
@@ -82,11 +76,4 @@ config SOFT_LCD_GPIO_FUNC2_SLCD_8BIT
 		for example,
 		for soft truly_tft240240_2_e panel, set it
 endchoice
-
-config FB_JZ_DEBUG
-        bool "fb test for displaying color bar"
-        depends on FB_JZ_V12
-        default n
-        help
-           fb test for displaying color bar in your board.
 

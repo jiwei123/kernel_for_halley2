@@ -1,11 +1,7 @@
 
-obj-y += misc.o regulator.o sound.o
-
-ifdef CONFIG_BM347WV_F_8991FTGF_HX8369
-obj-$(CONFIG_FB_JZ4780_LCDC0)		+= lcd-8991.o
-else
-obj-$(CONFIG_FB_JZ4780_LCDC0)		+= lcd.o
-endif
+obj-y += misc.o regulator.o #sound.o
+obj-$(CONFIG_LCD_BYD_8991FTGF) += lcd-8991.o
+obj-$(CONFIG_LCD_KFM701A21_1A) += lcd-kfm701a21_1a.o
 obj-$(CONFIG_FB_JZ4775_ANDROID_EPD)	+= mensa-epd.o
 obj-$(CONFIG_MTD_NAND_JZ4775)		+= nand-mtd.o
 obj-$(CONFIG_MMC_JZ4775)		+= mmc.o

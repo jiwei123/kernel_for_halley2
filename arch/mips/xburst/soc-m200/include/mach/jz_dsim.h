@@ -10,7 +10,6 @@
 #include <linux/device.h>
 #include <linux/fb.h>
 
-#define DEFAULT_DATALANE_BPS	(CONFIG_DEFAULT_DATALANE_BPS * 1000)
 #define REFERENCE_FREQ (24000)  //24MHZ, ext
 #define DPHY_DIV_UPPER_LIMIT    (40000)
 #define DPHY_DIV_LOWER_LIMIT    (1000)

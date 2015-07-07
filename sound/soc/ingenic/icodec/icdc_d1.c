@@ -222,8 +222,8 @@ static int icdc_d1_set_bias_level(struct snd_soc_codec *codec,
 		}
 		break;
 	case SND_SOC_BIAS_OFF:
-		snd_soc_update_bits(codec, DLV_REG_CR_VIC, 0, DLV_CR_VIC_SB_SLEEP_MASK);
-		snd_soc_update_bits(codec, DLV_REG_CR_VIC, 0, DLV_CR_VIC_SB_MASK);
+		snd_soc_update_bits(codec, DLV_REG_CR_VIC, DLV_CR_VIC_SB_SLEEP_MASK, DLV_CR_VIC_SB_SLEEP_MASK);
+		snd_soc_update_bits(codec, DLV_REG_CR_VIC, DLV_CR_VIC_SB_MASK, DLV_CR_VIC_SB_MASK);
 		break;
 	}
 	codec->dapm.bias_level = level;
@@ -609,7 +609,7 @@ static int icdc_d1_aohp_anti_pop_event_sub(struct snd_soc_codec *codec,
 			icdc_d1_wait_hp_mode_unlocked(codec);
 
 			/*hp mute*/
-			snd_soc_update_bits(codec, DLV_REG_CR_HP, 0, DLV_CR_HP_MUTE_MASK);
+			snd_soc_update_bits(codec, DLV_REG_CR_HP, DLV_CR_HP_MUTE_MASK, DLV_CR_HP_MUTE_MASK);
 
 			/*hp +6db to wished :ingnore hp gain set when aohp power up seq*/
 			snd_soc_write(codec, DLV_REG_GCR_HPL, icdc_d1->hpl_wished_gain);
@@ -820,7 +820,7 @@ int icdc_d1_hp_detect(struct snd_soc_codec *codec, struct snd_soc_jack *jack,
 			snd_soc_jack_report(icdc_d1->jack, report, icdc_d1->report_mask);
 		}
 	} else {
-		snd_soc_update_bits(codec, DLV_REG_IMR, 0, DLV_IMR_JACK);
+		snd_soc_update_bits(codec, DLV_REG_IMR, DLV_IMR_JACK, DLV_IMR_JACK);
 	}
 	return 0;
 }

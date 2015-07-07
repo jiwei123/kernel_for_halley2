@@ -153,6 +153,14 @@ config LCD_BYD_8991FTGF
 	depends on BACKLIGHT_CLASS_DEVICE
 	default n
 
+config LCD_KFM701A21_1A
+	tristate "KFM701A21_1A TFT Smart LCD panel(400x240)"
+	depends on BACKLIGHT_CLASS_DEVICE
+	default n
+	help
+	  If you have an KFM701A21_1A Panel, say Y to enable its
+	  control driver. The driver IC of this module is SPFD5420A.
+
 config LCD_BYD_9177AA
 	tristate "byd 9177aa  mipi-dsi panel(540x960)"
 	depends on FB && JZ_MIPI_DSI

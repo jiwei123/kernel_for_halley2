@@ -18,6 +18,7 @@ obj-$(CONFIG_LCD_TDO24M)		+= tdo24m.o
 obj-$(CONFIG_LCD_TOSA)			+= tosa_lcd.o
 obj-$(CONFIG_LCD_VGG2432A4)		+= vgg2432a4.o
 obj-$(CONFIG_LCD_BYD_8991FTGF)	+= byd_8991.o byd_8991_init.o
+obj-$(CONFIG_LCD_KFM701A21_1A)	+= kfm701a21_1a.o
 obj-$(CONFIG_LCD_BYD_9177AA)	+= byd_9177aa.o
 obj-$(CONFIG_LCD_X163)             += auo_x163.o
 obj-$(CONFIG_LCD_AUO_H139BLN01)    += auo_h139bln01.o

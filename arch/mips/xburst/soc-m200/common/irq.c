@@ -1,13 +1,25 @@
-/*
- * Interrupt controller.
+/* arch/mips/xburst/soc-m200/common/irq.c
+ * Interrupt controller driver for Ingenic's M200 SoC.
  *
- * Copyright (c) 2006-2007  Ingenic Semiconductor Inc.
- * Author: <lhhuang@ingenic.cn>
+ * Copyright (C) 2015 Ingenic Semiconductor Co., Ltd.
+ *	http://www.ingenic.com
+ * Author: Huang LiHong <lhhuang@ingenic.cn>
+ * Modified By: Sun Jiwei <jiwei.sun@ingenic.com>
  *
- *  This program is free software; you can redistribute	 it and/or modify it
- *  under  the terms of	 the GNU General  Public License as published by the
- *  Free Software Foundation;  either version 2 of the	License, or (at your
- *  option) any later version.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
  */
 #include <linux/init.h>
 #include <linux/irq.h>
@@ -68,75 +80,14 @@ static int intc_irq_set_wake(struct irq_data *data, unsigned int on)
 	intc_irq_ctrl(data, -1, !!on);
 	return 0;
 }
-#ifdef CONFIG_SMP
 
-static unsigned int cpu_irq_affinity[NR_CPUS];
-static unsigned int cpu_irq_unmask[NR_CPUS];
-static unsigned int cpu_mask_affinity[NR_CPUS];
-
-static inline void set_intc_cpu(unsigned long irq_num,long cpu) {
-	int mask,i;
-	int num = irq_num / 32;
-	mask = 1 << (irq_num % 32);
-	BUG_ON(num);
-
-	cpu_irq_affinity[cpu] |= mask;
-	for(i = 0;i < NR_CPUS;i++) {
-		if(i != cpu)
-			cpu_irq_unmask[i] &= ~mask;
-	}
-}
-static inline void init_intc_affinity(void) {
-	int i;
-	for(i = 0;i < NR_CPUS;i++) {
-		cpu_irq_unmask[i] = 0xffffffff;
-		cpu_irq_affinity[i] = 0;
-	}
-}
-static int intc_set_affinity(struct irq_data *data, const struct cpumask *dest, bool force) {
-	return 0;
-}
-#endif
 static struct irq_chip jzintc_chip = {
 	.name 		= "jz-intc",
 	.irq_mask	= intc_irq_mask,
 	.irq_mask_ack 	= intc_irq_mask,
 	.irq_unmask 	= intc_irq_unmask,
 	.irq_set_wake 	= intc_irq_set_wake,
-#ifdef CONFIG_SMP
-	.irq_set_affinity = intc_set_affinity,
-#endif
 };
-
-#ifdef CONFIG_SMP
-extern void jzsoc_mbox_interrupt(void);
-static irqreturn_t ipi_reschedule(int irq, void *d)
-{
-	scheduler_ipi();
-	return IRQ_HANDLED;
-}
-
-static irqreturn_t ipi_call_function(int irq, void *d)
-{
-	smp_call_function_interrupt();
-	return IRQ_HANDLED;
-}
-
-static int setup_ipi(void)
-{
-	if (request_irq(IRQ_SMP_RESCHEDULE_YOURSELF, ipi_reschedule, IRQF_DISABLED,
-				"ipi_reschedule", NULL))
-		BUG();
-	if (request_irq(IRQ_SMP_CALL_FUNCTION, ipi_call_function, IRQF_DISABLED,
-				"ipi_call_function", NULL))
-		BUG();
-
-	set_c0_status(STATUSF_IP3);
-	return 0;
-}
-
-
-#endif
 
 void __init arch_init_irq(void)
 {
@@ -158,83 +109,34 @@ void __init arch_init_irq(void)
 		irq_set_chip_and_handler(i, &jzintc_chip, handle_level_irq);
 	}
 
-#ifdef CONFIG_SMP
-	init_intc_affinity();
-	set_intc_cpu(26,0);
-	set_intc_cpu(27,1);
-#endif
 	/* enable cpu interrupt mask */
 	set_c0_status(IE_IRQ0 | IE_IRQ1);
 
-#ifdef CONFIG_SMP
-	setup_ipi();
-#endif
 	return;
 }
 
 static void intc_irq_dispatch(void)
 {
-	unsigned long ipr[2],gpr[2];
-	unsigned long ipr_intc;
-#ifdef CONFIG_SMP
-	unsigned long cpuid = smp_processor_id();
-	unsigned long nextcpu;
-#endif
-	ipr_intc = readl(intc_base + IPR_OFF);
-#ifdef CONFIG_SMP
+	unsigned long ipr[2];
 
-	ipr[0] = ipr_intc & cpu_irq_unmask[cpuid];
-#else
-	ipr[0] = ipr_intc;
-#endif
-	gpr[0] = ipr[0] & 0x3f800;
-	ipr[0] &= ~0x3f800;
+	ipr[0] = readl(intc_base + IPR_OFF);
 
 	ipr[1] = readl(intc_base + PART_OFF + IPR_OFF);
-	gpr[1] = ipr[1] & 0x1c0f0000;
-	ipr[1] &= ~0x1c0f0000;
 
 	if (ipr[0]) {
-		do_IRQ(ffs(ipr[0]) -1 +IRQ_INTC_BASE);
-	}
-	if (gpr[0]) {
-		generic_handle_irq(ffs(gpr[0]) -1 +IRQ_INTC_BASE);
+		do_IRQ(ffs(ipr[0]) - 1 + IRQ_INTC_BASE);
 	}
 
 	if (ipr[1]) {
-		do_IRQ(ffs(ipr[1]) +31 +IRQ_INTC_BASE);
+		do_IRQ(ffs(ipr[1]) + 31 + IRQ_INTC_BASE);
 	}
-	if (gpr[1]) {
-		generic_handle_irq(ffs(gpr[1]) +31 +IRQ_INTC_BASE);
-	}
-
-#ifdef CONFIG_SMP
-	nextcpu = switch_cpu_irq(cpuid);
-	if(nextcpu & 0x80000000) {
-		nextcpu &= ~0x80000000;
-		ipr_intc = ipr_intc & cpu_irq_affinity[nextcpu];
-		if(ipr_intc) {
-			cpu_mask_affinity[nextcpu] |= ipr_intc;
-			writel(ipr_intc, intc_base + IMSR_OFF);
-		}
-	}else if(nextcpu) {
-		if(cpu_mask_affinity[nextcpu]) {
-			writel(cpu_mask_affinity[nextcpu], intc_base + IMCR_OFF);
-			cpu_mask_affinity[nextcpu] = 0;
-		}
-	}
-#endif
 }
 
 asmlinkage void plat_irq_dispatch(void)
 {
 	unsigned int cause = read_c0_cause();
 	unsigned int pending = cause & read_c0_status() & ST0_IM;
-#ifdef CONFIG_SMP
-	if(pending & CAUSEF_IP3) {
-		jzsoc_mbox_interrupt();
-	}
-#endif
+
 	if(pending & CAUSEF_IP2)
 		intc_irq_dispatch();
 	cause = read_c0_cause();

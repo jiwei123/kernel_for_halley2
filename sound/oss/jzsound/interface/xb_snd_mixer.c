@@ -198,7 +198,7 @@ ssize_t xb_snd_mixer_write(struct file *file,
 			mode = 3;
 			ddata->dev_ioctl(SND_DSP_SET_MIC_VOL,(unsigned long)mode);*/
 			break;
-		case 'l':
+		case 'L':
 			printk(" \"l\" set line in route\n");
 			if(copy_from_user((void *)buf_vol, buffer, 3)) {
 				return -EFAULT;

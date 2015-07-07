@@ -50,7 +50,13 @@ static int exec_write_proc(struct file *file, const char __user *buffer, size_t 
 	return count;
 }
 
+static int proc_exec_open(struct inode *inode, struct file *file)
+{
+	return single_open(file,NULL, PDE_DATA(inode));
+}
+
 static const struct file_operations exec_proc_fops ={
+	.open = proc_exec_open,
 	.write = exec_write_proc,
 	.llseek = seq_lseek,
 	.release = single_release,

@@ -67,13 +67,8 @@ static int newton_dlv_dai_link_init(struct snd_soc_pcm_runtime *rtd)
 	if (err)
 		return err;
 
-	snd_soc_jack_new(codec, "Headphone Jack", SND_JACK_HEADPHONE, &newton_icdc_d1_hp_jack);
-	snd_soc_jack_add_pins(&newton_icdc_d1_hp_jack,
-			ARRAY_SIZE(newton_icdc_d1_hp_jack_pins),
-			newton_icdc_d1_hp_jack_pins);
-
-	icdc_d1_hp_detect(codec, &newton_icdc_d1_hp_jack, SND_JACK_HEADPHONE);
-
+	icdc_d1_hp_detect(codec, NULL, SND_JACK_HEADPHONE);
+	snd_soc_dapm_force_enable_pin(dapm, "Headphone Jack");
 	snd_soc_dapm_sync(dapm);
 	return 0;
 }

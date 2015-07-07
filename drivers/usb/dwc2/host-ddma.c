@@ -927,13 +927,17 @@ static struct dwc2_qh* dwc2_qh_make(struct dwc2 *dwc, struct urb *urb) {
 				qh->hub_addr = urb->dev->tt->hub->devnum;
 		}
 
-		mode = DWC2_HC_EHCI_MODE;
-
-		if ((qh->speed == USB_SPEED_LOW) || (qh->speed == USB_SPEED_FULL)) {
-			dev_err(dwc->dev, "Sorry, SPLIT transfer is not supported!\n");
-			kmem_cache_free(dwc->qh_cachep, qh);
-			hep->hcpriv = NULL;
-			return NULL;
+		if (urb->dev->parent->speed == USB_SPEED_HIGH) {
+			mode = DWC2_HC_EHCI_MODE;
+			if ((qh->speed == USB_SPEED_LOW) || (qh->speed == USB_SPEED_FULL)) {
+				dev_err(dwc->dev, "Sorry, SPLIT transfer is not supported!\n");
+				kmem_cache_free(dwc->qh_cachep, qh);
+				hep->hcpriv = NULL;
+				return NULL;
+			}
+		} else {
+			/*FIXME: now we assume both hub is full speed*/
+			mode = DWC2_HC_UHCI_MODE;
 		}
 	} else {	      /* directly connect to RH */
 		if ((qh->speed == USB_SPEED_LOW) || (qh->speed == USB_SPEED_FULL))

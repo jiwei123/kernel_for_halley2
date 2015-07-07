@@ -94,7 +94,6 @@ struct jzdsi_data jzdsi_pdata = {
 	.video_config.no_of_lanes = 2,
 	.video_config.virtual_channel = 0,
 	.video_config.color_coding = COLOR_CODE_24BIT,
-	.video_config.byte_clock =  DEFAULT_DATALANE_BPS / 8,	/* KHz  */
 	.video_config.video_mode = VIDEO_BURST_WITH_SYNC_PULSES,
 	.video_config.receive_ack_packets = 0,	/* enable receiving of ack packets */
 	/*loosely: R0R1R2R3R4R5__G0G1G2G3G4G5G6__B0B1B2B3B4B5B6,
@@ -108,6 +107,7 @@ struct jzdsi_data jzdsi_pdata = {
 	.dsi_config.max_bta_cycles = 4095,
 	.dsi_config.color_mode_polarity = 1,
 	.dsi_config.shut_down_polarity = 1,
+	.max_bps = 650,  // 650 Mbps
 };
 
 struct jzfb_platform_data jzfb_pdata = {

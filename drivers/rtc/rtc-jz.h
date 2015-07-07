@@ -111,11 +111,15 @@ struct jz_rtc {
 	int irq;
 	struct clk *clk;
 	spinlock_t lock;
+	spinlock_t rd_lock;
+	spinlock_t wr_lock;
 	void __iomem *iomem;
+	struct mutex	mutexlock;
+	struct mutex	mutex_wr_lock;
 	struct resource *res;
+	struct work_struct work;
 	struct rtc_device *rtc;
 	struct rtc_time rtc_alarm;
-	struct tasklet_struct   tasklet;
 };
 
 

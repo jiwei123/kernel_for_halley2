@@ -18,6 +18,9 @@
 
 #include "board.h"
 
+extern struct i2c_adapter *i2c_get_adapter(int nr);
+extern void i2c_put_adapter(struct i2c_adapter *adap);
+extern struct i2c_client *i2c_new_device(struct i2c_adapter *adap, struct i2c_board_info const *info);
 /**
  * Core voltage Regulator.
  * Couldn't be modified.

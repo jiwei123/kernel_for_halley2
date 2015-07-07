@@ -134,34 +134,14 @@ static int vpu_open(struct inode *inode, struct file *filp)
 {
 	struct miscdevice *dev = filp->private_data;
 	struct jz_vpu *vpu = container_of(dev, struct jz_vpu, mdev);
-
-	dev_dbg(vpu->dev, "[%d:%d] open\n", current->tgid, current->pid);
-
-	spin_lock(&vpu->lock);
-
-	if (vpu->use_count == 0)
-		vpu_on(vpu);
-	else
-		dev_dbg(vpu->dev, "[%d:%d] already on\n",
-			current->tgid, current->pid);
-
-	vpu->use_count++;
-	spin_unlock(&vpu->lock);
-
-	return 0;
-}
-
-static int vpu_release(struct inode *inode, struct file *filp)
-{
-	struct miscdevice *dev = filp->private_data;
-	struct jz_vpu *vpu = container_of(dev, struct jz_vpu, mdev);
 	int dec_count = MAX_LOCK_DEPTH;
 
+	dev_warn(vpu->dev, "[%d:%d] open\n", current->tgid, current->pid);
+
 	spin_lock(&vpu->lock);
-	vpu->use_count--;
 
 	if (vpu->use_count == 0) {
-		vpu_off(vpu);
+		vpu_on(vpu);
 		while (mutex_is_locked(&vpu->mutex) && --dec_count) {
 			dev_warn(vpu->dev, "[%d:%d] mutex locked, dec by 1\n",
 				 current->tgid, current->pid);
@@ -172,12 +152,33 @@ static int vpu_release(struct inode *inode, struct file *filp)
 				current->tgid, current->pid, MAX_LOCK_DEPTH);
 			WARN_ON(1);
 		}
-	} else
+
+	} else {
+		dev_dbg(vpu->dev, "[%d:%d] already on\n",
+			current->tgid, current->pid);
+	}
+	vpu->use_count++;
+	spin_unlock(&vpu->lock);
+
+	return 0;
+}
+
+static int vpu_release(struct inode *inode, struct file *filp)
+{
+	struct miscdevice *dev = filp->private_data;
+	struct jz_vpu *vpu = container_of(dev, struct jz_vpu, mdev);
+
+	spin_lock(&vpu->lock);
+	vpu->use_count--;
+
+	if (vpu->use_count == 0) {
+		vpu_off(vpu);
+	} else {
 		dev_dbg(vpu->dev, "[%d:%d] someone else used, leave on\n",
 			current->tgid, current->pid);
-
+	}
 	spin_unlock(&vpu->lock);
-	dev_dbg(vpu->dev, "[%d:%d] close\n", current->tgid, current->pid);
+	dev_warn(vpu->dev, "[%d:%d] close\n", current->tgid, current->pid);
 
 	return 0;
 }
@@ -259,7 +260,12 @@ static long vpu_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		arg_r = (unsigned int *)arg;
 		addr = (unsigned int)arg_r[0];
 		size = arg_r[1];
-		dma_cache_wback_inv(addr, size);
+		if(size == 0) {
+			printk("ERROR:%s:size = %d, addr = 0x%x\n", __func__, size, addr);
+			force_sig(SIGSEGV, current);
+		}else {
+			dma_cache_wback_inv(addr, size);
+		}
 		break;
 	case CMD_VPU_DMA_NOTLB:
 		local_irq_save(flags);
@@ -380,6 +386,7 @@ static irqreturn_t vpu_interrupt(int irq, void *dev)
 		if(vpu_stat & VPU_STAT_ENDF) {
 			if(vpu_stat & VPU_STAT_JPGEND) {
 				dev_dbg(vpu->dev, "JPG successfully done!\n");
+				vpu_stat = vpu_readl(vpu,REG_VPU_JPGC_STAT);
 				CLEAR_VPU_BIT(vpu,REG_VPU_JPGC_STAT,JPGC_STAT_ENDF);
 			} else {
 				dev_dbg(vpu->dev, "SCH successfully done!\n");

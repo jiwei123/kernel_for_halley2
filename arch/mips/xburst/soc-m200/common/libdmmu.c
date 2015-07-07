@@ -139,20 +139,25 @@ static unsigned long unmap_node(struct pmd_node *n,unsigned long vaddr,unsigned 
 	unsigned int *pte = (unsigned int *)n->page;
 	int index = ((vaddr & 0x3ff000) >> 12);
 	int free = !check || (--n->count == 0);
+	if(vaddr && end) {
+		while(index < 1024 && vaddr < end) {
+			if(pte[index] & MAP_CONUT_MASK) {
+				pte[index] -= MAP_COUNT;
+			} else {
+				ClearPageReserved(virt_to_page((void *)vaddr));
+				pte[index] = reserved_pte;
+			}
+			index++;
+			vaddr += 4096;
+		}
+	}
+
 	if(free) {
-		__free_page((void *)n->page);
+		ClearPageReserved(virt_to_page((void *)n->page));
+		free_page(n->page);
 		list_del(&n->list);
 		kfree(n);
 		return vaddr+(1024-index)*4096;
-	}
-
-	while(index < 1024 && vaddr < end) {
-		if(pte[index] & MAP_CONUT_MASK)
-			pte[index] -= MAP_COUNT;
-		else
-			pte[index] = reserved_pte;
-		index++;
-		vaddr += 4096;
 	}
 
 	return vaddr;
@@ -165,6 +170,7 @@ static unsigned long map_node(struct pmd_node *n,unsigned int vaddr,unsigned int
 
 	while(index < 1024 && vaddr < end) {
 		if(pte[index] == reserved_pte) {
+			SetPageReserved(virt_to_page((void *)vaddr));
 			pte[index] = dmmu_v2pfn(vaddr) | DMMU_PTE_VLD;
 		} else {
 			pte[index] += MAP_COUNT;
@@ -260,6 +266,14 @@ static struct dmmu_handle *create_handle(void)
 
 static int dmmu_make_present(unsigned long addr,unsigned long end)
 {
+#if 0
+	unsigned long i;
+	for(i = addr; i < end; i += 4096) {
+		*(volatile unsigned char *)(i) = 0;
+	}
+	*(volatile unsigned char *)(end - 1) = 0;
+	return 0;
+#else
 	int ret, len, write;
 	struct vm_area_struct * vma;
 	unsigned long vm_page_prot;
@@ -289,6 +303,7 @@ static int dmmu_make_present(unsigned long addr,unsigned long end)
 		return ret;
 	}
 	return ret == len ? 0 : -1;
+#endif
 }
 
 static void dmmu_cache_wback(struct dmmu_handle *h)
@@ -388,7 +403,8 @@ int dmmu_unmap(struct device *dev,unsigned long vaddr, int len)
 
 	if(list_empty(&h->pmd_list) && list_empty(&h->map_list)) {
 		list_del(&h->list);
-		__free_page((void *)h->pdg);
+		ClearPageReserved(virt_to_page((void *)h->pdg));
+		free_page(h->pdg);
 		mutex_unlock(&h->lock);
 		kfree(h);
 		return 0;
@@ -410,19 +426,27 @@ int dmmu_free_all(struct device *dev)
 		return 0;
 
 	mutex_lock(&h->lock);
-	list_for_each_safe(pos, next, &h->pmd_list) {
-		node = list_entry(pos, struct pmd_node, list);
-		unmap_node(node,0,0,0);
-	}
 
 	list_for_each_safe(pos, next, &h->map_list) {
 		cn = list_entry(pos, struct map_node, list);
+		node = find_node(h,cn->start);
+		if(node)
+			unmap_node(node,cn->start,cn->len,1);
 		list_del(&cn->list);
 		kfree(cn);
 	}
 
+	list_for_each_safe(pos, next, &h->pmd_list) {
+		node = list_entry(pos, struct pmd_node, list);
+		if(node){
+			printk("WARN: pmd list should NULL\n");
+			unmap_node(node,0,0,0);
+		}
+	}
+
 	list_del(&h->list);
-	__free_page((void *)h->pdg);
+	ClearPageReserved(virt_to_page((void *)h->pdg));
+	free_page(h->pdg);
 	kfree(h);
 
 	mutex_unlock(&h->lock);
@@ -476,7 +500,7 @@ int __init dmmu_init(void)
 	if (!res_pte_vaddr) {
 		pr_err("%s %d, Get free page for PTE error\n",
 				__func__, __LINE__);
-		__free_page((void *)reserved_page);
+		free_page(reserved_page);
 		return ENOMEM;
 	}
 	SetPageReserved(virt_to_page(res_pte_vaddr));

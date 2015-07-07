@@ -1,19 +1,33 @@
-/*
- * Real Time Clock interface for Jz.
+/* drivers/rtc/rtc-jz.c
  *
- * Copyright (C) 2014, Ingenic Semiconductor Inc.
+ * Real Time Clock interface for Ingenic's SOC, such as JZ4775, M200, M150,
+ * and so on.
  *
- * Author: Aaron Wang<hfwang@ingenic.cn>
+ * Copyright (C) 2015 Ingenic Semiconductor Co., Ltd.
+ *	http://www.ingenic.com
+ * Author:	Wang Chengwan<cwwang@ingenic.cn>
+ *		Aaron Wang<hfwang@ingenic.cn>
+ *		Sun Jiwei <jiwei.sun@ingenic.com>
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version
- * 2 of the License, or (at your option) any later version.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  */
 
-#include <linux/platform_device.h>
 #include <linux/module.h>
+#include <linux/init.h>
+#include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/rtc.h>
 #include <linux/init.h>
@@ -26,6 +40,7 @@
 
 #include "rtc-jz.h"
 
+/*FIXME by jwsun,it should in board info*/
 /* Default time for the first-time power on */
 static struct rtc_time default_tm = {
 	.tm_year = (2014 - 1900), // year 2014
@@ -69,6 +84,7 @@ static void jzrtc_writel(struct jz_rtc *dev,int offset, unsigned int value)
 {
 
 	int timeout = 0x100000;
+	mutex_lock(&dev->mutex_wr_lock);
 //	wait_write_ready(dev);
 	writel(WENR_WENPAT_WRITABLE, dev->iomem + RTC_WENR);
 	wait_write_ready(dev);
@@ -78,6 +94,7 @@ static void jzrtc_writel(struct jz_rtc *dev,int offset, unsigned int value)
 	wait_write_ready(dev);
 	writel(value,dev->iomem + offset);
 	wait_write_ready(dev);
+	mutex_unlock(&dev->mutex_wr_lock);
 }
 
 static inline void jzrtc_clrl(struct jz_rtc *dev,int offset, unsigned int value)
@@ -118,12 +135,12 @@ static void jz_rtc_dump(struct jz_rtc *dev)
 }
 #endif
 
-static void jzrtc_irq_tasklet(unsigned long data)
+static void jzrtc_irq_work(struct work_struct *work)
 {
 
 	unsigned int rtsr,save_rtsr;
 	unsigned long events;
-	struct jz_rtc *rtc =  (struct jz_rtc *) data;
+	struct jz_rtc *rtc =  container_of(work, struct jz_rtc, work);
 
 	rtsr = jzrtc_readl(rtc, RTC_RTCCR);
 	save_rtsr = rtsr;
@@ -160,15 +177,12 @@ static irqreturn_t jz_rtc_interrupt(int irq, void *dev_id)
 
 	disable_irq_nosync(rtc->irq);
 
-	tasklet_schedule(&rtc->tasklet);
+	schedule_work(&rtc->work);
 	return IRQ_HANDLED;
 }
 
 static int jz_rtc_open(struct device *dev)
 {
-//	int ret;
-//	struct jz_rtc *rtc = dev_get_drvdata(dev);
-
 	return 0;
 }
 
@@ -182,41 +196,8 @@ static void jz_rtc_release(struct device *dev)
 static int jz_rtc_ioctl(struct device *dev, unsigned int cmd,
 		unsigned long arg)
 {
-	struct jz_rtc *rtc = dev_get_drvdata(dev);
-	unsigned int tmp;
-	unsigned long flags;
 	switch (cmd) {
-		case RTC_AIE_OFF:
-			spin_lock_irqsave(&rtc->lock,flags);
-			jzrtc_clrl(rtc,RTC_RTCCR, RTCCR_AIE | RTCCR_AE | RTCCR_AF);
-			spin_unlock_irqrestore(&rtc->lock,flags);
-			return 0;
-		case RTC_AIE_ON:
-			spin_lock_irqsave(&rtc->lock,flags);
-			tmp = jzrtc_readl(rtc, RTC_RTCCR);
-			tmp &= ~RTCCR_AF;
-			tmp |= RTCCR_AIE | RTCCR_AE;
-			jzrtc_writel(rtc, RTC_RTCCR, tmp);
-			spin_unlock_irqrestore(&rtc->lock,flags);
-			return 0;
-		case RTC_UIE_OFF:
-			spin_lock_irqsave(&rtc->lock,flags);
-			jzrtc_clrl(rtc,RTC_RTCCR, RTCCR_1HZ | RTCCR_1HZIE);
-			spin_unlock_irqrestore(&rtc->lock,flags);
-			return 0;
-		case RTC_UIE_ON:
-			spin_lock_irqsave(&rtc->lock,flags);
-			tmp = jzrtc_readl(rtc, RTC_RTCCR);
-			tmp &= ~RTCCR_1HZ;
-			tmp |= RTCCR_1HZIE;
-			jzrtc_writel(rtc, RTC_RTCCR, tmp);
-			spin_unlock_irqrestore(&rtc->lock,flags);
-			return 0;
-		case RTC_PIE_OFF:
-			pr_debug("not implement!\n");
-			return 0;
-		case RTC_PIE_ON:
-			pr_debug("not implement!\n");
+		default:
 			return 0;
 	}
 	return -ENOIOCTLCMD;
@@ -224,7 +205,6 @@ static int jz_rtc_ioctl(struct device *dev, unsigned int cmd,
 
 static int jz_rtc_set_time(struct device *dev, struct rtc_time *tm)
 {
-
 	struct jz_rtc *rtc = NULL;
 	unsigned long time = 0;
 	int ret = -1;
@@ -255,6 +235,7 @@ static int jz_rtc_read_time(struct device *dev, struct rtc_time *tm)
 		tmp = jzrtc_readl(rtc, RTC_RTCSR);
 		rtc_time_to_tm(tmp, tm);
 	}
+
 	return 0;
 }
 
@@ -262,16 +243,13 @@ static int jz_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 {
 	unsigned int rtc_rcr,tmp;
 	struct jz_rtc *rtc = dev_get_drvdata(dev);
-	unsigned long flags;
 
 	tmp = jzrtc_readl(rtc, RTC_RTCSAR);
-	spin_lock_irqsave(&rtc->lock,flags);
 	rtc_time_to_tm(tmp, &rtc->rtc_alarm);
 	memcpy(&alrm->time, &rtc->rtc_alarm, sizeof(struct rtc_time));
 	rtc_rcr = jzrtc_readl(rtc, RTC_RTCCR);
 	alrm->enabled = (rtc_rcr & RTCCR_AIE) ? 1 : 0;
 	alrm->pending = (rtc_rcr & RTCCR_AF) ? 1 : 0;
-	spin_unlock_irqrestore(&rtc->lock,flags);
 	return 0;
 }
 
@@ -281,10 +259,14 @@ static int jz_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 	unsigned long time;
 	unsigned int tmp;
 	struct jz_rtc *rtc = dev_get_drvdata(dev);
-	unsigned long flags;
 
-	spin_lock_irqsave(&rtc->lock,flags);
+	mutex_lock(&rtc->mutexlock);
 	if (alrm->enabled) {
+		pr_debug("Next alarm year:%d, mon:%d, day:%d, "
+				"hour:%d, min:%d, sec:%d\n",
+				alrm->time.tm_year, alrm->time.tm_mon,
+				alrm->time.tm_mday, alrm->time.tm_hour,
+				alrm->time.tm_min, alrm->time.tm_sec);
 		rtc_tm_to_time(&alrm->time,&time);
 		jzrtc_writel(rtc, RTC_RTCSAR, time);
 		tmp = jzrtc_readl(rtc, RTC_RTCCR);
@@ -294,7 +276,7 @@ static int jz_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 	} else {
 		jzrtc_clrl(rtc,RTC_RTCCR, RTCCR_AIE | RTCCR_AE | RTCCR_AF);
 	}
-	spin_unlock_irqrestore(&rtc->lock,flags);
+	mutex_unlock(&rtc->mutexlock);
 
 	return ret;
 }
@@ -310,6 +292,28 @@ static int jz_rtc_proc(struct device *dev, struct seq_file *seq)
 	return 0;
 }
 
+static int jz_rtc_alarm_irq_enable(struct device *dev, unsigned int enabled)
+{
+	struct jz_rtc *rtc = dev_get_drvdata(dev);
+	unsigned int tmp;
+
+	mutex_lock(&rtc->mutexlock);
+	if (enabled) {
+		jzrtc_clrl(rtc,RTC_RTCCR, RTCCR_AIE | RTCCR_AE | RTCCR_AF);
+		tmp = jzrtc_readl(rtc, RTC_RTCCR);
+		tmp &= ~RTCCR_AF;
+		tmp |= RTCCR_AIE | RTCCR_AE;
+		jzrtc_writel(rtc, RTC_RTCCR, tmp);
+	} else {
+		tmp = jzrtc_readl(rtc, RTC_RTCCR);
+		tmp &= ~RTCCR_AF;
+		tmp |= RTCCR_AIE | RTCCR_AE;
+		jzrtc_writel(rtc, RTC_RTCCR, tmp);
+	}
+	mutex_unlock(&rtc->mutexlock);
+	return 0;
+}
+
 static const struct rtc_class_ops jz_rtc_ops = {
 	.open       = jz_rtc_open,
 	.release    = jz_rtc_release,
@@ -319,11 +323,11 @@ static const struct rtc_class_ops jz_rtc_ops = {
 	.read_alarm = jz_rtc_read_alarm,
 	.set_alarm  = jz_rtc_set_alarm,
 	.proc       = jz_rtc_proc,
+	.alarm_irq_enable	= jz_rtc_alarm_irq_enable,
 };
 
 static void jz_rtc_enable(struct jz_rtc *rtc)
 {
-
 	unsigned int cfc,hspr,rgr_1hz;
 	unsigned long time = 0;
 
@@ -346,6 +350,7 @@ static void jz_rtc_enable(struct jz_rtc *rtc)
 		/* Set 32768 rtc clocks per seconds */
 		jzrtc_writel(rtc, RTC_RTCGR, RTC_FREQ_DIVIDER);
 
+		/*FIXME,by jwsun, should not be in here*/
 		/* Set minimum wakeup_n pin low-level assertion time for wakeup: 100ms */
 		jzrtc_writel(rtc, RTC_HWFCR, HWFCR_WAIT_TIME(100));
 		jzrtc_writel(rtc, RTC_HRCR, HRCR_WAIT_TIME(60));
@@ -363,71 +368,74 @@ static void jz_rtc_enable(struct jz_rtc *rtc)
 		jzrtc_writel(rtc, RTC_HSPR, cfc);
 	}
 
+	/*FIXME,by jwsun, should not be in here*/
 	/* clear all rtc flags */
 	jzrtc_writel(rtc, RTC_HWRSR, 0);
 
 	/* enabled Power detect*/
+	mutex_lock(&rtc->mutexlock);
 	jzrtc_writel(rtc, RTC_HWCR,((jzrtc_readl(rtc, RTC_HWCR) & 0x7) | (EPDET_DEFAULT << 3)));
-
-	return ;
-
+	mutex_unlock(&rtc->mutexlock);
 }
-
 
 static int jz_rtc_probe(struct platform_device *pdev)
 {
 	struct jz_rtc *rtc;
 	int ret;
 
-	pr_debug("%s: probe=%p\n", __func__, pdev);
-
-	rtc = kzalloc(sizeof(*rtc), GFP_KERNEL);//
-	if (!rtc)
-		return -ENOMEM;
+	rtc = kzalloc(sizeof(*rtc), GFP_KERNEL);
+	if (!rtc) {
+		ret = -ENOMEM;
+		goto err_nomem;
+	}
 
 	rtc->irq = platform_get_irq(pdev, 0);
 	if (rtc->irq < 0) {
 		dev_err(&pdev->dev, "no irq for rtc tick\n");
-		return -ENOENT;
+		ret = rtc->irq;
+		goto err_nosrc;
 	}
-	pr_debug("jz_rtc: tick irq %d\n",  rtc->irq);
 
 	rtc->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (rtc->res == NULL) {
 		dev_err(&pdev->dev, "failed to get memory region resource\n");
-		return -ENOENT;
+		ret = -ENXIO;
+		goto err_nosrc;
 	}
 
 	rtc->res = request_mem_region(rtc->res->start,
-			rtc->res->end - rtc->res->start+1,
-			pdev->name);
+			rtc->res->end - rtc->res->start+1, pdev->name);
 	if (rtc->res == NULL) {
 		dev_err(&pdev->dev, "failed to reserve memory region\n");
-		ret = -ENOENT;
-		goto err_nores;
+		ret = -EFAULT;
+		goto err_mem;
 	}
 
-	rtc->iomem = ioremap_nocache(rtc->res->start, rtc->res->end - rtc->res->start + 1);
+	rtc->iomem = ioremap_nocache(rtc->res->start,
+			rtc->res->end - rtc->res->start + 1);
 	if (rtc->iomem == NULL) {
 		dev_err(&pdev->dev, "failed ioremap()\n");
-		ret = -EINVAL;
+		ret = -EFAULT;
 		goto err_nomap;
 	}
 
-	spin_lock_init(&rtc->lock);
 	platform_set_drvdata(pdev, rtc);
 	device_init_wakeup(&pdev->dev, 1);
-	rtc->rtc = rtc_device_register(pdev->name, &pdev->dev, &jz_rtc_ops, THIS_MODULE);
 
+	rtc->rtc = rtc_device_register(pdev->name, &pdev->dev,
+			&jz_rtc_ops, THIS_MODULE);
 	if (IS_ERR(rtc->rtc)) {
 		ret = PTR_ERR(rtc->rtc);
 		dev_err(&pdev->dev, "Failed to register rtc device: %d\n", ret);
 		goto err_unregister_rtc;
 	}
 
-	tasklet_init(&rtc->tasklet, jzrtc_irq_tasklet,(unsigned long)rtc);
+	INIT_WORK(&rtc->work, jzrtc_irq_work);
+	mutex_init(&rtc->mutexlock);
+	mutex_init(&rtc->mutex_wr_lock);
 
-	ret = request_irq(rtc->irq, jz_rtc_interrupt, IRQF_TRIGGER_LOW | IRQF_DISABLED,
+	ret = request_irq(rtc->irq, jz_rtc_interrupt,
+			IRQF_TRIGGER_LOW | IRQF_DISABLED,
 			"rtc 1Hz and alarm", rtc);
 	if (ret) {
 		pr_debug("IRQ %d already in use.\n", rtc->irq);
@@ -438,19 +446,16 @@ static int jz_rtc_probe(struct platform_device *pdev)
 
 	return 0;
 
-
 err_unregister_rtc:
 	rtc_device_unregister(rtc->rtc);
-
 	iounmap(rtc->iomem);
-
 err_nomap:
-	release_resource(rtc->res);
-
-err_nores:
+	release_mem_region(rtc->res->start, resource_size(rtc->res));
+err_mem:
+err_nosrc:
+	kfree(rtc);
+err_nomem:
 	return ret;
-
-
 }
 
 static int jz_rtc_remove(struct platform_device *pdev)
@@ -508,7 +513,6 @@ static int jz_rtc_resume(struct platform_device *pdev)
 
 	return 0;
 }
-
 #else
 #define jz_rtc_suspend	NULL
 #define jz_rtc_resume	NULL
@@ -538,6 +542,6 @@ module_init(jz_rtc_init);
 module_exit(jz_rtc_exit);
 
 MODULE_AUTHOR("Aaron <hfwang@ingenic.cn>");
-MODULE_DESCRIPTION("jz Realtime Clock Driver (RTC)");
+MODULE_DESCRIPTION("Ingenic SoC Realtime Clock Driver (RTC)");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("platform:jz-rtc");
