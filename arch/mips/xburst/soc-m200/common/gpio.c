@@ -297,6 +297,21 @@ int jzgpio_ctrl_pull(enum gpio_port port, int enable_pull,unsigned long pins)
 }
 EXPORT_SYMBOL(jzgpio_ctrl_pull);
 
+int jzgpio_set_func_nopull(enum gpio_port port,
+            enum gpio_function func,unsigned long pins)
+{
+    jzgpio_set_func(port,func,pins);
+    return 0;
+}
+
+int jzgpio_set_func_pull(enum gpio_port port,
+            enum gpio_function func,unsigned long pins)
+{
+    jzgpio_set_func(port,func,pins);
+    jzgpio_ctrl_pull(port,1,pins);
+    return 0;
+}
+
 /* Functions followed for GPIOLIB */
 static int jz_gpio_set_pull(struct gpio_chip *chip,
 			    unsigned offset, unsigned pull)
