@@ -36,7 +36,7 @@
 #include <linux/workqueue.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
-
+#include <linux/power/jz-battery-lut.h>
 
 #ifdef CONFIG_CHARGER_HOLD_WAKE_LOCK
 #include <linux/wakelock.h>
@@ -71,7 +71,7 @@ enum int_type {
 	CHG_INT	 = 0x40,
 };
 
-#ifdef ENABLE_FUEL_GAUGE_FUNCTION
+//#ifdef ENABLE_FUEL_GAUGE_FUNCTION
 /* define for FG delayed time */
 #define RICOH61x_MONITOR_START_TIME		15
 #define RICOH61x_FG_RESET_TIME			6
@@ -113,7 +113,7 @@ enum {
 	RICOH61x_SOCA_FULL,
 	RICOH61x_SOCA_LOW_VOL,
 };
-#endif
+//#endif
 
 #ifdef ENABLE_LOW_BATTERY_DETECTION
 #define LOW_BATTERY_DETECTION_TIME		10
