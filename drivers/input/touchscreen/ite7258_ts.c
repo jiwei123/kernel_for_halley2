@@ -1180,8 +1180,8 @@ static int ite7258_get_resolution(struct ite7258_ts_data *ite7258_ts)
     if (ret < 0)
         return -1;
 
-    ite7258_ts->x_max = rbuffer[2] + (rbuffer[3]<<8) - 1;
-    ite7258_ts->y_max = rbuffer[4] + (rbuffer[5]<<8) - 1;
+    ite7258_ts->x_max = rbuffer[2] + (rbuffer[3]<<8);
+    ite7258_ts->y_max = rbuffer[4] + (rbuffer[5]<<8);
 
     return 0;
 }

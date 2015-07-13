@@ -18,6 +18,7 @@
 #include <linux/errno.h>
 #include <linux/list.h>
 #include <linux/slab.h>
+#include "board_base.h"
 
 #include <linux/rootlist.h>
 
