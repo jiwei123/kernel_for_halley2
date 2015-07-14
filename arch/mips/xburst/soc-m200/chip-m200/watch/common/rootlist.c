@@ -114,6 +114,9 @@ int hwlist_create_attr(root_key root, attr_key attr, const char *value)
     struct sub_entry *sentry = NULL;
     struct root_entry *rentry = find_root_entry(root);
 
+    if ((value == NULL) || (value[0] == '\0'))
+        return -EINVAL;
+
     if (!rentry) {
         printk("%s connt find root node entry\n", TAG);
         return -ENOENT;
