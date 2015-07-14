@@ -22,6 +22,11 @@
 
 #include <linux/rootlist.h>
 
+/*
+ * setup lcd hwlist
+ */
+extern void setup_lcd_hwlist(void);
+
 static const char* const TAG = "rootlist:";
 
 struct root_desc {
@@ -220,6 +225,7 @@ static int __init init_rootlist(void)
     hwlist_bluetooth_port(BLUETOOTH_UPORT_NAME);
 #endif
 
+	setup_lcd_hwlist();
     dump();
 
     res = proc_mkdir("hardware", NULL);

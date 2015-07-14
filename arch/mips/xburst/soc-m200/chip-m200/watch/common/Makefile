@@ -4,7 +4,7 @@ obj-y		+= misc.o
 obj-y		+= mmc.o
 obj-y		+= lcd/
 
-obj-$(CONFIG_ROOTLIST)		+= rootlist.o
+obj-$(CONFIG_ROOTLIST)		+= rootlist.o lcdlist.o
 obj-$(CONFIG_KEYBOARD_GPIO)	+= keyboard_gpio.o
 obj-$(CONFIG_INV_MPU_IIO)	+= inv_mpu_iio.o
 obj-$(CONFIG_VIDEO_OVISP)	+= camera.o

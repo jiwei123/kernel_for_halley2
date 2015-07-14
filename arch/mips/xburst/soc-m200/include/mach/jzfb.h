@@ -201,8 +201,6 @@ struct jzfb_platform_data {
 		int (*dma_transfer_begin)(void*);
 		int (*dma_transfer_end)(void*);
 	} lcd_callback_ops;
-
-	const char *lcd_desc;
 };
 
 #endif

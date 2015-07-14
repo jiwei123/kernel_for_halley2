@@ -151,8 +151,6 @@ struct jzfb_platform_data jzfb_pdata = {
 
 	.pixclk_falling_edge = 0,
 	.data_enable_active_low = 0,
-
-	.lcd_desc = "CIRCULARITY_320_320_1.5_TFT", /* use to create sysfs node */
 };
 
 /**************************************************************************************************/

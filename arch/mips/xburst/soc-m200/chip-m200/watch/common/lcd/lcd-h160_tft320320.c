@@ -169,8 +169,6 @@ struct jzfb_platform_data jzfb_pdata = {
 	.dither.dither_red = 1,	/* 6bit */
 	.dither.dither_red = 1,	/* 6bit */
 	.dither.dither_red = 1,	/* 6bit */
-
-	.lcd_desc = "SQUARE_320_320_1.54_TFT", /* use to create sysfs node */
 };
 
 /**************************************************************************************************/

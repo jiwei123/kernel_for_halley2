@@ -192,6 +192,4 @@ struct jzfb_platform_data jzfb_pdata = {
 	.dither.dither_red   = 1,	/* 6bit */
 	.dither.dither_green = 1,	/* 6bit */
 	.dither.dither_blue  = 1,	/* 6bit */
-
-	.lcd_desc = "CIRCULARITY_400_400_1.39_AMOLED", /* use to create sysfs node */
 };
