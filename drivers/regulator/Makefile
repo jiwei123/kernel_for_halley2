@@ -73,4 +73,6 @@ obj-$(CONFIG_REGULATOR_WM8994) += wm8994-regulator.o
 
 obj-$(CONFIG_REGULATOR_RICOH619) += ricoh619-regulator.o
 
+obj-$(CONFIG_REGULATOR_SM5007) += sm5007-regulator.o
+
 ccflags-$(CONFIG_REGULATOR_DEBUG) += -DDEBUG

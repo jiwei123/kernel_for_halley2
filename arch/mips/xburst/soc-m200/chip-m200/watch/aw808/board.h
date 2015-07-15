@@ -4,8 +4,11 @@
 #include <soc/gpio.h>
 #include <linux/jz_dwc.h>
 
+#if defined(CONFIG_REGULATOR_SM5007)
+#include "pmu5007.h"
+#elif defined(CONFIG_REGULATOR_RICOH619)
 #include "pmu.h"
-
+#endif
 /* ****************************GPIO SLEEP START******************************* */
 #define GPIO_REGULATOR_SLP	GPIO_PB(0)
 #define GPIO_OUTPUT_TYPE	GPIO_OUTPUT1
@@ -188,6 +191,11 @@
 #ifdef CONFIG_REGULATOR_DA9024
 #define GPIO_PMU_IRQ		GPIO_PA(13)
 #endif
+
+/* PMU sm5007 */
+#ifdef CONFIG_REGULATOR_SM5007
+#define PMU_IRQ_N5007		GPIO_PE(2)
+#endif /* CONFIG_REGULATOR_SM5007 */
 /* ****************************GPIO PMU END********************************** */
 
 /* ****************************SENSOR HUB START********************************** */

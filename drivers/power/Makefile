@@ -56,4 +56,4 @@ obj-$(CONFIG_CHARGER_TPS65090)	+= tps65090-charger.o
 obj-$(CONFIG_POWER_RESET)	+= reset/
 
 obj-$(CONFIG_BATTERY_RICOH619)	+= ricoh619-battery.o
-
+obj-$(CONFIG_CHARGER_SM5007)	+= sm5007-charger.o sm5007-fuelgauge.o
