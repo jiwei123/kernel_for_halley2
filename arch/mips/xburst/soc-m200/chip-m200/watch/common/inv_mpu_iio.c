@@ -129,10 +129,10 @@ err_vdd:
 }
 
 struct mpu_platform_data mpu9250_platform_data = {
-        .int_config  = 0x90,
+                .int_config  = 0x90,
 		.level_shifter = 0,
 		.orientation = {
-			-1,  0,  0,
+		       -1,  0,  0,
 			0,  1,  0,
 			0,  0, -1,
 		},
@@ -143,9 +143,9 @@ struct mpu_platform_data mpu9250_platform_data = {
 		.sec_slave_id   = COMPASS_ID_AK8963,
 		.secondary_i2c_addr = 0x0C,
 		.secondary_orientation = {
-			-1, 0,  0,
-			0, -1,  0,
-			0,  0, 1,
+		        0,  1,  0,
+		       -1,  0,  0,
+			0,  0, -1,
 		},
 #endif
 	.board_init = inv_mpu_early_init,
