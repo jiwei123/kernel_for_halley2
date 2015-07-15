@@ -103,9 +103,16 @@ struct backlight_device {
 	struct device dev;
 };
 
+#ifdef CONFIG_LCD_BRIGHTNESS_ALWAYS_ON
+extern void handle_brightness_always_on(struct backlight_device *bd);
+#endif
+
 static inline void backlight_update_status(struct backlight_device *bd)
 {
 	mutex_lock(&bd->update_lock);
+#ifdef CONFIG_LCD_BRIGHTNESS_ALWAYS_ON
+	handle_brightness_always_on(bd);
+#endif
 	if (bd->ops && bd->ops->update_status)
 		bd->ops->update_status(bd);
 	mutex_unlock(&bd->update_lock);

@@ -274,6 +274,21 @@ config BACKLIGHT_CLASS_DEVICE
 	  To have support for your specific LCD panel you will have to
 	  select the proper drivers which depend on this option.
 
+config LCD_BRIGHTNESS_ALWAYS_ON
+	bool "LCD_BRIGHTNESS_ALWAYS_ON"
+	default n
+	depends on BACKLIGHT_CLASS_DEVICE
+	help
+	  Say Y if you do not want to keep lcd brightness always on.
+
+config LCD_BRIGHTNESS_ALWAYS_ON_LEVEL
+	int "LCD_BRIGHTNESS_ALWAYS_ON_LEVEL"
+	default 102
+	depends on LCD_BRIGHTNESS_ALWAYS_ON
+	help
+	  The lowest level of brightness (threshold brightness level), when LCD_BRIGHTNESS_ALWAYS_ON is selected.
+	  The default value 102 is assume the max brightness is 255.
+
 if BACKLIGHT_CLASS_DEVICE
 
 config BACKLIGHT_ATMEL_LCDC

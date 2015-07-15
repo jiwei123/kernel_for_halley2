@@ -35,6 +35,10 @@
 #include <asm/smp-ops.h>
 #include <asm/prom.h>
 
+#ifdef CONFIG_SLPT
+extern void slpt_register_vm_area_early(void);
+#endif
+
 struct cpuinfo_mips cpu_data[NR_CPUS] __read_mostly;
 
 EXPORT_SYMBOL(cpu_data);
@@ -741,6 +745,10 @@ void __init setup_arch(char **cmdline_p)
 #endif
 
 	arch_mem_init(cmdline_p);
+
+#ifdef CONFIG_SLPT
+	slpt_register_vm_area_early();
+#endif
 
 	resource_init();
 	plat_smp_setup();

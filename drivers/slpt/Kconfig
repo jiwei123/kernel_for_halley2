@@ -1,0 +1,48 @@
+menu "Slpt Drivers"
+
+config SLPT
+	bool "slpt driver"
+	select FB_DISPLAY_ALWAYS_ON
+	select LCD_BRIGHTNESS_ALWAYS_ON
+	help
+
+config SLPT_MAP_TO_KSEG2
+	bool "slpt will map to kseg2 address"
+	default y
+
+config SLPT_SHUTDOWN
+    bool "entry slpt mode when system low-power shutdown"
+    default n
+    depends on SLPT
+    help
+      entry slpt mode when system low-power shutdown
+
+config SLPT_POWERDOWN_DEVICE
+    bool "Power down some device when entry slpt mode"
+    default n
+    depends on SLPT
+    help
+	  In order to equipment used for longer time
+	  We will shut down some devices
+
+config SLPT_LOW_BATTERY_VOLTAGE
+	int "low battery voltage(mV) value for slpt"
+	default 3624
+	depends on SLPT
+
+config SLPT_LOW_BATTERY_WARN_VOLTAGE
+	int "low battery warn voltage(mV) value for slpt"
+	default 3408
+	depends on SLPT
+
+config SLPT_CHARGER_GPIO
+	int "charger gpio for slpt"
+	default -1
+	depends on SLPT
+
+config SLPT_CHARGER_LEVEL
+	int "charger gpio valid level for slpt"
+	default -1
+	depends on SLPT
+
+endmenu

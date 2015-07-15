@@ -34,6 +34,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/clk.h>
 #include <linux/notifier.h>
+#include <linux/slpt.h>
 #ifdef CONFIG_CPU_FREQ
 #include <linux/cpufreq.h>
 #endif
@@ -47,6 +48,7 @@
 #include <tcsm.h>
 #include <smp_cp0.h>
 
+extern void local_flush_tlb_all(void );
 
 #ifdef CONFIG_JZ_DMIC_WAKEUP
 #include <linux/voice_wakeup_module.h>
@@ -99,6 +101,51 @@ static inline void serial_put_hex(unsigned int x) {
 		if(d < 10) d += '0';
 		else d += 'A' - 10;
 		TCSM_PCHAR(d);
+	}
+}
+
+static __always_inline void serial_put_hex2(unsigned int x) {
+	unsigned int d1;
+	unsigned int d0;
+
+	x = x & 0xff;
+	d1 = x / 16;
+	d0 = x % 16;
+
+	if(d1 < 10) d1 += '0';
+	else d1 += 'A' - 10;
+	if(d0 < 10) d0 += '0';
+	else d0 += 'A' - 10;
+
+	TCSM_PCHAR(d1);
+	TCSM_PCHAR(d0);
+}
+
+static __always_inline void serial_put_dec(unsigned int num) {
+	unsigned int div = 1000000000; 		/* max int is 4294967296 */
+	unsigned int val;
+	unsigned int first_meet_zero = 1;
+
+	if (num ==  0) {
+		TCSM_PCHAR('0');
+		return ;
+	}
+
+	while(div != 0) {
+		val = num / div;
+		if (val != 0 || !first_meet_zero) {
+			first_meet_zero = 0;
+			TCSM_PCHAR(val + '0');
+		}
+		num = num % div;
+		div = div / 10;
+	}
+}
+
+static __always_inline void serial_put_str(const char *str) {
+	for ( ; *str != '\0'; ) {
+		TCSM_PCHAR(*str);
+		str++;
 	}
 }
 
@@ -359,6 +406,8 @@ static noinline void cpu_sleep(void)
 	register unsigned int pmu_slp_gpio_info = -1;
 	unsigned int save_slp = -1, func;
 
+	local_flush_tlb_all();
+
 	pmu_slp_gpio_info = get_pmu_slp_gpio_info();
 	if(pmu_slp_gpio_info != -1) {
 		save_slp = pmu_slp_gpio_info & 0xffff;
@@ -390,9 +439,12 @@ static noinline void cpu_sleep(void)
 	REG32(SLEEP_TCSM_RESUME_DATA + 24) = REG32(0xb0000000);
 
 
-
 #ifdef CONFIG_JZ_DMIC_WAKEUP
 	wakeup_module_open(DEEP_SLEEP);
+#endif
+
+#ifdef CONFIG_SLPT
+	slpt_task_init_everytime();
 #endif
 
 #ifdef CONFIG_TEST_SECOND_REFRESH
@@ -414,10 +466,15 @@ static noinline void cpu_sleep(void)
 
 #endif
 
-
+#ifdef CONFIG_SLPT
+	slpt_cache_prefetch_ops();
+#endif
 
 #ifdef CONFIG_JZ_DMIC_WAKEUP
 	REG32(SLEEP_TCSM_RESUME_DATA + 28) = wakeup_module_is_wakeup_enabled();
+#ifdef CONFIG_SLPT
+	slpt_set_voice_trigger_state(!!wakeup_module_is_wakeup_enabled());
+#endif
 	wakeup_module_cache_prefetch();
 #endif
 	if(0) {
@@ -555,9 +612,17 @@ static noinline void cpu_resume_boot(void)
 			 ".set mips32 \n\t" :: "r" (SLEEP_TCSM_RESUME_TEXT));
 
 }
+
+#ifndef SYS_WAKEUP_OK
+#define SYS_WAKEUP_OK 0x1
+#endif
+
 static noinline void cpu_resume(void)
 {
 	int val = 0;
+#ifdef CONFIG_SLPT
+	int wake_reson = 0;
+#endif
 	int bypassmode = 0;
 #ifdef CONFIG_JZ_DMIC_WAKEUP
 	int (*volatile func)(int);
@@ -578,6 +643,9 @@ static noinline void cpu_resume(void)
 		temp = *(unsigned int *)WAKEUP_HANDLER_ADDR;
 		func = (int (*)(int))temp;
 		val = func(1);
+#ifdef CONFIG_SLPT
+		wake_reson = val;
+#endif
 	}
 	//serial_put_hex(val);
 
@@ -591,10 +659,6 @@ static noinline void cpu_resume(void)
 	REG32(0xb0000000) = val;
 	while((REG32(0xB00000D4) & 7))
 		TCSM_PCHAR('w');
-
-	val = REG32(SLEEP_TCSM_RESUME_DATA + 8);
-	if(val != -1)
-		set_gpio_func(val & 0xffff, val >> 16);
 
 	bypassmode = ddr_readl(DDRP_PIR) & DDRP_PIR_DLLBYP;
 	if(!bypassmode) {
@@ -681,6 +745,39 @@ static noinline void cpu_resume(void)
 
 	powerdown_wait();
 #endif
+
+#ifdef CONFIG_SLPT
+	slpt_task_run_everytime(wake_reson == SYS_WAKEUP_OK);
+	if (!slpt_want_go_kernel() && wake_reson != SYS_WAKEUP_OK) {
+#ifdef CONFIG_SLPT_MAP_TO_KSEG2
+		val = ddr_readl(DDRC_AUTOSR_EN);
+		REG32(SLEEP_TCSM_RESUME_DATA + 0) = val;
+		ddr_writel(0,DDRC_AUTOSR_EN);             // exit auto sel-refresh
+		val = ddr_readl(DDRC_DLP);
+		REG32(SLEEP_TCSM_RESUME_DATA + 4) = val;
+		if(!(ddr_readl(DDRP_PIR) & DDRP_PIR_DLLBYP) && !val)
+		{
+			ddr_writel(0xf003 , DDRC_DLP);
+			val = ddr_readl(DDRP_DSGCR);
+			val |= (1 << 4);
+			ddr_writel(val,DDRP_DSGCR);
+		}
+        /**
+		 *  DDR keep selrefresh,when it exit the sleep state.
+		 */
+		val = ddr_readl(DDRC_CTRL);
+		val |= (1 << 17);   // enter to hold ddr state
+		ddr_writel(val,DDRC_CTRL);
+
+		powerdown_wait();
+#endif
+	}
+#endif
+
+	val = REG32(SLEEP_TCSM_RESUME_DATA + 8);
+	if(val != -1)
+		set_gpio_func(val & 0xffff, val >> 16);
+
 	write_c0_ecc(0x0);
 	__jz_cache_init();
 
@@ -757,8 +854,13 @@ static int m200_pm_enter(suspend_state_t state)
 	/* disable externel clock Oscillator in sleep mode bit4*/
 	/* select 32K crystal as RTC clock in sleep mode bit2*/
 	opcr_tmp = read_save_reg_add(CPM_IOBASE + CPM_OPCR);
+#ifdef CONFIG_SLPT
+	opcr_tmp &= ~((1 << 7) | (1 << 6) | (1 << 4)| (1 << 27));
+	opcr_tmp |= (0xff << 8) | (1<<30) | (1 << 2)  | (1 << 23);
+#else
 	opcr_tmp &= ~((1 << 7) | (1 << 6) | (1 << 4));
 	opcr_tmp |= (0xff << 8) | (1<<30) | (1 << 2) | (1 << 27) | (1 << 23);
+#endif
 	cpm_outl(opcr_tmp,CPM_OPCR);
 	/*
 	 * set sram pdma_ds & open nfi
@@ -791,9 +893,14 @@ static int m200_pm_enter(suspend_state_t state)
 	set_smp_ctrl(core_ctrl);
 	set_smp_reim(scpu_start_addr);
 	__write_32bit_c0_register($12, 7, 0);
+
+	local_flush_tlb_all();
 	return 0;
 }
-//#define SLEEP_CHANGE_CORE_VCC
+
+#ifdef CONFIG_SLPT
+#define SLEEP_CHANGE_CORE_VCC
+#endif
 static struct m200_early_sleep_t {
 #ifdef SLEEP_CHANGE_CORE_VCC
 	struct regulator*  core_vcc;
@@ -804,9 +911,9 @@ static struct m200_early_sleep_t {
 	unsigned int vol_uv;
 
 }m200_early_sleep;
-const unsigned int sleep_rate_hz = 120*1000*1000;
+const unsigned int sleep_rate_hz = 300*1000*1000;
 #ifdef SLEEP_CHANGE_CORE_VCC
-const unsigned int sleep_vol_uv = 975 * 1000;
+const unsigned int sleep_vol_uv = 1025 * 1000;
 #endif
 static int m200_prepare(void)
 {
@@ -876,8 +983,11 @@ int __init m200_pm_init(void)
 {
         volatile unsigned int lcr,opcr;//,i;
 
+#ifdef CONFIG_SLPT
+	slpt_set_suspend_ops(&pm_ops);
+#else
 	suspend_set_ops(&pm_ops);
-
+#endif
         /* init opcr and lcr for idle */
         lcr = cpm_inl(CPM_LCR);
         lcr &= ~(0x7);		/* LCR.SLEEP.DS=1'b0,LCR.LPM=2'b00*/

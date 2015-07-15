@@ -156,3 +156,4 @@ obj-$(CONFIG_NTB)		+= ntb/
 obj-$(CONFIG_NAND)  += nand/
 obj-$(CONFIG_FRIZZ) += mfd/frizz/
 obj-$(CONFIG_HAPTICS_DRV2605) += haptics/
+obj-$(CONFIG_SLPT) += slpt/

@@ -1074,6 +1074,10 @@ fb_blank(struct fb_info *info, int blank)
  	return ret;
 }
 
+#ifdef CONFIG_SLPT
+extern void wait_slpt_linux_release_fb(void);
+#endif
+
 static long do_fb_ioctl(struct fb_info *info, unsigned int cmd,
 			unsigned long arg)
 {
@@ -1184,6 +1188,9 @@ static long do_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		unlock_fb_info(info);
 		break;
 	case FBIOBLANK:
+#ifdef CONFIG_SLPT
+		wait_slpt_linux_release_fb();
+#endif
 		if (!lock_fb_info(info))
 			return -ENODEV;
 		console_lock();

@@ -173,4 +173,6 @@ source "drivers/nand/Kconfig"
 source "drivers/mfd/frizz/Kconfig"
 
 source "drivers/haptics/Kconfig"
+
+source "drivers/slpt/Kconfig"
 endmenu

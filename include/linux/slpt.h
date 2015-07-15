@@ -58,13 +58,14 @@ struct slpt_task {
 	struct list_head method_handlers;	/* handlers of resource */
 };
 
-extern int slpt_register_task(struct slpt_task *task, int init);
+extern int slpt_register_task(struct slpt_task *task, int init, bool need_request_firmware);
 extern void slpt_unregister_task(struct slpt_task *task);
 extern struct slpt_task *name_to_slpt_task(const char *name);
 extern int slpt_init_task(struct slpt_task *task);
 extern int slpt_exit_task(struct slpt_task *task);
 extern int slpt_run_task(struct slpt_task *task);
 extern struct slpt_task *slpt_get_cur(void);
+extern void slpt_enable_task(struct slpt_task *task, bool enable);
 
 /* slpt_map.c */
 extern void slpt_alloc_maped_memory(void);
@@ -151,6 +152,7 @@ enum slpt_key_id {
 	SLPT_K_FRIZZ_GESTURE,
 	SLPT_K_SLEEP_MOTION,
 	SLPT_K_SLEEP_MOTION_ENABLE,
+	SLPT_K_IOCTL,
 
 	/* keep last */
 	SLPT_K_NUMS,
@@ -299,6 +301,16 @@ static inline long slpt_get_voice_trigger_state(void) {
 
 static inline void slpt_set_voice_trigger_state(unsigned long state) {
 	slpt_set_key_no_cached(SLPT_K_VOICE_TRIGGER_STATE, state);
+}
+
+/*
+ * slpt ioctl
+ */
+static inline void *slpt_get_ioctl(void) {
+	void *address;
+
+	SLPT_GET_KEY(SLPT_K_IOCTL, &address);
+	return address;
 }
 
 #define SLPT_LIMIT_SIZE (6 * 1024 * 1024)

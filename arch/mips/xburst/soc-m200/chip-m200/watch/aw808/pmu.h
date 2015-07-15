@@ -51,13 +51,19 @@
 #define DC2_ALWAYS_ON     1
 #define DC3_ALWAYS_ON     0
 #define DC4_ALWAYS_ON     1
+#ifdef CONFIG_SLPT
+#define DC5_ALWAYS_ON     1
+#define LDO4_ALWAYS_ON    1
+#define LDO6_ALWAYS_ON    1
+#else
 #define DC5_ALWAYS_ON     0
+#define LDO4_ALWAYS_ON    0
+#define LDO6_ALWAYS_ON    0
+#endif
 #define LDO1_ALWAYS_ON    1
 #define LDO2_ALWAYS_ON    1
 #define LDO3_ALWAYS_ON    1
-#define LDO4_ALWAYS_ON    0
 #define LDO5_ALWAYS_ON    1
-#define LDO6_ALWAYS_ON    0
 #define LDO7_ALWAYS_ON    0
 #define LDO8_ALWAYS_ON    0
 #define LDO9_ALWAYS_ON    0

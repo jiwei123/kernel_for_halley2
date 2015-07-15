@@ -426,6 +426,23 @@ static int __init backlight_class_init(void)
 postcore_initcall(backlight_class_init);
 module_exit(backlight_class_exit);
 
+#ifdef CONFIG_LCD_BRIGHTNESS_ALWAYS_ON
+int __weak brightness_always_on(void) {
+	return 1;
+}
+
+void handle_brightness_always_on(struct backlight_device *bd) {
+	if (brightness_always_on()) {
+		bd->props.power = FB_BLANK_UNBLANK;
+		bd->props.state &= ~BL_CORE_FBBLANK;
+		bd->props.state &= ~BL_CORE_SUSPENDED;
+		if (bd->props.brightness < CONFIG_LCD_BRIGHTNESS_ALWAYS_ON_LEVEL) {
+			bd->props.brightness = CONFIG_LCD_BRIGHTNESS_ALWAYS_ON_LEVEL;
+		}
+	}
+}
+#endif
+
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Jamey Hicks <jamey.hicks@hp.com>, Andrew Zabolotny <zap@homelink.ru>");
 MODULE_DESCRIPTION("Backlight Lowlevel Control Abstraction");
