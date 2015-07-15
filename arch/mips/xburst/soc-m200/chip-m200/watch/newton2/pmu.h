@@ -84,8 +84,13 @@
 #define LDO6_ALWAYS_ON    1
 #define LDO7_ALWAYS_ON    1
 #define LDO8_ALWAYS_ON    1
+#ifdef CONFIG_SLPT
+#define LDO9_ALWAYS_ON    1
+#define LDO10_ALWAYS_ON   1
+#else
 #define LDO9_ALWAYS_ON    0
 #define LDO10_ALWAYS_ON   0
+#endif
 #define LDORTC1_ALWAYS_ON 1
 #define LDORTC2_ALWAYS_ON 1
 /* ****************************PMU DC/LDO ALWAYS ON END********************** */
