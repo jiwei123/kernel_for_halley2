@@ -453,6 +453,14 @@ struct i2c_board_info jz_i2c2_devs[] __initdata = {
 		.platform_data = &frizz_pdata,
 	},
 #endif
+#ifdef CONFIG_INV_MPU_IIO
+	{
+		I2C_BOARD_INFO("mpu6500", 0x68),
+		.irq = (IRQ_GPIO_BASE + GPIO_GSENSOR_INT),
+		.platform_data = &mpu9250_platform_data,
+	},
+#endif /*CONFIG_INV_MPU_IIO*/
+
 };
 #endif  /*I2C2*/
 
