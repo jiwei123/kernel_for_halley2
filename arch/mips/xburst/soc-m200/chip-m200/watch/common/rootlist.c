@@ -56,6 +56,7 @@ struct root_desc root_tables[] = {
     {nBLUETOOTH, "bluetooth"},
     {nLCD, "lcd"},
     {nSENSOR, "sensor"},
+    {nMMI, "mmi"},
 };
 
 struct attr_desc attr_tables[] = {
@@ -69,6 +70,7 @@ struct attr_desc attr_tables[] = {
     {tPATH, "path"},
     {tSIZE, "size"},
     {tPORT, "port"},
+    {tITEM, "item"},
 };
 
 static LIST_HEAD(rootlist);
@@ -118,7 +120,7 @@ int hwlist_create_attr(root_key root, attr_key attr, const char *value)
         return -EINVAL;
 
     if (!rentry) {
-        printk("%s connt find root node entry\n", TAG);
+        printk("%s cannot find root node entry\n", TAG);
         return -ENOENT;
     }
 
@@ -130,7 +132,7 @@ int hwlist_create_attr(root_key root, attr_key attr, const char *value)
     }
 
     if (!desc) {
-        printk("%s connt find attr name\n", TAG);
+        printk("%s cannot find attr name\n", TAG);
         return -ENOENT;
     }
 
@@ -226,6 +228,29 @@ static int __init init_rootlist(void)
 
 #ifdef BLUETOOTH_UPORT_NAME
     hwlist_bluetooth_port(BLUETOOTH_UPORT_NAME);
+#endif
+
+#ifndef CONFIG_MMI_TEST
+    hwlist_mmi_item("FactoryDataReset");  //must be on the top
+#if defined(CONFIG_BCMDHD_1_141_66)
+    hwlist_mmi_item("WiFi");
+#endif
+    hwlist_mmi_item("BlueTooth");
+    hwlist_mmi_item("HeartRateADC");
+    hwlist_mmi_item("PressureSensor");
+    hwlist_mmi_item("StepCount");
+    //hwlist_mmi_item("Magsensor");
+    hwlist_mmi_item("Gyrsensor");
+    hwlist_mmi_item("Gsensor");;
+    hwlist_mmi_item("Vibrator");
+    hwlist_mmi_item("MIC");
+    hwlist_mmi_item("AudioPlay");
+    hwlist_mmi_item("USB");
+    hwlist_mmi_item("Charge");
+    hwlist_mmi_item("BackLight");
+    hwlist_mmi_item("LCDDisplay");
+    hwlist_mmi_item("TouchKey");
+    hwlist_mmi_item("SoftwareVersion");
 #endif
 
 	setup_lcd_hwlist();

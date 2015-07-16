@@ -9,6 +9,7 @@ enum root_e {
     nLCD,
     nSYSTEM,
     nSENSOR,
+    nMMI,
 };
 
 enum attr_e {
@@ -22,6 +23,7 @@ enum attr_e {
     tPATH,
     tSIZE,
     tPORT,
+    tITEM,
 };
 
 typedef enum root_e root_key;
@@ -84,6 +86,12 @@ static inline int hwlist_sensor_chip(const char *value)
 static inline int hwlist_sensor_type(const char *value)
 {
     return hwlist_create_attr(nSENSOR, tTYPE, value);
+}
+
+/*   mmi   */
+static inline int hwlist_mmi_item(const char *value)
+{
+    return hwlist_create_attr(nMMI, tITEM, value);
 }
 #endif
 
