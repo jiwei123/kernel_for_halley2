@@ -62,7 +62,8 @@
 #define VCC_LCD_1V8_NAME        LDO9_NAME
 #define VCC_LCD_3V0_NAME        LDO10_NAME
 #define DSI_TE_GPIO             GPIO_PC(27)
-#define VCC_LCD_BLK_NAME        NULL
+#define VCC_LCD_BLK_NAME        "lcd_blk_vcc"
+#define GPIO_LCD_BLK_EN         GPIO_PC(9)
 #define GPIO_LCD_SWIRE          -1
 #define GPIO_LCD_SWIRE_ACTIVE_LEVEL  1
 #endif
@@ -220,13 +221,6 @@
 #define HOOK_ACTIVE_LEVEL		-1
 /* ****************************GPIO AUDIO END******************************** */
 
-/* ****************************GPIO WIFI START******************************* */
-#define BCM_PWR_EN       GPIO_PA(0)
-#define WL_WAKE_HOST	GPIO_PA(9)
-#define WL_REG_EN   GPIO_PA(8)
-#define HOST_WAKE_WL    (-1)
-/* ****************************GPIO WIFI END********************************* */
-
 /* ****************************GPIO NFC START******************************** */
 /*
  * For BCM2079X NFC
@@ -236,18 +230,30 @@
 #define HOST_WAKE_NFC   -1//GPIO_PA(11)
 /* ****************************GPIO NFC END********************************** */
 
+/* ****************************GPIO WIFI START******************************* */
+#define BCM_PWR_EN          GPIO_PA(1)
+#define WL_WAKE_HOST        GPIO_PC(12)
+#define WL_REG_EN           GPIO_PC(15)
+#define HOST_WAKE_WL         (-1)
+/* ****************************GPIO WIFI END********************************* */
+
 /* ****************************GPIO BLUETOOTH START************************** */
 /* BT gpio */
+#define HOST_WAKE_BT        GPIO_PC(13)
+#define BT_WAKE_HOST        GPIO_PC(14)
+#define BT_REG_EN           GPIO_PA(3)
+#define BT_UART_RTS         GPIO_PF(2)
+#define HOST_BT_RST          GPIO_PA(10)
+//#define GPIO_PB_FLGREG      (0x10010058)
+#define GPIO_BT_INT_BIT     (1 << (BT_WAKE_HOST % 32))
+
+/* BT uart set*/
 #define BLUETOOTH_UART_GPIO_PORT        GPIO_PORT_F
 #define BLUETOOTH_UART_GPIO_FUNC        GPIO_FUNC_2
 #define BLUETOOTH_UART_FUNC_SHIFT       0x4
-
-#define HOST_WAKE_BT	GPIO_PA(2)
-#define BT_WAKE_HOST	GPIO_PA(3)
-#define BT_REG_EN	GPIO_PA(1)
-#define BT_UART_RTS	GPIO_PF(2)
-#define HOST_BT_RST     -1
 #define BLUETOOTH_UPORT_NAME  "ttyS0"
+
+
 /* ****************************GPIO BLUETOOTH END**************************** */
 
 #endif /* __BOARD_H__ */
