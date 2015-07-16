@@ -11,6 +11,10 @@ config WATCH_NEWTON2
 config WATCH_AW808
        bool "watch aw808"
        depends on BOARD_WATCH
+
+config WATCH_ACRAB
+       bool "watch acrab"
+       depends on BOARD_WATCH
 endchoice
 
 if WATCH_AW808
@@ -21,6 +25,7 @@ config BOARD_NAME
 	string "BOARD_NAME"
 	default "newton2" if WATCH_NEWTON2
 	default "aw808" if WATCH_AW808
+	default "acrab" if WATCH_ACRAB
 
 config ROOTLIST
 	bool "Export hardware information to proc/hardware/list"
