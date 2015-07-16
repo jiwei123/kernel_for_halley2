@@ -11,6 +11,7 @@ obj-$(CONFIG_VIDEO_OVISP)	+= camera.o
 obj-$(CONFIG_REGULATOR_DA9024) 	+= regulator.o
 obj-$(CONFIG_BCM_PM_CORE) 	+= bcm_power_control.o
 
+obj-$(CONFIG_REGULATOR_SM5007)		+= board-power-sm5007.o
 obj-$(CONFIG_REGULATOR_RICOH619)	+= board-power-619.o
 obj-$(CONFIG_TOUCHSCREEN_FT6X0X) 	+= touchscreen_ft6x0x.o
 obj-$(CONFIG_SOUND_OSS_XBURST)		+= sound.o
