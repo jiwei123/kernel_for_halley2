@@ -427,17 +427,21 @@ postcore_initcall(backlight_class_init);
 module_exit(backlight_class_exit);
 
 #ifdef CONFIG_LCD_BRIGHTNESS_ALWAYS_ON
-int __weak brightness_always_on(void) {
+int __weak brightness_is_always_on(void) {
 	return 1;
 }
 
+unsigned int __weak get_brightness_always_on_level(void) {
+	return CONFIG_LCD_BRIGHTNESS_ALWAYS_ON_LEVEL;
+}
+
 void handle_brightness_always_on(struct backlight_device *bd) {
-	if (brightness_always_on()) {
+	if (brightness_is_always_on()) {
 		bd->props.power = FB_BLANK_UNBLANK;
 		bd->props.state &= ~BL_CORE_FBBLANK;
 		bd->props.state &= ~BL_CORE_SUSPENDED;
-		if (bd->props.brightness < CONFIG_LCD_BRIGHTNESS_ALWAYS_ON_LEVEL) {
-			bd->props.brightness = CONFIG_LCD_BRIGHTNESS_ALWAYS_ON_LEVEL;
+		if (bd->props.brightness < get_brightness_always_on_level()) {
+			bd->props.brightness = get_brightness_always_on_level();
 		}
 	}
 }

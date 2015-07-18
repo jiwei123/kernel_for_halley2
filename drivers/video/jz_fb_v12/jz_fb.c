@@ -66,9 +66,9 @@ static int showFPS = 0;
 static struct jzfb *jzfb;
 
 #ifdef CONFIG_FB_DISPLAY_ALWAYS_ON
-static int fb_always_on = 1;
+__weak int fb_always_on = 1;
 #else
-static int fb_always_on = 0;
+__weak int fb_always_on = 0;
 #endif
 
 static const struct fb_fix_screeninfo jzfb_fix __devinitdata = {
@@ -81,7 +81,7 @@ static const struct fb_fix_screeninfo jzfb_fix __devinitdata = {
 	.accel = FB_ACCEL_NONE,
 };
 
-int fb_is_always_on(void) {
+__weak int fb_is_always_on(void) {
 	return fb_always_on;
 }
 

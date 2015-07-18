@@ -59,18 +59,3 @@ void __weak wlan_pw_en_disable(void) {
 
 }
 
-int __weak fb_is_always_on(void) {
-#ifdef CONFIG_FB_DISPLAY_ALWAYS_ON
-	return 1;
-#else
-	return 0;
-#endif
-}
-
-int brightness_always_on(void) {
-#ifdef CONFIG_LCD_BRIGHTNESS_ALWAYS_ON
-	return fb_is_always_on();
-#else
-	return 0;
-#endif
-}

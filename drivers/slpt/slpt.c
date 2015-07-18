@@ -57,6 +57,7 @@ struct kset *slpt_kset;
 struct kobject *slpt_kobj;
 struct kobject *slpt_apps_kobj;
 struct kobject *slpt_res_kobj;
+struct kobject *slpt_configs_kobj;
 
 /* currently runing task */
 static struct slpt_task *slpt_cur = NULL;
@@ -1222,6 +1223,20 @@ static int __init slpt_init(void) {
 		goto error_slpt_res_kobj_create_failed;
 	}
 
+	slpt_configs_kobj = kobject_create_and_add("configs", slpt_kobj);
+	if (!slpt_configs_kobj) {
+		pr_err("SLPT: error: slpt configs kobject create failed\n");
+		ret = -ENOMEM;
+		goto error_slpt_configs_kobj_create_failed;
+	}
+
+	ret = slpt_configs_init();
+	if (ret) {
+		pr_err("SLPT: error: slpt configs init failed\n");
+		ret = -ENOMEM;
+		goto error_configs_init_failed;
+	}
+
 	ret = sysfs_create_group(slpt_kobj, &slpt_attrs_g);
 	if (ret) {
 		pr_err("SLPT: error: slpt sysfs group create failed\n");
@@ -1240,6 +1255,10 @@ static int __init slpt_init(void) {
 error_create_slpt_test_bin_failed:
 	sysfs_remove_group(slpt_kobj, &slpt_attrs_g);
 error_create_slpt_g_failed:
+	slpt_configs_exit();
+error_configs_init_failed:
+	kobject_put(slpt_configs_kobj);
+error_slpt_configs_kobj_create_failed:
 	kobject_put(slpt_res_kobj);
 error_slpt_res_kobj_create_failed:
 	kobject_put(slpt_apps_kobj);
@@ -1256,6 +1275,9 @@ error_platform_driver_register_failed:
 static void __exit slpt_exit(void) {
 	sysfs_remove_group(slpt_kobj, &slpt_attrs_g);
 	kobject_put(slpt_apps_kobj);
+	kobject_put(slpt_res_kobj);
+	slpt_configs_exit();
+	kobject_put(slpt_configs_kobj);
 	kobject_put(slpt_kobj);
 	platform_driver_unregister(&slpt_driver);
 	platform_device_unregister(&slpt_device);

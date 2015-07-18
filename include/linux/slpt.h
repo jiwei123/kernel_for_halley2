@@ -322,6 +322,7 @@ extern volatile char slpt_reserve_mem[SLPT_LIMIT_SIZE];
 #endif
 
 extern struct kobject *slpt_res_kobj;
+extern struct kobject *slpt_configs_kobj;
 extern struct kobj_type slpt_kobj_ktype;
 extern struct slpt_task *slpt_select;
 extern unsigned int slpt_task_is_enabled;
@@ -334,6 +335,9 @@ extern int fb_is_always_on(void);
 extern void wlan_pw_en_disable(void);
 
 extern void test_mem_no_printk(void);
+
+extern int __init slpt_configs_init(void);
+extern int __exit slpt_configs_exit(void);
 
 #ifdef CONFIG_SLPT_MAP_TO_KSEG2
 static __always_inline void slpt_setup_tlb(unsigned int addr_fr0, unsigned int addr_fr1, unsigned int map_addr)
@@ -416,8 +420,9 @@ static __always_inline void slpt_memset(unsigned int *dst, unsigned int c, unsig
 static __always_inline void slpt_task_run_everytime(int need_to_go_kernel) {
 	void (*volatile run)(int);
 	unsigned int addr = (unsigned int)virt_to_phys(slpt_reserve_mem);
+	unsigned int *task_is_enabled = (void *)KSEG1ADDR((unsigned long) (&slpt_task_is_enabled));
 
-	if (slpt_task_is_enabled) {
+	if (*task_is_enabled) {
 		slpt_setup_tlb(addr, addr + 1 * 1024 * 1024, SLPT_RESERVE_ADDR);
 		run = (void (*)(int))KSEG1VALUE(slpt_select)->run_every_time_addr;
 		run(need_to_go_kernel);
