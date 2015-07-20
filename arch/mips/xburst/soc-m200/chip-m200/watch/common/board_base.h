@@ -130,5 +130,8 @@ extern struct platform_device snd_newton_device;
 #if IS_ENABLED(CONFIG_SND_ASOC_INGENIC_WATCH_ICDC)
 extern struct platform_device snd_watch_device;
 #endif
+#ifdef CONFIG_JZ_EFUSE_V12
+extern struct jz_efuse_platform_data jz_efuse_pdata;
+#endif
 
 #endif	/* __BOARD_BASE_H__ */
