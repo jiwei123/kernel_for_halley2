@@ -15,10 +15,17 @@ config WATCH_AW808
 config WATCH_ACRAB
        bool "watch acrab"
        depends on BOARD_WATCH
+
+config WATCH_SOLAR
+       bool "watch solar"
+       depends on BOARD_WATCH
 endchoice
 
 if WATCH_AW808
 source "arch/mips/xburst/soc-m200/chip-m200/watch/aw808/Kconfig"
+endif
+if WATCH_SOLAR
+source "arch/mips/xburst/soc-m200/chip-m200/watch/solar/Kconfig"
 endif
 
 config BOARD_NAME
@@ -26,6 +33,7 @@ config BOARD_NAME
 	default "newton2" if WATCH_NEWTON2
 	default "aw808" if WATCH_AW808
 	default "acrab" if WATCH_ACRAB
+	default "solar" if WATCH_SOLAR
 
 config ROOTLIST
 	bool "Export hardware information to proc/hardware/list"
