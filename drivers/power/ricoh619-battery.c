@@ -2003,7 +2003,7 @@ static void ricoh61x_get_charge_work(struct work_struct *work)
 
 	info->soca->chg_count++;
 
-	if (RICOH61x_GET_CHARGE_NUM != info->soca->chg_count) {
+	if (RICOH61x_GET_CHARGE_NUM > info->soca->chg_count) {
 		queue_delayed_work(info->monitor_wqueue, &info->get_charge_work,
 					 RICOH61x_CHARGE_CALC_TIME * HZ);
 		mutex_unlock(&info->lock);
@@ -4186,7 +4186,7 @@ static int ricoh61x_batt_get_prop(struct power_supply *psy,
 
 	/* this setting is same as battery driver of 584 */
 	case POWER_SUPPLY_PROP_PRESENT:
-		val->intval = 1 /*info->present*/;
+		val->intval = info->present;
 		break;
 
 	/* current voltage is got from fuel gauge */
@@ -4379,6 +4379,7 @@ static enum power_supply_property ricoh61x_batt_props[] = {
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 
 	POWER_SUPPLY_PROP_CAPACITY,
+	POWER_SUPPLY_PROP_CURRENT_NOW,
 	POWER_SUPPLY_PROP_TEMP,
 	POWER_SUPPLY_PROP_TIME_TO_EMPTY_NOW,
 	POWER_SUPPLY_PROP_TIME_TO_FULL_NOW,
@@ -4850,12 +4851,12 @@ static int ricoh61x_battery_suspend(struct device *dev)
 		|| (info->soca->status == RICOH61x_SOCA_UNSTABLE)
 		|| (info->soca->rsoc_ready_flag == 0)) {
 
-		ret = ricoh61x_read(info->dev->parent, PSWR_REG, &val);
-		if (ret < 0)
-			dev_err(info->dev, "Error in reading the pswr register\n");
-		val &= 0x7f;
+		//ret = ricoh61x_read(info->dev->parent, PSWR_REG, &val);
+		//if (ret < 0)
+		//	dev_err(info->dev, "Error in reading the pswr register\n");
+		//val &= 0x7f;
 
-		info->soca->suspend_soc = val * 100;
+		info->soca->suspend_soc = info->soca->init_pswr*100;
 	}
 
 	if (info->soca->status == RICOH61x_SOCA_DISP
