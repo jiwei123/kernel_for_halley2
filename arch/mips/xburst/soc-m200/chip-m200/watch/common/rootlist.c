@@ -108,13 +108,14 @@ inline struct root_entry *find_root_entry(root_key key)
     return NULL;
 }
 
-int hwlist_create_attr(root_key root, attr_key attr, const char *value)
+int hwlist_create_attr(root_key root, attr_key attr,  add_key add, const char *value)
 {
     int n,i;
 
     struct attr_desc *desc = NULL;
     struct sub_entry *sentry = NULL;
     struct root_entry *rentry = find_root_entry(root);
+    char* tmp_value;
 
     if ((value == NULL) || (value[0] == '\0'))
         return -EINVAL;
@@ -141,6 +142,26 @@ int hwlist_create_attr(root_key root, attr_key attr, const char *value)
             printk("%s have the same value\n", TAG);
             return -EEXIST;
         }
+
+        if ((desc == sentry->desc) && (sentry->value != NULL)) {
+            switch(add) {
+            case tMULTIPLE:
+                tmp_value = (char *)krealloc(sentry->value, strlen(sentry->value) + strlen(value) + 2, GFP_KERNEL);
+                if (tmp_value != NULL) {
+                    sentry->value = tmp_value;
+                    sprintf(tmp_value,"%s,%s",sentry->value,value);
+                } else
+                    printk("%s krealloc failed\n", TAG);
+
+                break;
+            case tSINGLE :
+            default:
+                printk(KERN_DEBUG "%s has registered [%s.%s]\n", TAG, rentry->desc->name, desc->name);
+                break;
+            }
+            return -EEXIST;
+        }
+
     }
 
     sentry = kzalloc(sizeof(struct sub_entry), GFP_KERNEL);
@@ -193,7 +214,7 @@ static int hardware_proc_show(struct seq_file *seq, void *v)
 
     list_for_each_entry(rentry, &rootlist, rootnode) {
         list_for_each_entry(sentry, &rentry->sublist, subnode) {
-            seq_printf(seq, "%s:%s:%s\n", rentry->desc->name,
+            seq_printf(seq, "%s.%s:%s\n", rentry->desc->name,
                     sentry->desc->name, sentry->value);
         }
     }
@@ -218,9 +239,9 @@ static int __init init_rootlist(void)
     struct proc_dir_entry *res;
 
     hwlist_create_root();
-    hwlist_create_attr(nSYSTEM, tCHIP, "m200");
-    hwlist_create_attr(nSYSTEM, tTYPE, "iwds");
-    hwlist_create_attr(nSYSTEM, tNAME, "ingenic");
+    hwlist_create_attr(nSYSTEM, tCHIP, tSINGLE, "m200");
+    hwlist_create_attr(nSYSTEM, tTYPE, tSINGLE, "iwds");
+    hwlist_create_attr(nSYSTEM, tNAME, tSINGLE, "ingenic");
 
 #ifdef CONFIG_BLUETOOTH_NAME
     hwlist_bluetooth_chip(CONFIG_BLUETOOTH_NAME);
@@ -230,30 +251,29 @@ static int __init init_rootlist(void)
     hwlist_bluetooth_port(BLUETOOTH_UPORT_NAME);
 #endif
 
-#ifndef CONFIG_MMI_TEST
-    hwlist_mmi_item("FactoryDataReset");  //must be on the top
+    hwlist_mmi_item("software_version");
+    hwlist_mmi_item("touchkey");
+    hwlist_mmi_item("lcddisplay");
+    hwlist_mmi_item("backlight");
+    hwlist_mmi_item("charge");
+    hwlist_mmi_item("usb");
+    hwlist_mmi_item("audioplay");
+    hwlist_mmi_item("mic");
+    hwlist_mmi_item("vibrator");
+    hwlist_mmi_item("gsensor");
+    hwlist_mmi_item("gyrsensor");
+    //hwlist_mmi_item("magsensor");
+    hwlist_mmi_item("stepcount");
+    hwlist_mmi_item("pressuresensor");
+    hwlist_mmi_item("heartrate_adc");
+    hwlist_mmi_item("bluetooth");
 #if defined(CONFIG_BCMDHD_1_141_66)
-    hwlist_mmi_item("WiFi");
+    hwlist_mmi_item("wifi");
 #endif
-    hwlist_mmi_item("BlueTooth");
-    hwlist_mmi_item("HeartRateADC");
-    hwlist_mmi_item("PressureSensor");
-    hwlist_mmi_item("StepCount");
-    //hwlist_mmi_item("Magsensor");
-    hwlist_mmi_item("Gyrsensor");
-    hwlist_mmi_item("Gsensor");;
-    hwlist_mmi_item("Vibrator");
-    hwlist_mmi_item("MIC");
-    hwlist_mmi_item("AudioPlay");
-    hwlist_mmi_item("USB");
-    hwlist_mmi_item("Charge");
-    hwlist_mmi_item("BackLight");
-    hwlist_mmi_item("LCDDisplay");
-    hwlist_mmi_item("TouchKey");
-    hwlist_mmi_item("SoftwareVersion");
-#endif
+    hwlist_mmi_item("factory_data_reset");  //must be on the bottom
 
-	setup_lcd_hwlist();
+
+    setup_lcd_hwlist();
     dump();
 
     res = proc_mkdir("hardware", NULL);
