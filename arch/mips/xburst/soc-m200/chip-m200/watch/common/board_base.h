@@ -133,5 +133,7 @@ extern struct platform_device snd_watch_device;
 #ifdef CONFIG_JZ_EFUSE_V12
 extern struct jz_efuse_platform_data jz_efuse_pdata;
 #endif
-
+#ifdef	CONFIG_ANDROID_TIMED_GPIO
+extern	struct platform_device jz_timed_gpio_device;
+#endif
 #endif	/* __BOARD_BASE_H__ */
