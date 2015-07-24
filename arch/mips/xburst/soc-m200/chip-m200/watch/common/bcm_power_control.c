@@ -4,6 +4,9 @@
 #include <linux/bcm_pm_core.h>
 #include <linux/delay.h>
 #include <soc/base.h>
+#include <linux/fs.h>
+#include <linux/wlan_plat.h>
+#include <asm/uaccess.h>
 
 #include "board_base.h"
 
@@ -152,6 +155,55 @@ struct bcm2079x_platform_data bcm2079x_pdata = {
 #define RESET               0
 #define NORMAL              1
 
+#define WIFIMAC_ADDR_PATH "/data/misc/wifi/wifimac.txt"
+
+static int get_wifi_mac_addr(unsigned char* buf)
+{
+        struct file *fp = NULL;
+        mm_segment_t fs;
+
+        unsigned char source_addr[18];
+        loff_t pos = 0;
+        unsigned char *head, *end;
+        int i = 0;
+
+        fp = filp_open(WIFIMAC_ADDR_PATH, O_RDONLY,  0444);
+        if (IS_ERR(fp)) {
+                printk("Can not access wifi mac file : %s\n",WIFIMAC_ADDR_PATH);
+                return -EFAULT;
+        }else{
+                fs = get_fs();
+                set_fs(KERNEL_DS);
+                vfs_read(fp, source_addr, 18, &pos);
+                source_addr[17] = ':';
+
+                head = end = source_addr;
+                for(i=0; i<6; i++) {
+                        while (end && (*end != ':') )
+                                end++;
+
+                        if (end && (*end == ':') )
+                                *end = '\0';
+
+                        buf[i] = simple_strtoul(head, NULL, 16 );
+
+                        if (end) {
+                                end++;
+                                head = end;
+                        }
+                        printk("wifi mac %02x \n", buf[i]);
+                }
+                set_fs(fs);
+                filp_close(fp, NULL);
+        }
+
+        return 0;
+}
+static struct wifi_platform_data bcmdhd_wlan_pdata = {
+                .get_mac_addr = get_wifi_mac_addr,
+};
+
+
 extern int jzmmc_manual_detect(int index, int on);
 extern int jzmmc_clk_ctrl(int index, int on);
 extern int bcm_power_on(void);
@@ -174,7 +226,7 @@ struct platform_device wlan_device = {
 	.name   = "bcmdhd_wlan",
 	.id     = 1,
 	.dev    = {
-		.platform_data = NULL,
+		.platform_data = &bcmdhd_wlan_pdata,
 	},
 	.resource       = wlan_resources,
 	.num_resources  = ARRAY_SIZE(wlan_resources),
@@ -280,34 +332,34 @@ start:
 	//wifi_le_pull_io();
 	bcm_power_on();
 
-	msleep(200);
+	msleep(1);
 
 	switch(flag) {
 		case RESET:
 #ifdef WL_REG_EN
 			gpio_direction_output(wl_reg_on,1);
-			msleep(200);
+			msleep(1);
 #endif
-			msleep(200);
+			msleep(1);
 #ifdef WL_RST_EN
 			gpio_direction_output(reset, 0);
-			msleep(200);
+			msleep(1);
 			gpio_direction_output(reset, 1);
-			msleep(200);
+			msleep(1);
 #endif
 			break;
 		case NORMAL:
-			msleep(200);
+			msleep(1);
 #ifdef WL_REG_EN
 			gpio_request(wl_reg_on, "wl_reg_on");
 			gpio_direction_output(wl_reg_on,1);
-			msleep(200);
+			msleep(1);
 #endif
 #ifdef WL_RST_EN
 			gpio_direction_output(reset, 0);
-			msleep(200);
+			msleep(1);
 			gpio_direction_output(reset, 1);
-			msleep(200);
+			msleep(1);
 #endif
 			jzmmc_manual_detect(1, 1);
 
@@ -348,7 +400,7 @@ start:
 #ifdef WL_RST_EN
 			gpio_direction_output(reset, 0);
 #endif
-			msleep(200);
+			msleep(1);
 			break;
 
 		case NORMAL:
@@ -363,7 +415,7 @@ start:
 #ifdef WL_REG_EN
 			gpio_direction_output(wl_reg_on,0);
 #endif
-			msleep(200);
+			msleep(1);
 //			jzmmc_manual_detect(1, 0);
 			break;
 	}
