@@ -452,6 +452,16 @@ static void gpio_unmask_and_ack_irq(struct irq_data *data)
 
 	spin_lock_irqsave(&jz->gpio_lock,flags);
 
+	if (irqd_get_trigger_type(data) != IRQ_TYPE_EDGE_BOTH)
+		goto end;
+
+	/* emulate double edge trigger interrupt */
+	if (gpio_pin_level(jz, pin))
+		writel(BIT(pin), jz->reg + PXPAT0C);
+	else
+		writel(BIT(pin), jz->reg + PXPAT0S);
+
+end:
 	/* clear interrupt pending flag */
 	writel(BIT(pin), jz->reg + PXFLGC);
 	/* unmask interrupt */
@@ -926,6 +936,16 @@ int __init setup_gpio_pins(void)
 
 arch_initcall(setup_gpio_pins);
 
+void dump_gpio_pin(int port, int pin) {
+	int i = port;
+
+	printk(KERN_ERR "int : %d\n", (readl(jz_gpio_chips[i].reg + PXINT) & (1 << pin)) != 0 );
+	printk(KERN_ERR "mask: %d\n", (readl(jz_gpio_chips[i].reg + PXMSK) & (1 << pin)) != 0);
+	printk(KERN_ERR "pat1: %d\n", (readl(jz_gpio_chips[i].reg + PXPAT1) & (1 << pin)) != 0);
+	printk(KERN_ERR "pat0: %d\n", (readl(jz_gpio_chips[i].reg + PXPAT0) & (1 << pin)) != 0);
+	printk(KERN_ERR "flag: %d\n", (readl(jz_gpio_chips[i].reg + PXFLG) & (1 << pin)) != 0);
+	printk(KERN_ERR "in  : %d\n", (readl(jz_gpio_chips[i].reg + PXPIN) & (1 << pin)) != 0);
+}
 
 /* -------------------------gpio register----------------------- */
 static int dump_gpio_regs_l(char *buffer, int port)
