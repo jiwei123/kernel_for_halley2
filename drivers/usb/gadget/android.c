@@ -28,6 +28,12 @@
 #include <linux/usb/composite.h>
 #include <linux/usb/gadget.h>
 
+#if defined (CONFIG_JZ4780_EFUSE) || defined (CONFIG_JZ4775_EFUSE)
+#include <mach/jz4780_efuse.h>
+#elif defined (CONFIG_JZ_EFUSE_V12)
+#include <mach/jz_efuse.h>
+#endif
+
 #include "gadget_chips.h"
 
 #include "f_fs.c"
@@ -1435,9 +1441,32 @@ static int android_bind(struct usb_composite_dev *cdev)
 	device_desc.iProduct = id;
 
 	/* Default strings - should be updated by userspace */
-	strncpy(manufacturer_string, "Android", sizeof(manufacturer_string)-1);
-	strncpy(product_string, "Android", sizeof(product_string) - 1);
-	strncpy(serial_string, "0123456789ABCDEF", sizeof(serial_string) - 1);
+	strncpy(manufacturer_string, "Ingenic", sizeof(manufacturer_string)-1);
+	strncpy(product_string, "Android Tablet", sizeof(product_string) - 1);
+#if defined (CONFIG_JZ4780_EFUSE) || defined (CONFIG_JZ4775_EFUSE)
+    {
+        jz_efuse_id_read(1, chip_id);
+        snprintf(serial_string, sizeof(serial_string) - 1,
+                "%s-%08x-%08x-%08x-%08x", CONFIG_USB_SERIAL_NUM,
+                chip_id[0], chip_id[1], chip_id[2], chip_id[3]);
+    }
+#elif defined (CONFIG_JZ_EFUSE_V12)
+    {
+        unsigned int chip_id[4];
+        read_jz_efuse(0x200,16, chip_id); //seg_addr[CHIP_ID]=0x200
+        snprintf(serial_string, sizeof(serial_string) - 1,
+                "%s-%08x", CONFIG_USB_SERIAL_NUM,
+                chip_id[0]);
+    }
+#else
+    {
+        unsigned char random_out[4];
+        get_random_bytes(random_out, 4);
+        snprintf(serial_string, sizeof(serial_string) - 1,
+                "%s-%02x%02x%02x%02x", CONFIG_USB_SERIAL_NUM,
+                random_out[0], random_out[1], random_out[2], random_out[3]);
+    }
+#endif
 
 	id = usb_string_id(cdev);
 	if (id < 0)

@@ -830,6 +830,29 @@ config USB_G_ANDROID
 	  Each function can be configured and enabled/disabled
 	  dynamically from userspace through a sysfs interface.
 
+if USB_G_ANDROID
+config USB_ANDROID_CCID
+        boolean "Android usb-ccid-serial transparent transmission function support"
+	depends on USB_G_ANDROID
+
+config USB_ANDROID_RAWBULK
+	boolean "Android rawbulk framework function support"
+	depends on USB_G_ANDROID
+
+config  USB_SERIAL_NUM
+	string "SN(Serial Number of Device)"
+	default "Ingenic"
+	help
+          The USB device's Serial Number
+
+config  USB_NLUNS_NUM
+	int "how many disk mounted on PC"
+	default 2
+	range 1 8
+	help
+          The number of disk mounted on PC
+endif
+
 config USB_ANDROID_RNDIS_DWORD_ALIGNED
 	boolean "Use double word aligned"
 	depends on USB_G_ANDROID
