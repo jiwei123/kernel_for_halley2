@@ -332,8 +332,6 @@ static irqreturn_t ricoh61x_irq(int irq, void *data)
 	int ret;
 	unsigned int rtc_int_sts = 0;
 
-	pr_info("PMU: mutex_lock  %s: irq=%d \n", __func__, irq);
-	mutex_lock(&ricoh61x->irq_lock);
 	/* printk("PMU: %s: irq=%d\n", __func__, irq); */
 	/* disable_irq_nosync(irq); */
 	/* Clear the status */
@@ -346,8 +344,6 @@ static irqreturn_t ricoh61x_irq(int irq, void *data)
 	if (ret < 0) {
 		dev_err(ricoh61x->dev, "Error in reading reg 0x%02x "
 			"error: %d\n", RICOH61x_INTC_INTMON, ret);
-		pr_info("PMU: mutex_unlock  %s: irq=%d \n", __func__, irq);
-		mutex_unlock(&ricoh61x->irq_lock);
 		return IRQ_HANDLED;
 	}
 
@@ -443,8 +439,6 @@ static irqreturn_t ricoh61x_irq(int irq, void *data)
 			handle_nested_irq(ricoh61x->irq_base + i);
 	}
 
-	mutex_unlock(&ricoh61x->irq_lock);
-	pr_info("PMU: mutex_unlock  %s: irq=%d \n", __func__, irq);
 	//printk(KERN_INFO "PMU: %s: out\n", __func__);
 	return IRQ_HANDLED;
 }

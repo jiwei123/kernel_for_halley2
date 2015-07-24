@@ -297,7 +297,7 @@ static void update_battery(struct ricoh61x_battery_info *info, int status)
 extern void dwc2_gadget_plug_change(int plugin);
 static int get_power_supply_status(struct ricoh61x_battery_info *info);
 static int get_power_supply_Android_status(struct ricoh61x_battery_info *info);
- int is_ac_online(void);
+static int is_ac_online(void);
 #ifdef ENABLE_FUEL_GAUGE_FUNCTION
 static int measure_vbatt_FG(struct ricoh61x_battery_info *info, int *data);
 static int measure_Ibatt_FG(struct ricoh61x_battery_info *info, int *data);
@@ -309,7 +309,7 @@ static int get_check_fuel_gauge_reg(struct ricoh61x_battery_info *info,
 					 int Reg_h, int Reg_l, int enable_bit);
 static int calc_capacity_in_period(struct ricoh61x_battery_info *info,
 				 int *cc_cap, bool *is_charging, bool cc_rst);
- int get_charge_priority(struct ricoh61x_battery_info *info, bool *data);
+static int get_charge_priority(struct ricoh61x_battery_info *info, bool *data);
 static int set_charge_priority(struct ricoh61x_battery_info *info, bool *data);
 static int get_power_supply_status(struct ricoh61x_battery_info *info);
 static int get_power_supply_Android_status(struct ricoh61x_battery_info *info);

@@ -439,6 +439,11 @@ static int ricoh61x_regulator_preinit(struct device *parent,
 		if(ret < 0) {
 			dev_err(ri->dev, "Unable to set %d, reg[%d] sleep slot, err: %d \n", ri->desc.id, ri->slot_reg, ret);
 		}
+	} else {
+		ret = ricoh61x_write(parent, ri->slot_reg, 0xff);
+		if(ret < 0) {
+			dev_err(ri->dev, "Unable to set %d, reg[%d] sleep slot, err: %d \n", ri->desc.id, ri->slot_reg, ret);
+		}
 	}
 
 	return ret;

@@ -1,4 +1,3 @@
-
 #ifndef __PMU_H__
 #define __PMU_H__
 #ifdef CONFIG_REGULATOR_RICOH619
@@ -32,13 +31,21 @@
 #define DC3_INIT_UV     3300
 #define DC4_INIT_UV     1800
 #define DC5_INIT_UV     3300
+#if defined(CONFIG_AW808_HW_V11_NATURAL_ROUND) || defined(CONFIG_AW808_HW_V11_WISE_SQUARE)
 #define LDO1_INIT_UV    1800
+#else
+#define LDO1_INIT_UV    3400
+#endif
 #define LDO2_INIT_UV    3300
 #define LDO3_INIT_UV    2500
 #define LDO4_INIT_UV    1800
 #define LDO5_INIT_UV    2500
 #define LDO6_INIT_UV    2800
+#if defined(CONFIG_AW808_HW_IN901)
+#define LDO7_INIT_UV    3300
+#else
 #define LDO7_INIT_UV    3000
+#endif
 #define LDO8_INIT_UV    1800
 #define LDO9_INIT_UV    1800
 #define LDO10_INIT_UV   2800
@@ -80,9 +87,9 @@
 #define DC5_BOOT_ON     1
 #define LDO1_BOOT_ON    1
 #define LDO2_BOOT_ON    1
-#define LDO3_BOOT_ON    0
+#define LDO3_BOOT_ON    1
 #define LDO4_BOOT_ON    1
-#define LDO5_BOOT_ON    0
+#define LDO5_BOOT_ON    1
 #define LDO6_BOOT_ON    1
 #define LDO7_BOOT_ON    0
 #define LDO8_BOOT_ON    0
