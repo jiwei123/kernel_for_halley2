@@ -36,7 +36,8 @@
 #include <linux/timer.h>
 #include <linux/regulator/consumer.h>
 #include <linux/device.h>
-#include <linux/i2c/ite7258_tsc.h>
+#include <linux/tsc.h>
+#include <linux/i2c/ite7258_firmware.h>
 #include <jz_notifier.h>
 #include <linux/fb.h>
 
@@ -53,6 +54,8 @@
 #include "ITE7258_TWS20278A0.h" /* aw808_v11_naturalround board */
 #elif defined(CONFIG_ITE7258_FPB1504A)
 #include "ITE7258_FPB1504A.h" /* foxconn board */
+#elif defined(CONFIG_ITE7258_HDL015SQ01)
+#include "ITE7258_HDL015SQ01.h" /* x3 board */
 #else
 unsigned char *algorithm_raw_data = NULL;
 unsigned char *configurate_raw_data = NULL;
@@ -83,14 +86,6 @@ struct ite7258_ts_data {
         char *vio_name;
         struct regulator *vio_reg;
 	struct notifier_block tp_notif;
-};
-
-struct ite7258_update_data{
-        struct i2c_client *client;
-        unsigned int algo_firmware_length;
-        unsigned int configurate_firmware_length;
-        char *algo_firmware_data;
-        char *configurate_firmware_data;
 };
 
 static struct ite7258_update_data *update;
@@ -1182,6 +1177,8 @@ static int ite7258_get_resolution(struct ite7258_ts_data *ite7258_ts)
 
     ite7258_ts->x_max = rbuffer[2] + (rbuffer[3]<<8);
     ite7258_ts->y_max = rbuffer[4] + (rbuffer[5]<<8);
+    pr_debug("ite7258_ts->x_max = %d\n", ite7258_ts->x_max);
+    pr_debug("ite7258_ts->y_max = %d\n", ite7258_ts->y_max);
 
     return 0;
 }

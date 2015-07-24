@@ -24,7 +24,6 @@ obj-$(CONFIG_TOUCHSCREEN_GOODIX)	+= goodix_ts.o
 obj-$(CONFIG_JZ4780_SUPPORT_RESISTANCE_TSC) +=jz4780_ts.o
 obj-$(CONFIG_TOUCHSCREEN_FT5336)        += ft5336_ts.o
 obj-$(CONFIG_TOUCHSCREEN_ITE7258)        += ite7258_ts.o
-
 ##########################################
 obj-$(CONFIG_TOUCHSCREEN_88PM860X)	+= 88pm860x-ts.o
 obj-$(CONFIG_TOUCHSCREEN_AD7877)	+= ad7877.o
@@ -93,3 +92,5 @@ obj-$(CONFIG_TOUCHSCREEN_WM97XX_MAINSTONE)	+= mainstone-wm97xx.o
 obj-$(CONFIG_TOUCHSCREEN_WM97XX_ZYLONITE)	+= zylonite-wm97xx.o
 obj-$(CONFIG_TOUCHSCREEN_W90X900)	+= w90p910_ts.o
 obj-$(CONFIG_TOUCHSCREEN_TPS6507X)	+= tps6507x-ts.o
+obj-$(CONFIG_TOUCHSCREEN_FOCALTECH)	+= focaltech/
+obj-$(CONFIG_TOUCHSCREEN_MSG22S)	+= msg22s/
