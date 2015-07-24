@@ -88,6 +88,13 @@ struct sm5007_fg_info {
 	uint32_t flag_full_charge : 1; /* 0 : no , 1 : yes*/
 	uint32_t flag_chg_status : 1; /* 0 : discharging, 1: charging*/
 
+	int iocv_error_count;
+	/* previous battery voltage */
+	int p_batt_voltage;
+	int p_batt_current;
+
+	/*low voltage alarm mV level*/
+	int alarm_vol_mv;
 
 	int32_t irq_ctrl;
 
