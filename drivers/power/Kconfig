@@ -36,6 +36,34 @@ config GENERIC_ADC_BATTERY
 	  Say Y here to enable support for the generic battery driver
 	  which uses IIO framework to read adc.
 
+config JZ_BATTERY_LUT
+	tristate "Ingenic battery (LUT version)"
+	depends on MFD_JZ_SADC_V12
+	help
+	  Say Y to enable support for the battery on Ingenic M200 based
+	  boards.
+
+choice
+	prompt "Battery cv"
+	depends on JZ_BATTERY_LUT
+	default BATTERY_CV_DEFAULT
+	help
+	  choice battery cv for your board, you may not test the battery cv,
+	  and you can choice the similar one for your board,
+	  if not ok, test the new battery cv on your board.
+
+config BATTERY_CV_DEFAULT
+	bool "default battery cv"
+	depends on JZ_BATTERY_LUT
+	help
+	  It is in drivers/power/jz-battery-cv.c
+
+config BATTERY_CV_BOARD_AW808
+	bool "board aw808 battery cv"
+	depends on JZ_BATTERY_LUT
+
+endchoice
+
 config MAX8925_POWER
 	tristate "MAX8925 battery charger support"
 	depends on MFD_MAX8925

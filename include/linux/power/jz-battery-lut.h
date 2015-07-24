@@ -70,6 +70,8 @@ struct jz_battery {
 	unsigned int ac_charge_time;
 	unsigned int usb_charge_time;
 
+	struct wake_lock work_wake_lock;
+
 	__kernel_time_t resume_time;
 	__kernel_time_t suspend_time;
 	__kernel_time_t last_update_time;
