@@ -157,6 +157,9 @@ config TOUCHSCREEN_AD7879
 	  To compile this driver as a module, choose M here: the
 	  module will be called ad7879.
 
+source "drivers/input/touchscreen/focaltech/Kconfig"
+source "drivers/input/touchscreen/msg22s/Kconfig"
+
 config TOUCHSCREEN_ITE7258
 	tristate "Touchscreen ite7258"
 	depends on I2C && M200_SUPPORT_TSC
@@ -222,6 +225,12 @@ config ITE7258_FPB1504A
          help
          FPB1504A is the FPC type
          FPB1504A for foxconn
+config ITE7258_HDL015SQ01
+         bool "HDL015SQ01_update_fireware"
+         depends on ITE7258_EXT_FUNC
+         help
+         HDL015SQ01 is the FPC type
+         HDL015SQ01 for x3
 endchoice
 endif
 
