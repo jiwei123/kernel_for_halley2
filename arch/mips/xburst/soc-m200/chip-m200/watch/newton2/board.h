@@ -248,4 +248,17 @@
 #define BLUETOOTH_UPORT_NAME  "ttyS0"
 /* ****************************GPIO BLUETOOTH END**************************** */
 
+/* ***************************GPIO VIBRATOR START***************************** */
+#ifdef  CONFIG_ANDROID_TIMED_REGULATOR
+#define REG_VDDIO   DC4_NAME
+#define MAX_TIMEOUT 18000
+#endif
+
+#ifdef  CONFIG_ANDROID_TIMED_GPIO
+#define VIBRATOR_EN     GPIO_PE(2)
+#define ACTIVE_LEVEL    0
+#define MAX_TIMEOUT     15000
+#endif
+/* ****************************GPIO VIBRATOR END******************************* */
+
 #endif /* __BOARD_H__ */
