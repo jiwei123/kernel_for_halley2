@@ -36,6 +36,13 @@
 #include <linux/mfd/ricoh619.h>
 #include <linux/regulator/ricoh619-regulator.h>
 
+#define DCDC5_ON (1 << 3)
+#define LDO6_ON  (1 << 2)
+#define LDO9_ON  (1 << 1)
+#define LDO10_ON (1 << 0)
+
+int fixed_reglators_on = 0;
+
 struct ricoh61x_regulator {
 	int		id;
 	int		sleep_id;
@@ -106,6 +113,29 @@ static int ricoh61x_reg_enable(struct regulator_dev *rdev)
 	struct device *parent = to_ricoh61x_dev(rdev);
 	int ret = 0;
 
+//if enbale ldo6/9/10, should enable dcdc5 first. bc dcdc5 is the power supply for these ldos.
+//this is for the x3, aw808 borads
+    if(ri->id == RICOH619_ID_LDO6 || ri->id == RICOH619_ID_LDO9 || ri->id == RICOH619_ID_LDO10) {
+	    ricoh61x_set_bits(parent, 0x34, (1 << 0));
+        switch(ri->id) {
+            case RICOH619_ID_LDO6:
+                fixed_reglators_on = fixed_reglators_on | LDO6_ON;
+                break;
+            case RICOH619_ID_LDO9:
+                fixed_reglators_on = fixed_reglators_on | LDO9_ON;
+                break;
+            case RICOH619_ID_LDO10:
+                fixed_reglators_on = fixed_reglators_on | LDO10_ON;
+                break;
+			default:
+                break;
+		}
+	    udelay(ri->delay);
+	}
+    if(ri->id == RICOH619_ID_DC5) {
+        fixed_reglators_on = fixed_reglators_on | DCDC5_ON;
+    }
+
 	ret = ricoh61x_set_bits(parent, ri->reg_en_reg, (1 << ri->en_bit));
 	if (ret < 0) {
 		dev_err(&rdev->dev, "Error in updating the STATE register\n");
@@ -125,6 +155,32 @@ static int ricoh61x_reg_disable(struct regulator_dev *rdev)
 	ret = ricoh61x_clr_bits(parent, ri->reg_en_reg, (1 << ri->en_bit));
 	if (ret < 0)
 		dev_err(&rdev->dev, "Error in updating the STATE register\n");
+
+    if(ri->id == RICOH619_ID_LDO6 || ri->id == RICOH619_ID_LDO9 || ri->id == RICOH619_ID_LDO10 || ri->id == RICOH619_ID_DC5) {
+        switch(ri->id) {
+            case RICOH619_ID_LDO6:
+                fixed_reglators_on = fixed_reglators_on & (~LDO6_ON);
+                break;
+            case RICOH619_ID_LDO9:
+                fixed_reglators_on = fixed_reglators_on & (~LDO9_ON);
+                break;
+            case RICOH619_ID_LDO10:
+                fixed_reglators_on = fixed_reglators_on & (~LDO10_ON);
+                break;
+            case RICOH619_ID_DC5:
+                fixed_reglators_on = fixed_reglators_on & (~DCDC5_ON);
+                if(fixed_reglators_on) {
+                    printk("NOTICE!!!! : the dc5 has disabled, but the regulator which depend on it do not disabled!!! \n");
+                }
+                break;
+			default:
+                break;
+		}
+//if all the regulator ldo6, ldo9, ldo10 had been close, close the dcdc5.
+        if(!fixed_reglators_on) {
+            ricoh61x_clr_bits(parent, 0x34, (1 << 0));
+        }
+    }
 
 	return ret;
 }
