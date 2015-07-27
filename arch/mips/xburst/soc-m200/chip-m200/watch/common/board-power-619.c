@@ -188,7 +188,8 @@ RICOH_PDATA_INIT(ldortc2, 0,	900,   3500, 0, LDORTC2_ALWAYS_ON, LDORTC2_BOOT_ON,
 
 /*-------- if Ricoh RTC exists -----------*/
 #ifdef CONFIG_RTC_DRV_R5T619
-static struct ricoh_rtc_platform_data rtc_data = {
+#include <linux/rtc/rtc-ricoh619.h>
+static struct ricoh619_rtc_platform_data rtc_data = {
 	.irq = RICOH619_IRQ_BASE,
 	.time = {
 		.tm_year = 1970,

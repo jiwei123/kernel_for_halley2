@@ -17,6 +17,16 @@ menuconfig RTC_CLASS
 
 if RTC_CLASS
 
+config RTC_DRV_R5T619
+	tristate "Ricoh R5T619 PMIC RTC driver"
+	depends on MFD_RICOH619
+	default n
+	help
+	  If you say yes here you get support for the Ricoh R5T619 RTC module.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called rtc-r5t619.
+
 config RTC_HCTOSYS
 	bool "Set system time from RTC on startup and resume"
 	default y
