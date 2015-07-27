@@ -43,20 +43,33 @@ int truly_tdo_hd0499k_init(struct lcd_device *lcd)
 
 int truly_tdo_hd0499k_reset(struct lcd_device *lcd)
 {
-    gpio_direction_output(GPIO_MIPI_RST_N, 0);
-    msleep(3);
-    gpio_direction_output(GPIO_MIPI_RST_N, 1);
-    msleep(8);
-    return 0;
+	int ret = 0;
+
+	ret = gpio_request(GPIO_MIPI_RST_N, "lcd mipi panel rst");
+	if (ret) {
+		printk(KERN_ERR "can's request lcd panel rst\n");
+		return ret;
+	}
+	gpio_direction_output(GPIO_MIPI_RST_N, 0);
+	msleep(3);
+	gpio_direction_output(GPIO_MIPI_RST_N, 1);
+	msleep(8);
+	return 0;
 }
 
 int truly_tdo_hd0499k_power_on(struct lcd_device *lcd, int enable)
 {
-    if(truly_tdo_hd0499k_init(lcd))
-        return -EFAULT;
-    gpio_direction_output(GPIO_MIPI_PWR, 0); /* 2.8v en*/
-    msleep(2);
-    return 0;
+	int ret = 0;
+
+	ret = gpio_request(GPIO_MIPI_PWR, "lcd mipi panel avcc");
+	if (ret) {
+		printk(KERN_ERR "can's request lcd panel avcc\n");
+		return ret;
+	}
+	//gpio_direction_output(MIPI_PWR, !enable); /* 2.8v en*/
+	gpio_direction_output(GPIO_MIPI_PWR, 0); /* 2.8v en*/
+	msleep(2);
+	return 0;
 }
 struct lcd_platform_data truly_tdo_hd0499k_data = {
 	.reset = truly_tdo_hd0499k_reset,
