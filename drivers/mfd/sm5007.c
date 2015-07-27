@@ -553,6 +553,84 @@ static void __init sm5007_debuginit(struct sm5007 *ricoh)
 }
 #endif
 
+static u8 reg_addr = 0;
+
+static ssize_t attr_reg_set(struct device *dev, struct device_attribute *attr,
+		const char *buf, size_t size)
+{
+	int ret;
+	unsigned long val;
+	uint8_t data;
+
+	if (strict_strtoul(buf, 16, &val))
+        return -EINVAL;
+	data = val;
+	ret = sm5007_write(dev, reg_addr, data);
+	if (ret < 0) {
+		printk("%s --> Write reg failed!\n",__func__);
+		return -EIO;
+	}
+
+	return size;
+};
+
+static ssize_t attr_reg_get(struct device *dev, struct device_attribute *attr,
+		char *buf)
+{
+	ssize_t ret;
+	uint8_t data;
+
+	ret = sm5007_read(dev, reg_addr, &data);
+	if (ret < 0) {
+		printk("%s --> Read reg failed!\n",__func__);
+		return -EIO;
+	}
+
+	ret = sprintf(buf, "0x%02x\n", data);
+	return ret;
+};
+
+static ssize_t attr_addr_get(struct device *dev, struct device_attribute *attr,
+		const char *buf, size_t size)
+{
+	ssize_t ret = sprintf(buf, "0x%02x\n", reg_addr);
+	return ret;
+};
+
+static ssize_t attr_addr_set(struct device *dev, struct device_attribute *attr,
+		const char *buf, size_t size)
+{
+	unsigned long val;
+
+	if (strict_strtoul(buf, 16, &val))
+		return -EINVAL;
+
+	reg_addr = val;
+
+	return size;
+};
+
+static struct device_attribute attributes[] = {
+
+	__ATTR(reg_value, 0600, attr_reg_get, attr_reg_set),
+	__ATTR(reg_addr, 0600, attr_addr_get, attr_addr_set),
+};
+
+static int create_sysfs_interfaces(struct device *dev)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(attributes); i++)
+		if (device_create_file(dev, attributes + i))
+			goto error;
+	return 0;
+
+error:
+	for ( ; i >= 0; i--)
+		device_remove_file(dev, attributes + i);
+	dev_err(dev, "%s:Unable to create interface\n", __func__);
+	return -1;
+}
+
 static int sm5007_i2c_probe(struct i2c_client *client,
 			      const struct i2c_device_id *id)
 {
@@ -599,6 +677,8 @@ static int sm5007_i2c_probe(struct i2c_client *client,
 	sm5007_debuginit(sm5007);
 
 	sm5007_i2c_client = client;
+
+	create_sysfs_interfaces(&client->dev);
 
 	return 0;
 

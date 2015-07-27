@@ -24,6 +24,7 @@
 #define PS4_NAME "ps4"
 #define PS5_NAME "ps5"
 
+#define LDO10_NAME "dd"
 /* ****************************PMU BUCK/LDO/PS NAME END*************************** */
 
 /* ****************************PMU BUCK/LDO/PS DEFAULT V************************** */
