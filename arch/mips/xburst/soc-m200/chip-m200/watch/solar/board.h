@@ -29,6 +29,17 @@
 #endif //define g_chip_orientation
 
 #endif
+
+#if defined(CONFIG_BCM4774)
+#define HUB_WAKEUP_HOST  GPIO_PC(23)
+#define HOST_WAKEUP_HUB  GPIO_PC(24)
+#define RST_HUB          GPIO_PC(22)
+#define HUB_RESPONE_HOST GPIO_PC(16)
+
+#define HUB_UPORT_NAME  "ttyS0"
+#define HUB_UART_RTS     GPIO_PF(2)
+#define HUB_UART_CTS     GPIO_PF(1)
+#endif
 /* ****************************SENSOR HUB END********************************** */
 
 
@@ -148,7 +159,7 @@
 #define GPIO_TP_INT			GPIO_PA(12)
 #define GPIO_TP_WAKE			GPIO_PA(14)
 #define GPIO_TP_EN			-1
-#define VCC_TOUCHSCREEN LDO10_NAME
+#define VCC_TOUCHSCREEN PS5_NAME
 #define VIO_TOUCHSCREEN "" /* not use */
 #endif
 #ifdef CONFIG_TOUCHSCREEN_FT6X06
@@ -163,7 +174,7 @@
 #define GPIO_TP_INT             GPIO_PA(12)
 #define GPIO_TP_RESET             GPIO_PA(14)
 #define GPIO_TP_EN			-1
-#define VCC_TOUCHSCREEN LDO10_NAME
+#define VCC_TOUCHSCREEN PS5_NAME
 #define VIO_TOUCHSCREEN LDO9_NAME
 #endif  /* CONFIG_TOUCHSCREEN_ITE7258 */
 
@@ -194,8 +205,11 @@
 
 /* PMU sm5007 */
 #ifdef CONFIG_REGULATOR_SM5007
-#define PMU_IRQ_N5007		GPIO_PE(2)
+#define PMU_IRQ_N5007		GPIO_PC(17) //PE2
+#define PMU_SLEEP           GPIO_PC(15)
 #endif /* CONFIG_REGULATOR_SM5007 */
+
+#define BAT_PRE_TEST        GPIO_PD(6)
 /* ****************************GPIO PMU END********************************** */
 
 /* ****************************SENSOR HUB START********************************** */
@@ -258,7 +272,7 @@
 /* ****************************GPIO USB START******************************** */
 //#define GPIO_USB_ID			GPIO_PA(13)
 #define GPIO_USB_ID_LEVEL		LOW_ENABLE
-#define GPIO_USB_DETE			GPIO_PA(1)
+#define GPIO_USB_DETE			GPIO_PD(7)
 #define GPIO_USB_DETE_LEVEL		LOW_ENABLE
 //#define GPIO_USB_DRVVBUS		GPIO_PE(10)
 //#define GPIO_USB_DRVVBUS_LEVEL		HIGH_ENABLE
@@ -281,7 +295,7 @@
 #define GPIO_HP_MUTE		-1	/*hp mute gpio*/
 #define GPIO_HP_MUTE_LEVEL	-1	/*vaild level*/
 
-#define GPIO_SPEAKER_EN		GPIO_PA(2)      /*speaker enable gpio*/
+#define GPIO_SPEAKER_EN		GPIO_PC(19)      /*speaker enable gpio*/
 #define GPIO_SPEAKER_EN_LEVEL	1
 
 #define GPIO_HANDSET_EN		-1	/*handset enable gpio*/
@@ -302,8 +316,8 @@
 
 /* ****************************GPIO WIFI START******************************* */
 #define BCM_PWR_EN       GPIO_PC(12)
-#define WL_WAKE_HOST     GPIO_PC(17)
-#define WL_REG_EN        GPIO_PC(13)
+#define WL_WAKE_HOST     GPIO_PD(12)
+#define WL_REG_EN        GPIO_PD(13)
 #define HOST_WAKE_WL     (-1)
 /* ****************************GPIO WIFI END********************************* */
 
@@ -315,8 +329,8 @@
 
 #ifdef	CONFIG_ANDROID_TIMED_GPIO
 
-#if defined(CONFIG_AW808_HW_X3) || defined(CONFIG_AW808_HW_IN901) || defined(CONFIG_AW808_HW_MAIN) || defined(CONFIG_AW808_HW_V11_NATURAL_ROUND) || defined(CONFIG_AW808_HW_V11_WISE_SQUARE)
-#define	VIBRATOR_EN		GPIO_PE(2)
+#if defined(CONFIG_WATCH_SOLAR)
+#define	VIBRATOR_EN		GPIO_PC(18)
 #define	ACTIVE_LEVEL	0
 #else
 #define	VIBRATOR_EN		-1
@@ -341,9 +355,9 @@
 /* BT gpio */
 #ifdef  CONFIG_BROADCOM_RFKILL
 
-#define HOST_WAKE_BT	GPIO_PC(15)
-#define BT_WAKE_HOST	GPIO_PC(16)
-#define BT_REG_EN       GPIO_PC(14)
+#define HOST_WAKE_BT	GPIO_PD(8)
+#define BT_WAKE_HOST	GPIO_PD(10)
+#define BT_REG_EN       GPIO_PD(9)
 #define BT_UART_RTS     GPIO_PD(28)
 #define HOST_BT_RST     -1
 

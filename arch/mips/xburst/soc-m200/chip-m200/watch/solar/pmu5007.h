@@ -4,52 +4,52 @@
 
 #define PMU_I2C_BUSNUM5007  2
 /* ****************************PMU BUCK/LDO/PS NAME******************************* */
-#define BUCK1_NAME "buck1"
+#define BUCK1_NAME "cpu_core"
 #define BUCK1_DVS_NAME "buck1_dvs"
-#define BUCK2_NAME "buck2"
-#define BUCK3_NAME "buck3"
-#define BUCK4_NAME "buck4"
-#define LDO1_NAME "ldo1"
-#define LDO2_NAME "ldo2"
-#define LDO3_NAME "ldo3"
-#define LDO4_NAME "ldo4"
-#define LDO5_NAME "ldo5"
-#define LDO6_NAME "ldo6"
-#define LDO7_NAME "ldo7"
-#define LDO8_NAME "ldo8"
-#define LDO9_NAME "ldo9"
-#define PS1_NAME "ps1"
+#define BUCK2_NAME "cpu_mem12"
+#define BUCK3_NAME "cpu_vddio"
+#define BUCK4_NAME "emmc_vcc"
+#define LDO1_NAME "hr_1v8"
+#define LDO2_NAME "lcd_1v8"
+#define LDO3_NAME "bt3v0"
+#define LDO4_NAME "lcd_2v8"
+#define LDO5_NAME "mipi_2v5"
+#define LDO6_NAME "dmic"
+#define LDO7_NAME "camera_vdd"
+#define LDO8_NAME "camera_vddio"
+#define LDO9_NAME "hr_3v3"
+#define PS1_NAME "sensorhub_core"
 #define PS2_NAME "ps2"
-#define PS3_NAME "ps3"
-#define PS4_NAME "ps4"
-#define PS5_NAME "ps5"
+#define PS3_NAME "bt3v3"
+#define PS4_NAME "motor"
+#define PS5_NAME "tp2v8"
 
 /* ****************************PMU BUCK/LDO/PS NAME END*************************** */
 
 /* ****************************PMU BUCK/LDO/PS DEFAULT V************************** */
 #define BUCK1_INIT_UV     1100
-#define BCUK1_DVS_UV      1100
+#define BCUK1_DVS_UV      BUCK1_INIT_UV
 #define BUCK2_INIT_UV     1200
-#define BUCK3_INIT_UV     3300
+#define BUCK3_INIT_UV     1800
 #ifdef CONFIG_JZ_EPD_V12
-#define BUCK4_INIT_UV     2000
+#define BUCK4_INIT_UV     3300
 #else
-#define BUCK4_INIT_UV     2000
+#define BUCK4_INIT_UV     3300
 #endif
-#define LDO1_INIT_UV    1300
-#define LDO2_INIT_UV    1400
-#define LDO3_INIT_UV    1800
-#define LDO4_INIT_UV    1800
-#define LDO5_INIT_UV    1800
+#define LDO1_INIT_UV    1800
+#define LDO2_INIT_UV    1800
+#define LDO3_INIT_UV    3000
+#define LDO4_INIT_UV    2800
+#define LDO5_INIT_UV    2500
 #define LDO6_INIT_UV    1800
-#define LDO7_INIT_UV    1500
-#define LDO8_INIT_UV    1600
-#define LDO9_INIT_UV    1700
-#define PS1_INIT_UV     1000
-#define PS2_INIT_UV     1200
-#define PS3_INIT_UV     3300
-#define PS4_INIT_UV     1800
-#define PS5_INIT_UV     1800
+#define LDO7_INIT_UV    2800
+#define LDO8_INIT_UV    1800
+#define LDO9_INIT_UV    3300
+#define PS1_INIT_UV     BUCK1_INIT_UV
+#define PS2_INIT_UV     BUCK2_INIT_UV
+#define PS3_INIT_UV     BUCK3_INIT_UV
+#define PS4_INIT_UV     LDO3_INIT_UV
+#define PS5_INIT_UV     LDO4_INIT_UV
 /* ****************************PMU BUCK/LDO/PS DEFAULT V END********************** */
 
 /* ****************************PMU BUCK/LDO/PS ALWAYS ON************************** */
