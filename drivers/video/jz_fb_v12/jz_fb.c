@@ -42,6 +42,7 @@
 #ifdef CONFIG_JZ_MIPI_DSI
 #include "./jz_mipi_dsi/jz_mipi_dsih_hal.h"
 #include "./jz_mipi_dsi/jz_mipi_dsi_regs.h"
+#include "./jz_mipi_dsi/jz_mipi_dsi_lowlevel.h"
 #include <mach/jz_dsim.h>
 extern struct dsi_device * jzdsi_init(struct jzdsi_data *pdata);
 extern void jzdsi_remove(struct dsi_device *dsi);
@@ -2644,6 +2645,34 @@ dump_dsi(struct device *dev, struct device_attribute *attr, char *buf)
 	return 0;
 }
 
+static ssize_t
+ulps_w(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct jzfb *jzfb = dev_get_drvdata(dev);
+	struct dsi_device *dsi = jzfb->dsi;
+	int en = jzfb->is_clk_en;
+
+	mutex_lock(&jzfb->lock);
+
+	if (buf[0] == '0') {
+		if (!en)
+			jzfb_clk_enable(jzfb);
+		jz_dsih_dphy_ulpm_exit(dsi);
+	} else if (buf[0] == '1') {
+		if (!en)
+			jzfb_clk_enable(jzfb);
+		jz_dsih_dphy_ulpm_enter(dsi);
+	} else {
+		pr_err("invalid args, must be '0' or '1'\n");
+	}
+
+	if (!en)
+			jzfb_clk_disable(jzfb);
+	mutex_unlock(&jzfb->lock);
+
+	return count;
+}
+
 #endif
 
 static ssize_t
@@ -2691,6 +2720,7 @@ static DEVICE_ATTR(fb_always_on, S_IRUGO|S_IWUGO, fb_always_on_r, fb_always_on_w
 #ifdef CONFIG_JZ_MIPI_DSI
 static DEVICE_ATTR(mipi_command, S_IRUGO|S_IWUGO, mipi_command_r, mipi_command_w);
 static DEVICE_ATTR(dump_dsi, S_IRUGO|S_IWUGO, dump_dsi, NULL);
+static DEVICE_ATTR(ulps, S_IRUGO|S_IWUGO, NULL, ulps_w);
 #endif
 static DEVICE_ATTR(fb_blank, S_IRUGO|S_IWUGO, NULL, fb_blank_w);
 static DEVICE_ATTR(lcd_blank, S_IRUGO|S_IWUGO, NULL, lcd_blank_w);
@@ -2707,6 +2737,7 @@ static struct attribute *lcd_debug_attrs[] = {
 #ifdef CONFIG_JZ_MIPI_DSI
 	&dev_attr_mipi_command.attr,
 	&dev_attr_dump_dsi.attr,
+	&dev_attr_ulps.attr,
 #endif
 	&dev_attr_fb_blank.attr,
 	&dev_attr_lcd_blank.attr,
