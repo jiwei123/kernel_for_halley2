@@ -175,7 +175,7 @@ void fg_abnormal_reset_check(struct i2c_client *client)
 
 	/* abnormal case.... SW reset*/
 	ret = sm5007_fg_i2c_read_word(client, SM5007_REG_CNTL);
-	printk("%s : sm5007_REG_CNTL VALUE = 0x%x\n", __func__, ret);
+	pr_debug("%s : sm5007_REG_CNTL VALUE = 0x%x\n", __func__, ret);
 	if (ret == 0x2008) {
 		/* SW reset code*/
 		printk("%s : sm5007 FG abnormal case... SW reset\n", __func__);
@@ -204,7 +204,7 @@ void fg_vbatocv_check(struct i2c_client *client)
 		fuelgauge->info.iocv_error_count = 0;
 	}
 
-	printk("%s: iocv_error_count (%d)\n", __func__, fuelgauge->info.iocv_error_count);
+	pr_debug("%s: iocv_error_count (%d)\n", __func__, fuelgauge->info.iocv_error_count);
 
 	if(fuelgauge->info.iocv_error_count > 5)
 	{
@@ -239,7 +239,7 @@ void fg_vbatocv_check(struct i2c_client *client)
 		}
 		else
 		{
-			printk("%s: mode change to mix RS auto mode\n", __func__);
+			pr_debug("%s: mode change to mix RS auto mode\n", __func__);
 
 			// mode change to mix RS auto mode
 			ret = sm5007_fg_i2c_read_word(client, SM5007_REG_CNTL);
@@ -263,8 +263,9 @@ unsigned int fg_get_soc(struct i2c_client *client)
 	//union power_supply_propval value;
 
 	fuelgauge->is_charging = (fuelgauge->info.batt_current > 10) ? true : false;
-	pr_debug("%s: is_charging = %d\n", __func__, fuelgauge->is_charging);
-
+#ifdef CONFIG_SM5007_FG_DEBUG_LOG
+	printk("%s: is_charging = %d\n", __func__, fuelgauge->is_charging);
+#endif
 	fg_abnormal_reset_check(client);
 	fg_vbatocv_check(client);
 
@@ -299,7 +300,9 @@ unsigned int fg_get_soc(struct i2c_client *client)
 	}
 
 	fuelgauge->info.batt_soc = soc;
-	pr_debug("%s: read = 0x%x, soc = %d\n", __func__, ret, soc);
+#ifdef CONFIG_SM5007_FG_DEBUG_LOG
+	printk("%s: read = 0x%x, soc = %d\n", __func__, ret, soc);
+#endif
 
 #if 0
 	/* abnormal case.... SW reset*/
@@ -332,7 +335,9 @@ static unsigned int fg_get_ocv(struct i2c_client *client)
 	}
 
 	fuelgauge->info.batt_ocv = ocv;
-	pr_debug("%s: read = 0x%x, ocv = %d\n", __func__, ret, ocv);
+#ifdef CONFIG_SM5007_FG_DEBUG_LOG
+	printk("%s: read = 0x%x, ocv = %d\n", __func__, ret, ocv);
+#endif
 
 
 	return ocv;
@@ -361,7 +366,9 @@ static unsigned int fg_get_vbat(struct i2c_client *client)
 	fuelgauge->info.batt_avgvoltage =
 	(((fuelgauge->info.batt_avgvoltage)*4) + vbat)/5;
 
-	pr_debug("%s: read = 0x%x, vbat = %d\n", __func__, ret, vbat);
+#ifdef CONFIG_SM5007_FG_DEBUG_LOG
+	printk("%s: read = 0x%x, vbat = %d\n", __func__, ret, vbat);
+#endif
 	pr_debug("%s: batt_avgvoltage = %d\n",
 		__func__, fuelgauge->info.batt_avgvoltage);
 
@@ -392,7 +399,9 @@ static int fg_get_curr(struct i2c_client *client)
 	fuelgauge->info.batt_avgcurrent =
 	(((fuelgauge->info.batt_avgcurrent)*4) + curr)/5;
 
-	pr_debug("%s: read = 0x%x, curr = %d\n", __func__, ret, curr);
+#ifdef CONFIG_SM5007_FG_DEBUG_LOG
+	printk("%s: read = 0x%x, curr = %d\n", __func__, ret, curr);
+#endif
 	pr_debug("%s: batt_avgcurrent = %d\n",
 		__func__, fuelgauge->info.batt_avgcurrent);
 
@@ -788,7 +797,7 @@ static int sm5007_fg_get_property(struct power_supply *psy,
 		val->intval = (fuelgauge->info.batt_soc >= 1000) ? true : false;
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
-		val->intval = fuelgauge->info.batt_soc / 10;
+		val->intval = ((fuelgauge->info.batt_soc > 1000 ? 1000 : fuelgauge->info.batt_soc)) / 10;
 		break;
 		/* Battery Temperature */
 	case POWER_SUPPLY_PROP_TEMP:
@@ -923,7 +932,7 @@ static int sm5007_fuelgauge_probe (struct i2c_client *client,
 
 	/* battery_type*/
 	fuelgauge->info.battery_type = pdata->type[type_n].battery_type;
-	pr_debug("battery_type = <0x%x>\n", fuelgauge->info.battery_type);
+	pr_debug("battery_type = <0x%d>\n", fuelgauge->info.battery_type);
 
 	/* VOL & CURR CAL*/
 	fuelgauge->info.volt_cal = pdata->type[type_n].volt_cal;

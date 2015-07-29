@@ -248,10 +248,10 @@ static struct sm5007_fuelgauge_platform_data sm5007_fuelgauge_data = {
         .volt_cal = 0x8000,
         .curr_cal = 0x8000,
 	},
-	/*the battery for SMALL_CAPACITY_BATTERY*/
+	/*the battery for 320mAh*/
 	.type[1] = {
         .id = 0,
-        .battery_type = 4350,                       /* 4.200V 4.350V 4.400V */
+        .battery_type = 4200,                       /* 4.150V */
         //.battery_table = battery_data_table0,
         .temp_std = 25,
         .temp_offset = 10,
@@ -303,7 +303,11 @@ static struct sm5007_charger_platform_data sm5007_charger_data = {
 	.irq 		= SM5007_IRQ_BASE,
 	/* some parameter is depend of charger type */
 	.type = {
-		.chg_batreg 	= 4350, /* mV */
+#if defined(CONFIG_320MAH_BATTERY)
+		.chg_batreg 	= 4200, /* mV */
+#else
+		.chg_batreg     = 4350,
+#endif
 		.chg_fastchg    = 200,   /* mA */
 		.chg_autostop   = SM5007_AUTOSTOP_ENABLED,  /* autostop enable */
 		.chg_rechg      = SM5007_RECHG_M100,  /* -100mV */
