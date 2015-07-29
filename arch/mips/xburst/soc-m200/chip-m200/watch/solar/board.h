@@ -171,11 +171,11 @@
 #define GPIO_TP_RESET		GPIO_PD(27)
 #endif
 #ifdef  CONFIG_TOUCHSCREEN_ITE7258
-#define GPIO_TP_INT             GPIO_PA(12)
-#define GPIO_TP_RESET             GPIO_PA(14)
+#define GPIO_TP_INT             GPIO_PC(14)
+#define GPIO_TP_RESET             GPIO_PA(13)
 #define GPIO_TP_EN			-1
 #define VCC_TOUCHSCREEN PS5_NAME
-#define VIO_TOUCHSCREEN LDO9_NAME
+#define VIO_TOUCHSCREEN BUCK3_NAME
 #endif  /* CONFIG_TOUCHSCREEN_ITE7258 */
 
 /* ****************************GPIO TOUCHSCREEN END************************** */
