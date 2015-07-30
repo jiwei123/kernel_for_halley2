@@ -94,8 +94,6 @@ typedef unsigned int	u32;
 #define SLEEP_TCSM_RESUME_TEXT     (SLEEP_TCSM_BOOT_TEXT + SLEEP_TCSM_BOOT_LEN)
 #define SLEEP_TCSM_RESUME_DATA     (SLEEP_TCSM_RESUME_TEXT + SLEEP_TCSM_RESUME_LEN)
 
-#define CPU_RESMUE_SP               0xb3425FFC  /* BANK3~BANK2 */
-
 
 #define _cpu_switch_restore()						\
 	do {											\

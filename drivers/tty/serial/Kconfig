@@ -1491,6 +1491,9 @@ config SERIAL_JZ47XX_UART
 	  If you have a machine based on a xbrust mips soc you can
 	  enable its onboard serial port by enabling this option.
 
+config SERIAL_JZ47XX_PDMA_UART
+	tristate
+
 config SERIAL_JZ47XX_CONSOLE
 	bool "Console on jz47xx and compatible serial port"
 	depends on SERIAL_JZ47XX_UART=y
@@ -1518,37 +1521,47 @@ config SERIAL_JZ47XX_CONSOLE
 config SERIAL_JZ47XX_UART0
 	bool "enable uart0"
 	depends on SERIAL_JZ47XX_UART=y
-config SERIAL_JZ47XX_UART0_DMA
+config SERIAL_JZ47XX_PDMA_UART0
 	bool "enable uart0 dma mode"
 	depends on SERIAL_JZ47XX_UART0
+	select SERIAL_JZ47XX_PDMA_UART
 
 config SERIAL_JZ47XX_UART1
 	bool "enable uart1"
 	depends on SERIAL_JZ47XX_UART=y
-config SERIAL_JZ47XX_UART1_DMA
+
+config SERIAL_JZ47XX_PDMA_UART1
 	bool "enable uart1 dma mode"
 	depends on SERIAL_JZ47XX_UART1
+	select SERIAL_JZ47XX_PDMA_UART
 
 config SERIAL_JZ47XX_UART2
 	bool "enable uart2"
 	depends on SERIAL_JZ47XX_UART=y
-config SERIAL_JZ47XX_UART2_DMA
+
+config SERIAL_JZ47XX_PDMA_UART2
 	bool "enable uart2 dma mode"
 	depends on SERIAL_JZ47XX_UART2
+	select SERIAL_JZ47XX_PDMA_UART
 
 config SERIAL_JZ47XX_UART3
 	bool "enable uart3"
 	depends on SERIAL_JZ47XX_UART=y
-config SERIAL_JZ47XX_UART3_DMA
+
+config SERIAL_JZ47XX_PDMA_UART3
 	bool "enable uart3 dma mode"
 	depends on SERIAL_JZ47XX_UART3
+	select SERIAL_JZ47XX_PDMA_UART
 
 config SERIAL_JZ47XX_UART4
 	bool "enable uart4"
 	depends on SERIAL_JZ47XX_UART=y
-config SERIAL_JZ47XX_UART4_DMA
+
+config SERIAL_JZ47XX_PDMA_UART4
 	bool "enable uart4 dma mode"
 	depends on SERIAL_JZ47XX_UART4
+	select SERIAL_JZ47XX_PDMA_UART
+
 choice
 	prompt "JZ SERIAL GPIO function pins select"
 	depends on SERIAL_JZ47XX_UART4

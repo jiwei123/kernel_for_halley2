@@ -54,6 +54,24 @@ union u_mailbox {
 #define MAILBOX_GPIO_PEND_ADDR5 ((volatile unsigned int *)0xb3422040)
 #endif //endif CONFIG_NAND
 
+#ifdef CONFIG_SERIAL_JZ47XX_PDMA_UART
+__initdata static int firmware[] = {
+	#include "firmware_uart.hex"
+};
+
+#define REG_INTC_SET_CPUMASK0		(*(volatile unsigned int *)(0xb0001008))
+#define REG_INTC_CLEAR_CPUMASK0	        (*(volatile unsigned int *)(0xb000100c))
+#define REG_INTC_MCUMASK0		(*(volatile unsigned int *)(0xb0001038))
+
+#define REG_INTC_SET_CPUMASK1		(*(volatile unsigned int *)(0xb0001028))
+#define REG_INTC_CLEAR_CPUMASK1	        (*(volatile unsigned int *)(0xb000102c))
+#define REG_INTC_MCUMASK1		(*(volatile unsigned int *)(0xb0001044))
+
+#include "common_firmware/include/tcsm.h"
+static struct mailbox_pend_addr_s *mailbox_pend_addr =
+	(struct mailbox_pend_addr_s *)PDMA_TO_CPU(MAILBOX_PEND_ADDR);
+#endif //endif CONFIG_SERIAL_JZ47XX_PDMA_UART
+
 /* tsz for 1,2,4,8,16,32,64 bytes */
 const static char dcm_tsz[7] = { 1, 2, 0, 0, 3, 4, 5 };
 
@@ -279,7 +297,7 @@ static void jzdma_mcu_reset(struct jzdma_master *dma)
 	writel(dmcs, dma->iomem + DMCS);
 }
 
-#ifdef CONFIG_NAND
+#if defined(CONFIG_NAND) || defined(CONFIG_SERIAL_JZ47XX_PDMA_UART)
 
 static int jzdma_load_firmware(struct jzdma_master *dma)
 {
@@ -293,17 +311,19 @@ static int jzdma_load_firmware(struct jzdma_master *dma)
 
 	memcpy(dma->iomem + TCSM, firmware, sizeof(firmware));
 
+#ifdef CONFIG_NAND
 	DMA_MAILBOX_NAND = 0;
 	DMA_MAILBOX_GPIO = 0;
 	for(i = 0;i <= MAILBOX_GPIO_PEND_ADDR5 - MAILBOX_GPIO_PEND_ADDR0; i++)
 		MAILBOX_GPIO_PEND_ADDR0[i] = 0;
-
-	return 0;
-}
-
 #endif
 
-#ifdef CONFIG_NAND
+#ifdef CONFIG_SERIAL_JZ47XX_PDMA_UART
+	mailbox_pend_addr->cpu_state = 0;
+	mailbox_pend_addr->mcu_state = 0;
+#endif
+	return 0;
+}
 
 static void jzdma_mcu_init(struct jzdma_master *dma)
 {
@@ -954,6 +974,29 @@ irqreturn_t pdma_int_handler(int irq_pdmam, void *dev)
 	return IRQ_HANDLED;
 }
 #endif
+
+#ifdef CONFIG_SERIAL_JZ47XX_PDMA_UART
+void pdma_handle_irq(int id, unsigned int status);
+irqreturn_t pdma_int_handler(int irq_pdmam, void *dev)
+{
+	unsigned long pending;
+	struct jzdma_master *master = (struct jzdma_master *)dev;
+	/* printk("0x14 = %X\n",*(volatile unsigned int *)0xb3422014); */
+	pending = readl(master->iomem + DMINT);
+	if(pending & DMINT_N_IP){
+#ifdef CONFIG_SERIAL_JZ47XX_PDMA_UART
+		if (mailbox_pend_addr->cpu_state) {
+			pdma_handle_irq(*(volatile unsigned int *)PDMA_TO_CPU(TCSM_UART_DEVICE_NUM), mailbox_pend_addr->cpu_state);
+		}
+#endif
+	}
+	writel(0, master->iomem + DMINT);
+
+
+	return IRQ_HANDLED;
+}
+#endif
+
 static int jzdma_alloc_chan_resources(struct dma_chan *chan)
 {
 	struct jzdma_channel *dmac = to_jzdma_chan(chan);
@@ -1007,7 +1050,7 @@ int pdmam_set_wake(struct irq_data *data, unsigned int on)
 {
 	return 0;
 }
-#ifdef CONFIG_NAND
+#if defined(CONFIG_NAND) || defined(CONFIG_SERIAL_JZ47XX_PDMA_UART)
 /*************************************************************************
 if nand was config:
 	After cpu was woke up,the mcu should be handler
@@ -1058,9 +1101,13 @@ static struct irq_chip nand_jzintc_chip = {
 	.irq_mask_ack 	= nand_intc_irq_mask,
 	.irq_unmask 	= nand_intc_irq_unmask,
 };
+#if defined(CONFIG_NAND)
 static struct irq_chip *save_irq_chip = NULL;
+#endif
+
 static void save_and_replace_gpio0_irq_chip(void)
 {
+#if defined(CONFIG_NAND)
 	if (!save_irq_chip) {
 		REG_INTC_SET_CPUMASK0 = (0x1 << 17);
 		REG_INTC_MCUMASK0 |= (0x1 << 17);
@@ -1068,9 +1115,16 @@ static void save_and_replace_gpio0_irq_chip(void)
 		irq_set_chip(IRQ_GPIO0, &nand_jzintc_chip);
 		REG_INTC_MCUMASK0 &= ~(0x1 << 17);
 	}
+#endif
+
+#ifdef CONFIG_SERIAL_JZ47XX_PDMA_UART
+	REG_INTC_MCUMASK1 &= ~(0x1 << 18);
+#endif
+	printk("REG_INTC_MCUMASK1 = %X\n",REG_INTC_MCUMASK1);
 }
 static void restore_gpio0_irq_chip(void)
 {
+#if defined(CONFIG_NAND)
 	if (save_irq_chip) {
 		REG_INTC_SET_CPUMASK0 = (0x1 << 17);
 		REG_INTC_MCUMASK0 |= (0x1 << 17);
@@ -1078,8 +1132,14 @@ static void restore_gpio0_irq_chip(void)
 		REG_INTC_CLEAR_CPUMASK0 = (0x1 << 17);
 		save_irq_chip = NULL;
 	}
+#endif
+
+#ifdef CONFIG_SERIAL_JZ47XX_PDMA_UART
+	REG_INTC_MCUMASK1 |= (0x1 << 18);
+#endif
 }
 #endif /* CONFIG_NAND */
+
 
 static ssize_t jz_regs_store(struct device *dev,
 		struct device_attribute *attr,
@@ -1162,7 +1222,7 @@ static int __init jzdma_probe(struct platform_device *pdev)
 	ret = request_irq(irq, jzdma_int_handler, IRQF_DISABLED,"pdma", dma);
 	if (ret)
 		goto release_iomap;
-#ifdef CONFIG_NAND
+#if defined(CONFIG_NAND) || defined(CONFIG_SERIAL_JZ47XX_PDMA_UART)
 	/* request irq_pdmam */
 	ret = request_irq(irq_pdmam, pdma_int_handler, IRQF_DISABLED,"pdmam", dma);
 	if (ret)
@@ -1171,7 +1231,12 @@ static int __init jzdma_probe(struct platform_device *pdev)
 	for(i = IRQ_MCU_GPIO0; i <= IRQ_MCU_GPIO5; i++)
 		irq_set_chip_and_handler(i, &nand_jzintc_chip, handle_simple_irq);
 
+#if defined(CONFIG_NAND)
 	ret = mcu_gpio_register((unsigned int)MAILBOX_GPIO_PEND_ADDR0);
+#endif
+/* #if defined(CONFIG_SERIAL_JZ47XX_PDMA_UART */
+/* 	ret = mcu_gpio_register((unsigned int)mailbox_pend_addr->gpio); */
+/* #endif */
 	if(ret)
 		goto release_iomap;
 #endif
@@ -1251,7 +1316,7 @@ static int __init jzdma_probe(struct platform_device *pdev)
 	}
 
 	jzdma_mcu_reset(dma);
-#ifdef CONFIG_NAND
+#if defined(CONFIG_NAND) || defined(CONFIG_SERIAL_JZ47XX_PDMA_UART)
 	/*
 	 * TODO: if functions of the firmware are beyond only service for NAND controller
 	 * we should remove CONFIG_NAND, but R/B# pin IRQ handler must be carefully considered.
@@ -1292,7 +1357,7 @@ static int __exit jzdma_remove(struct platform_device *pdev)
 
 static int jzdma_suspend(struct platform_device *pdev, pm_message_t state)
 {
-#ifdef CONFIG_NAND
+#if defined(CONFIG_NAND) || defined(CONFIG_SERIAL_JZ47XX_PDMA_UART)
 	struct jzdma_master *dma = platform_get_drvdata(pdev);
 	jzdma_mcu_reset(dma);
 	restore_gpio0_irq_chip();
@@ -1302,7 +1367,7 @@ static int jzdma_suspend(struct platform_device *pdev, pm_message_t state)
 }
 static int jzdma_resume(struct platform_device * pdev)
 {
-#ifdef CONFIG_NAND
+#if defined(CONFIG_NAND) || defined(CONFIG_SERIAL_JZ47XX_PDMA_UART)
 	struct jzdma_master *dma = platform_get_drvdata(pdev);
 	jzdma_mcu_init(dma);
 	save_and_replace_gpio0_irq_chip();

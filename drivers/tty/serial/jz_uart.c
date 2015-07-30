@@ -60,24 +60,15 @@ struct uart_jz47xx_port {
 	char			name[16];
 
 	int buf_id;
-	unsigned int use_dma;
-	dma_addr_t		rx_buf_dma;
-	void			*rx_buf_virt;
-	dma_cookie_t cookie;
-	enum    jzdma_type dma_type;
-	enum    dma_status dma_status;
-	struct 	dma_chan	*chan_rx;
-	struct 	dma_chan	*chan_tx;
-	struct  dma_async_tx_descriptor	*desc_tx;
-	struct  dma_async_tx_descriptor	*desc_rx;
-	struct  scatterlist		sg_rx;
-	struct  scatterlist     sg_tx;
-	struct  dma_slave_config dma_config;
-	struct  dma_tx_state    txstate;
-	struct  tasklet_struct	 tasklet_dma_tx;
-	struct  tasklet_struct   tasklet_dma_rx;
+#ifdef CONFIG_SERIAL_JZ47XX_PDMA_UART
+	unsigned int use_pdma;
+#endif
 	struct  tasklet_struct   tasklet_pio_rx;
 };
+
+static struct uart_jz47xx_port *serial_jz47xx_ports[PORT_NR];
+static struct uart_driver serial_jz47xx_reg;
+
 static inline void check_modem_status(struct uart_jz47xx_port *up);
 static unsigned short *serial47xx_get_divisor(struct uart_port *port, unsigned int baud);
 static inline void serial_dl_write(struct uart_port *up, int value);
@@ -147,101 +138,6 @@ static void serial_jz47xx_stop_rx(struct uart_port *port)
 }
 
 /*
- *UART DMA Mome data receive
-*/
-static void jz47xx_dma_rx(unsigned long data);
-
-static void dma_receive_chars(struct uart_jz47xx_port *up, int lsr, int residue, int count)
-{
-	struct tty_struct *tty = up->port.state->port.tty;
-
-	up->buf_id = 0;
-	dmaengine_terminate_all(up->chan_rx);
-	up->port.icount.rx += count;
-	/*
-	 * when insert strings to tty, tty can full ? if full, how to process residue strings?
-	 * Using printk function test
-	 * printk("%s   %d \n",__func__,__LINE__);
-	 */
-	/* Sync in buffer */
-	tty_insert_flip_string(tty->port, sg_virt(&up->sg_rx), count); // notice
-	/* Return buffer to device */
-#if 0
-	if(!lsr){xs
-		tty_flip_buffer_push(tty);
-		dma_unmap_sg(up->port.dev, &up->sg_rx, 1, DMA_FROM_DEVICE);
-		tasklet_schedule(&up->tasklet_dma_rx);
-	}
-#endif
-
-}
-//extern void jzdma_dump(struct dma_chan *chan);
-static void jz47xx_dma_rx_complete(void *arg)
-{
-	struct uart_jz47xx_port *up = arg;
-	struct uart_port *port = &up->port;
-	struct tty_struct *tty = tty_port_tty_get(&port->state->port);
-//	jzdma_dump(up->chan_rx);
-	if (!tty) {
-		dev_dbg(up->port.dev, "%s:tty is busy now", __func__);
-		return;
-	}
-	if(up->buf_id){
-		up->buf_id = 0;
-		jz47xx_dma_rx((unsigned long)up);
-		tty_insert_flip_string(tty->port, up->rx_buf_virt + DMA_BUFFER, DMA_BUFFER);
-	}
-	else{
-		up->buf_id = 1;
-		jz47xx_dma_rx((unsigned long)up);
-		tty_insert_flip_string(tty->port, up->rx_buf_virt, DMA_BUFFER);
-	}
-	port->icount.rx += DMA_BUFFER;
-	tty_flip_buffer_push(tty->port);
-	tty_kref_put(tty); //Free TTY quote
-	async_tx_ack(up->desc_rx);
-	dma_unmap_sg(up->port.dev, &up->sg_rx, 1, DMA_FROM_DEVICE);
-}
-
-static void jz47xx_dma_rx(unsigned long data)
-{
-	struct uart_jz47xx_port *up = (struct uart_jz47xx_port *)data;
-
-	up->dma_config.direction = DMA_FROM_DEVICE;
-	dmaengine_slave_config(up->chan_rx, &up->dma_config);
-	/*
-	 * Two dma buffer exchange
-	 */
-	if(up->buf_id)
-		sg_init_one(&up->sg_rx, up->rx_buf_virt + DMA_BUFFER, DMA_BUFFER);
-	else
-		sg_init_one(&up->sg_rx, up->rx_buf_virt, DMA_BUFFER);
-	dma_map_sg(up->port.dev,&up->sg_rx,1,DMA_FROM_DEVICE);
-	
-	up->desc_rx = up->chan_rx->device->device_prep_slave_sg(up->chan_rx,
-			&up->sg_rx, 1, DMA_FROM_DEVICE,
-			DMA_PREP_INTERRUPT | DMA_CTRL_ACK,NULL);
-	if (!up->desc_rx)
-		return ;
-	up->desc_rx->callback = jz47xx_dma_rx_complete;
-	up->desc_rx->callback_param = up;
-	up->cookie = dmaengine_submit(up->desc_rx);
-	dma_async_issue_pending(up->chan_rx);
-//	jzdma_dump(up->chan_rx);
-#if 0
-       /*
-	 * FIFO is empty ,but DMA buffer have data
-	 */
-	int lsr;
-	up->chan_rx->device->device_tx_status(up->chan_rx,up->cookie,&up->txstate);
-	lsr = serial_in(up,UART_LSR);
-	lsr = lsr & UART_LSR_DR;
-	if(up->txstate.residue && (!lsr))
-		dma_receive_chars(up,lsr,up->txstate.residue,DMA_BUFFER - up->txstate.residue);
-#endif
-}
-
-/*
 *Function:receive char
 *Parameter:unsigned long data,unsigned int status
 *Return:void
@@ -250,22 +146,9 @@ static inline void receive_chars(unsigned long data)
 {
 	struct uart_jz47xx_port *up = (struct uart_jz47xx_port *)data;
 	struct tty_struct *tty = up->port.state->port.tty;
-	unsigned int ch, flag,count;
+	unsigned int ch, flag;
 	int max_count = 256;
 	unsigned int status= serial_in(up, UART_LSR);
-	int lsr = status & UART_LSR_DR;
-
-	/*
-	 * UART FIFO isn't empty and DMA buffer have data
-	 */
-
-	if(up->use_dma){
-		up->chan_rx->device->device_tx_status(up->chan_rx,up->cookie,&up->txstate);
-		count = DMA_BUFFER - up->txstate.residue;
-		if(count && up->txstate.residue)
-			dma_receive_chars(up, lsr, up->txstate.residue, count);
-	}
-
 	while ((status & UART_LSR_DR) && (max_count-- > 0))
 		//ready to receive data and max_count>0
 	{
@@ -323,147 +206,8 @@ ignore_char:
 		status = serial_in(up, UART_LSR);
 	}
 	tty_flip_buffer_push(tty->port);
-
-/* start to cancle */
-	if(up->use_dma){
-		dma_unmap_sg(up->port.dev, &up->sg_rx, 1, DMA_FROM_DEVICE);
-		tasklet_schedule(&up->tasklet_dma_rx);
-		enable_irq(up->port.irq);
-	}
 /*end to cancle*/
 }
-
-/*
- * UART DMA Mode data transfer
-*/
-static void jz47xx_dma_tx_complete(void *arg)
-{
-	struct uart_jz47xx_port *up = arg;
-	struct circ_buf *xmit = &up->port.state->xmit;
-
-	dma_unmap_sg(up->port.dev, &up->sg_tx, 1, DMA_TO_DEVICE);
-	if(!(uart_tx_stopped(&up->port)||uart_circ_empty(xmit)))
-		tasklet_schedule(&up->tasklet_dma_tx);
-}
-
-static void jz47xx_dma_tx(unsigned long data)
-{
-	struct uart_jz47xx_port *up = (struct uart_jz47xx_port *)data;
-	struct circ_buf *xmit = &up->port.state->xmit;
-	int bytes,lsr;
-	lsr = serial_in(up, UART_LSR);
-	check_modem_status(up);
-	if(!(lsr & UART_LSR_THRE))
-		goto l1;
-	up->dma_config.direction = DMA_TO_DEVICE;
-	dmaengine_slave_config(up->chan_tx, &up->dma_config);
-
-	if(uart_tx_stopped(&up->port)||uart_circ_empty(xmit)){
-		tasklet_schedule(&up->tasklet_dma_tx);
-		return ;
-	}
-
-	if (up->port.x_char) {
-		serial_out(up, UART_TX, up->port.x_char);
-		up->port.icount.tx++;
-		up->port.x_char = 0;
-		return ;
-	}
-	if(xmit->tail > xmit->head) {
-		bytes = CIRC_CNT(UART_XMIT_SIZE , xmit->tail, UART_XMIT_SIZE);
-		if(bytes > 32){
-			sg_init_one(&up->sg_tx, xmit->buf+xmit->tail, 32);
-			xmit->tail = (xmit->tail + 32) & (UART_XMIT_SIZE - 1);
-			up->port.icount.tx += 32;
-		}
-		else{
-			sg_init_one(&up->sg_tx, xmit->buf+xmit->tail, bytes);
-			xmit->tail = (xmit->tail + bytes) & (UART_XMIT_SIZE - 1);
-			up->port.icount.tx += bytes;
-			xmit->tail = 0;
-		}
-	}
-	else {
-		bytes = CIRC_CNT(xmit->head, xmit->tail, UART_XMIT_SIZE);
-		if(bytes > 32)
-		{
-			sg_init_one(&up->sg_tx, xmit->buf+xmit->tail, 32);
-			xmit->tail = (xmit->tail + 32) & (UART_XMIT_SIZE - 1);
-			up->port.icount.tx += 32;
-		}
-		else
-		{
-			sg_init_one(&up->sg_tx, xmit->buf+xmit->tail, bytes);
-			xmit->tail = (xmit->tail + bytes) & (UART_XMIT_SIZE - 1);
-			up->port.icount.tx += bytes;
-		}
-	}
-	dma_map_sg(up->port.dev,&up->sg_tx,1,DMA_TO_DEVICE);
-	up->desc_tx = up->chan_tx->device->device_prep_slave_sg(up->chan_tx,
-			&up->sg_tx, 1, DMA_TO_DEVICE,
-			DMA_PREP_INTERRUPT | DMA_CTRL_ACK,NULL);
-	if (!up->desc_tx)
-		return ;
-	up->desc_tx->callback = jz47xx_dma_tx_complete;
-	up->desc_tx->callback_param = up;
-	dmaengine_submit(up->desc_tx);
-	dma_async_issue_pending(up->chan_tx);
-	if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)
-		uart_write_wakeup(&up->port);
-	return ;
-l1:
-	tasklet_schedule(&up->tasklet_dma_tx);
-}
-
-static bool filter(struct dma_chan *chan, void *data)
-{
-	struct uart_jz47xx_port *port = data;
-
-	return (void*)port->dma_type == chan->private;
-}
-static void serial_jz47xx_dma_init(struct uart_jz47xx_port *up)
-{
-	dma_cap_mask_t mask;
-
-	dma_cap_zero(mask);
-	dma_cap_set(DMA_SLAVE, mask);
-	up->chan_rx= dma_request_channel(mask, filter,up);
-	if (up->chan_rx < 0){
-		dev_err(up->port.dev, "%s:dma_request_channel FAILS(rx)\n",__func__);
-		dma_release_channel(up->chan_rx);
-		return ;
-	}
-	up->chan_tx= dma_request_channel(mask, filter,up);
-	if (up->chan_tx < 0){
-		dev_err(up->port.dev, "%s:dma_request_channel FAILS(tx)\n",__func__);
-		dma_release_channel(up->chan_tx);
-		return ;
-	}
-	up->dma_config.src_addr = (unsigned long)(up->port.mapbase + UART_RX);
-	up->dma_config.src_addr_width = DMA_SLAVE_BUSWIDTH_1_BYTE;
-	up->dma_config.src_maxburst = 16;
-
-	up->dma_config.dst_addr = (unsigned long)(up->port.mapbase + UART_TX);
-	up->dma_config.dst_addr_width = DMA_SLAVE_BUSWIDTH_1_BYTE;
-	up->dma_config.dst_maxburst = 32;
-
-	up->rx_buf_virt = dma_alloc_coherent(up->port.dev, COUNT_DMA_BUFFER,
-				    &up->rx_buf_dma, GFP_KERNEL);
-	if(!up->rx_buf_virt){
-		printk("up->rx_buf_virt fail\n");
-		return ;
-	}
-
-	up->desc_tx = (struct dma_async_tx_descriptor*)kmalloc(sizeof(struct dma_async_tx_descriptor), GFP_KERNEL);
-	if (!up->desc_tx) {
-		printk("%s: alloc desc failed.\n", __func__);
-		return ;
-	}
-	up->desc_rx = (struct dma_async_tx_descriptor*)kmalloc(sizeof(struct dma_async_tx_descriptor), GFP_KERNEL);
-	if (!up->desc_rx)
-		printk("%s: alloc desc_rx failed.\n", __func__);
-}
-
 /* transmit one char*/
 static void transmit_chars(struct uart_jz47xx_port *up)
 {
@@ -497,23 +241,22 @@ static void transmit_chars(struct uart_jz47xx_port *up)
 	if (uart_circ_empty(xmit))
 		serial_jz47xx_stop_tx(&up->port);
 }
-
+DEFINE_SPINLOCK(t_lock);
 static void serial_jz47xx_start_tx(struct uart_port *port)
 {
 	struct uart_jz47xx_port *up = (struct uart_jz47xx_port *)port;
-	if(up->use_dma) {
-		int lsr;
-		lsr = serial_in(up, UART_LSR);
-		check_modem_status(up);
-		if(lsr & UART_LSR_THRE)
-			tasklet_schedule(&up->tasklet_dma_tx);
+	unsigned long flags;
+	spin_lock_irqsave(&t_lock,flags);
+	if (!(up->ier & UART_IER_THRI)) {
+		up->ier |= UART_IER_THRI;
+		serial_out(up, UART_IER, up->ier);
 	}
-	else {
-		if (!(up->ier & UART_IER_THRI)) {
-			up->ier |= UART_IER_THRI;
-			serial_out(up, UART_IER, up->ier);
-		}
-	}
+	/* if(!strcmp(up->name,"uart1")) */
+	/* { */
+	/* 	udelay(100); */
+	/* 	printk("uart1 send data!!!\n"); */
+	/* } */
+	spin_unlock_irqrestore(&t_lock,flags);
 }
 
 static inline void check_modem_status(struct uart_jz47xx_port *up)
@@ -540,20 +283,141 @@ static inline irqreturn_t serial_jz47xx_irq(int irq, void *dev_id)
 	lsr = serial_in(up, UART_LSR);
 	if (iir & UART_IIR_NO_INT)
 		return IRQ_NONE;
-	if(up->use_dma) {
-		disable_irq_nosync(up->port.irq);
-		if(lsr & UART_LSR_DR)
-			 tasklet_schedule(&up->tasklet_pio_rx);
-	}
-	else {
-		if (lsr & UART_LSR_DR)
-			receive_chars((unsigned long)up);
-		check_modem_status(up);
-		if (lsr & UART_LSR_THRE)
-			transmit_chars(up);
-	}
+
+	if (lsr & UART_LSR_DR)
+		receive_chars((unsigned long)up);
+	check_modem_status(up);
+	if (lsr & UART_LSR_THRE)
+		transmit_chars(up);
 	return IRQ_HANDLED;
 }
+
+#ifdef CONFIG_SERIAL_JZ47XX_PDMA_UART
+#include "../../dma/jzdma/common_firmware/include/tcsm.h"
+static void transmit_chars_to_pdma(struct uart_jz47xx_port *up)
+{
+	struct circ_buf *xmit = &up->port.state->xmit;
+
+	volatile unsigned char *buf = (volatile unsigned char *)PDMA_TO_CPU(TCSM_UART_TBUF_ADDR);
+	unsigned int waddr = *(volatile unsigned int *)PDMA_TO_CPU(TCSM_UART_TBUF_RP);
+	unsigned int count = *(volatile unsigned int *)PDMA_TO_CPU(TCSM_UART_TBUF_COUNT);
+	if (up->port.x_char) {
+		buf[count] = up->port.x_char;
+		count = (count + 1) & (TCSM_UART_BUF_LEN - 1);
+		up->port.icount.tx++;
+		up->port.x_char = 0;//transmit finish x_char=0
+		*(volatile unsigned int *)PDMA_TO_CPU(TCSM_UART_TBUF_COUNT) = count;
+		return;
+	}
+
+	if (((count == waddr) && uart_circ_empty(xmit)) || uart_tx_stopped(&up->port)) {//xmit is empty or stop tx
+		serial_jz47xx_stop_tx(&up->port);
+		return;
+	}
+	do {
+		if (uart_circ_empty(xmit)) // FIFO FULL
+			break;
+		buf[count] = xmit->buf[xmit->tail];
+		xmit->tail = (xmit->tail + 1) & (UART_XMIT_SIZE - 1);
+		up->port.icount.tx++;
+		count = (count + 1) & (TCSM_UART_BUF_LEN - 1);
+	}while (count != waddr);
+
+	*(volatile unsigned int *)PDMA_TO_CPU(TCSM_UART_TBUF_COUNT) = count;
+	if(count >= waddr)
+		count = count - waddr;
+	else
+		count = TCSM_UART_BUF_LEN - waddr + count;
+
+	/* if circ_chars is less than WARKUP_CHARS,then warkup */
+	if ((count + uart_circ_chars_pending(xmit)) < WAKEUP_CHARS)//get the renainder of circ_chars
+		uart_write_wakeup(&up->port);
+}
+static void receive_chars_from_pdma(struct uart_jz47xx_port *up)
+{
+	struct tty_struct *tty = up->port.state->port.tty;
+	unsigned int ch, flag, status;
+	int max_count = 256;
+
+	unsigned int raddr = *(volatile unsigned int *)PDMA_TO_CPU(TCSM_UART_RBUF_WP);
+	unsigned int count = *(volatile unsigned int *)PDMA_TO_CPU(TCSM_UART_RBUF_COUNT);
+	volatile unsigned char *buf = (volatile unsigned char *)PDMA_TO_CPU(TCSM_UART_RBUF_ADDR);
+	/* printk("raddr = %d count = %d\n",raddr,count); */
+	/* printk("waddr = %x 0x14 = %X\n",raddr,*(volatile unsigned int *)0xb3422014); */
+	while ( (raddr != count) && (max_count-- > 0)) {
+		ch = buf[count]; // read RX_Register
+		status = buf[count + 1];
+		flag = TTY_NORMAL; // TTY_NORMAL=0
+		up->port.icount.rx++;
+
+		/*  Break interrupt error | prrity error | Frame error | overun error */
+		if (unlikely(status & (UART_LSR_BI | UART_LSR_PE | UART_LSR_FE | UART_LSR_OE))) {
+			if (status & UART_LSR_BI) {
+				status &= ~(UART_LSR_FE | UART_LSR_PE);
+				up->port.icount.brk++;
+				/*
+				 * We do the SysRQ and SAK checking
+				 * here because otherwise the break
+				 * may get masked by ignore_status_mask
+				 * or read_status_mask.
+				 */
+				if (uart_handle_break(&up->port))
+					goto ignore_char;
+			} else if (status & UART_LSR_PE)
+				up->port.icount.parity++;
+			else if (status & UART_LSR_FE)
+				up->port.icount.frame++;
+			if (status & UART_LSR_OE)
+				up->port.icount.overrun++;
+			/*
+			 * Mask off conditions which should be ignored.
+			 */
+			status &= up->port.read_status_mask;
+
+#ifdef CONFIG_SERIAL_JZ47XX_CONSOLE
+			if (up->port.line == up->port.cons->index) {
+				/* Recover the break flag from console xmit */
+				status |= up->lsr_break_flag;
+				up->lsr_break_flag = 0;
+			}
+#endif
+			if (status & UART_LSR_BI) {
+				flag = TTY_BREAK;
+			} else if (status & UART_LSR_PE)
+				flag = TTY_PARITY;
+			else if (status & UART_LSR_FE)
+				flag = TTY_FRAME;
+		}
+		/* printk("ch = %x status = %x\n",ch,status); */
+		uart_insert_char(&up->port, status, UART_LSR_OE, ch, flag);
+ignore_char:
+		//raddr = (raddr + 2) & (TCSM_UART_BUF_LEN - 1);
+		count = (count + 2) & (TCSM_UART_BUF_LEN - 1);
+
+	}
+	if(max_count != 256) {
+		tty_flip_buffer_push(tty->port);
+		*(volatile unsigned int *)PDMA_TO_CPU(TCSM_UART_RBUF_COUNT) = count;
+	}
+	/* printk("uier = %X\n",*(volatile unsigned int *)0xb0031004); */
+	//*(volatile unsigned int *)PDMA_TO_CPU(TCSM_UART_RBUF_RP) = raddr;
+	/* printk("d raddr = %d count = %d\n",raddr,count); */
+}
+
+void pdma_handle_irq(int id, unsigned int status)
+{
+	struct uart_jz47xx_port *up = serial_jz47xx_ports[id];
+	if (status & TCSM_UART_NEED_READ)
+		receive_chars_from_pdma(up);
+	check_modem_status(up);
+	if (status & TCSM_UART_NEED_WRITE) {
+		transmit_chars_to_pdma(up);
+		serial_out(up, UART_IER, up->ier);
+	}
+		//transmit_chars_to_pdma(up);
+}
+EXPORT_SYMBOL(pdma_handle_irq);
+#endif
 
 static unsigned int serial_jz47xx_tx_empty(struct uart_port *port)
 {
@@ -621,12 +485,15 @@ static int serial_jz47xx_startup(struct uart_port *port)
 	unsigned long flags;
 	int retval;
 	up->port.uartclk = clk_get_rate(up->clk);//get clk
-
-	if(up->use_dma)
-		tasklet_schedule(&up->tasklet_dma_rx);
 	/*
 	 * Allocate the IRQ
 	 */
+#ifdef CONFIG_SERIAL_JZ47XX_PDMA_UART
+	if(up->use_pdma) {
+		retval = 0;
+		//printk("Alloc pdma irq now!\n");
+	} else
+#endif
 	retval = request_irq(up->port.irq, serial_jz47xx_irq, 0, up->name, up);//request irq
 	if (retval)
 		return retval;
@@ -666,10 +533,7 @@ static int serial_jz47xx_startup(struct uart_port *port)
 	 * are set via set_termos(), which will be occurring imminently
 	 * anyway, so we don't enable them here.
 	 */
-	if(up->use_dma)
-		up->ier = UART_IER_RLSI | UART_IER_RTOIE;
-	else
-		up->ier = UART_IER_RLSI | UART_IER_RDI | UART_IER_RTOIE;
+	up->ier = UART_IER_RLSI | UART_IER_RDI | UART_IER_RTOIE;
 	serial_out(up, UART_IER, up->ier);
 
 	/*
@@ -679,7 +543,7 @@ static int serial_jz47xx_startup(struct uart_port *port)
 	(void) serial_in(up, UART_RX);
 	(void) serial_in(up, UART_IIR);
 	(void) serial_in(up, UART_MSR);
-
+	printk("setupup uart %s =================================\n",up->name);
 	return 0;
 }
 
@@ -687,13 +551,11 @@ static void serial_jz47xx_shutdown(struct uart_port *port)
 {
 	struct uart_jz47xx_port *up = (struct uart_jz47xx_port *)port;
 	unsigned long flags;
-	if(up->use_dma) {
-		kfree(up->desc_tx);
-		kfree(up->desc_rx);
-		dma_unmap_sg(up->port.dev, &up->sg_rx, 1, DMA_FROM_DEVICE);
-		dma_unmap_sg(up->port.dev, &up->sg_tx, 1, DMA_TO_DEVICE);
-		dma_free_coherent(port->dev,COUNT_DMA_BUFFER,up->rx_buf_virt,up->rx_buf_dma);
-	}
+#ifdef CONFIG_SERIAL_JZ47XX_PDMA_UART
+	if(up->use_pdma) {
+		// printk("No need to free irq!\n");
+	} else
+#endif
 	free_irq(up->port.irq, up);
 
 	/*
@@ -835,11 +697,7 @@ static void serial_jz47xx_set_termios(struct uart_port *port, struct ktermios *t
 	serial_out(up,UART_UACR, quot1[2]);
 
 	up->lcr = cval;					/* Save LCR */
-
-	if(up->use_dma)
-		serial_out(up, UART_FCR, UART_FCR_ENABLE_FIFO | UART_FCR_UME | UART_FCR_DMA_SELECT | UART_FCR_CLEAR_XMIT |UART_FCR_CLEAR_RCVR | UART_FCR_R_TRIG_10);
-	else
-		serial_out(up, UART_FCR, UART_FCR_ENABLE_FIFO | UART_FCR_R_TRIG_11 | UART_FCR_UME);
+	serial_out(up, UART_FCR, UART_FCR_ENABLE_FIFO | UART_FCR_R_TRIG_11 | UART_FCR_UME);
 	spin_unlock_irqrestore(&up->port.lock, flags);
 
 }
@@ -1129,7 +987,7 @@ static const struct dev_pm_ops serial_jz47xx_pm_ops = {
 static int serial_jz47xx_probe(struct platform_device *dev)
 {
 	struct uart_jz47xx_port *up;
-	struct resource *mmres, *irqres,*dma_filter;
+	struct resource *mmres, *irqres;
 	int ret;
 
 	mmres = platform_get_resource(dev, IORESOURCE_MEM, 0);
@@ -1165,19 +1023,15 @@ static int serial_jz47xx_probe(struct platform_device *dev)
 		ret = -ENOMEM;
 		goto err_clk;
 	}
+#ifdef CONFIG_SERIAL_JZ47XX_PDMA_UART
+	if (irqres->name && !strcmp(irqres->name, "pdma")) {
+		printk("%s used pdma\n", up->name);
+		*(volatile unsigned int *)PDMA_TO_CPU(TCSM_UART_DEVICE_NUM) = dev->id;
+		up->use_pdma = 1;
+	} else
+		up->use_pdma = 0;
+#endif
 
-	dma_filter = platform_get_resource(dev, IORESOURCE_DMA, 0);
-	if(dma_filter){
-		up->use_dma = 1;
-		up->buf_id = 0;
-		up->dma_type = dma_filter->start;
-		serial_jz47xx_dma_init(up);
-		tasklet_init(&up->tasklet_dma_tx, jz47xx_dma_tx, (unsigned long)up);
-		tasklet_init(&up->tasklet_dma_rx, jz47xx_dma_rx, (unsigned long)up);
-		tasklet_init(&up->tasklet_pio_rx, receive_chars, (unsigned long)up);
-	}
-	else
-		up->use_dma = 0;
 	serial_jz47xx_ports[dev->id] = up;
 	uart_add_one_port(&serial_jz47xx_reg, &up->port);
 	platform_set_drvdata(dev, up);

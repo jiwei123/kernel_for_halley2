@@ -457,13 +457,12 @@ static struct resource jz_uart0_resources[] = {
 		.start = IRQ_UART0,
 		.end = IRQ_UART0,
 		.flags = IORESOURCE_IRQ,
-	},
-#ifdef CONFIG_SERIAL_JZ47XX_UART0_DMA
-	[2] = {
-		.start = JZDMA_REQ_UART0,
-		.flags = IORESOURCE_DMA,
-	},
+#ifdef CONFIG_SERIAL_JZ47XX_PDMA_UART0
+		.name = "pdma"
+#else
+		.name = "uart0"
 #endif
+	},
 };
 
 struct platform_device jz_uart0_device = {
@@ -483,13 +482,12 @@ static struct resource jz_uart1_resources[] = {
 		.start = IRQ_UART1,
 		.end = IRQ_UART1,
 		.flags = IORESOURCE_IRQ,
-	},
-#ifdef CONFIG_SERIAL_JZ47XX_UART1_DMA
-	[2] = {
-		.start = JZDMA_REQ_UART1,
-		.flags = IORESOURCE_DMA,
-	},
+#ifdef CONFIG_SERIAL_JZ47XX_PDMA_UART1
+		.name = "pdma"
+#else
+		.name = "uart1"
 #endif
+	},
 };
 
 struct platform_device jz_uart1_device = {
@@ -509,13 +507,12 @@ static struct resource jz_uart2_resources[] = {
 		.start = IRQ_UART2,
 		.end = IRQ_UART2,
 		.flags = IORESOURCE_IRQ,
-	},
-#ifdef CONFIG_SERIAL_JZ47XX_UART2_DMA
-	[2] = {
-		.start = JZDMA_REQ_UART2,
-		.flags = IORESOURCE_DMA,
-	},
+#ifdef CONFIG_SERIAL_JZ47XX_PDMA_UART2
+		.name = "pdma"
+#else
+		.name = "uart2"
 #endif
+	},
 };
 
 struct platform_device jz_uart2_device = {
@@ -535,13 +532,12 @@ static struct resource jz_uart3_resources[] = {
 		.start = IRQ_UART3,
 		.end = IRQ_UART3,
 		.flags = IORESOURCE_IRQ,
-	},
-#ifdef CONFIG_SERIAL_JZ47XX_UART3_DMA
-	[2] = {
-		.start = JZDMA_REQ_UART3,
-		.flags = IORESOURCE_DMA,
-	},
+#ifdef CONFIG_SERIAL_JZ47XX_PDMA_UART3
+		.name = "pdma"
+#else
+		.name = "uart3"
 #endif
+	},
 };
 
 struct platform_device jz_uart3_device = {

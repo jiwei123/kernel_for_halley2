@@ -314,6 +314,8 @@ static inline void set_gpio_func(int gpio, int type) {
 
 #define SLEEP_TCSM_SPACE           0xb3423000
 #define SLEEP_TCSM_LEN             4096
+#define CPU_RESMUE_SP		   (SLEEP_TCSM_SPACE + SLEEP_TCSM_LEN + 2048 - 4)  	/* BANK3~BANK2 */
+
 
 #define SLEEP_TCSM_BOOT_LEN        256
 #define SLEEP_TCSM_DATA_LEN        64
@@ -323,7 +325,6 @@ static inline void set_gpio_func(int gpio, int type) {
 #define SLEEP_TCSM_RESUME_TEXT     (SLEEP_TCSM_BOOT_TEXT + SLEEP_TCSM_BOOT_LEN)
 #define SLEEP_TCSM_RESUME_DATA     (SLEEP_TCSM_RESUME_TEXT + SLEEP_TCSM_RESUME_LEN)
 
-#define CPU_RESMUE_SP				0xb3425FFC	/* BANK3~BANK2 */
 
 static int __attribute__((aligned(256))) test_l2cache_handle(int val)
 {
