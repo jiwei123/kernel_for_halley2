@@ -185,7 +185,7 @@
 #endif
 #ifdef  CONFIG_TOUCHSCREEN_ITE7258
 #define GPIO_TP_INT             GPIO_PC(14)
-#define GPIO_TP_RESET             GPIO_PA(13)
+#define GPIO_TP_RESET             GPIO_PC(13)
 #define GPIO_TP_EN			-1
 #define VCC_TOUCHSCREEN PS5_NAME
 #define VIO_TOUCHSCREEN BUCK3_NAME
@@ -328,7 +328,7 @@
 /* ****************************GPIO AUDIO END******************************** */
 
 /* ****************************GPIO WIFI START******************************* */
-#define BCM_PWR_EN       GPIO_PC(12)
+#define BCM_PWR_EN       (-1)
 #define WL_WAKE_HOST     GPIO_PD(12)
 #define WL_REG_EN        GPIO_PD(13)
 #define HOST_WAKE_WL     (-1)
