@@ -20,7 +20,7 @@
 #define LDO9_NAME "hr_3v3"
 #define PS1_NAME "sensorhub_core"
 #define PS2_NAME "ps2"
-#define PS3_NAME "bt3v3"
+#define PS3_NAME "bcm_vddio_1v8"
 #define PS4_NAME "motor"
 #define PS5_NAME "tp2v8"
 

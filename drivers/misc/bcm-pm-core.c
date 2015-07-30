@@ -202,7 +202,7 @@ static int bcm_power_probe(struct platform_device *pdev)
 
 	mutex_init(&bcm_power->mutex);
 
-	bcm_power->regulator = regulator_get(NULL, "wifi_vddio_1v8");
+	bcm_power->regulator = regulator_get(NULL, "bcm_vddio_1v8");
 	if (IS_ERR(bcm_power->regulator)) {
 		pr_err("wifi regulator missing\n");
 		ret = -EINVAL;
