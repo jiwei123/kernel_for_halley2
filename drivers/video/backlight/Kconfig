@@ -168,7 +168,7 @@ config LCD_BYD_9177AA
 	   jz mipi dsi.dpi TFT display panel  support
 
 config LCD_X163
-   tristate "X163 smart mipi-dsi panel(320x320)"
+   tristate "X163 1.63 inch smart mipi-dsi panel(320x320)"
    depends on FB && JZ_MIPI_DSI
    help
 	   jz mipi dsi.dbi smart display panel support
@@ -186,7 +186,7 @@ config AUO_X163_MARK
 	default n
 
 config LCD_AUO_H139BLN01
-	tristate "AUO 1.4 inch AMOLED mipi-dsi panel(400x4000)"
+	tristate "AUO 1.39 inch AMOLED mipi-dsi panel(400x4000)"
 	depends on FB && JZ_MIPI_DSI
 	help
 	   jz mipi dsi.dpi AMOLED display panel support
@@ -221,7 +221,7 @@ config LCD_H160_TFT320320
 	   jz mipi dsi.dpi TFT display panel  support
 
 config LCD_EDO_E1392AM1
-	tristate "EDO 1.4 inch AMOLED mipi-dsi panel(400x4000)"
+	tristate "EDO 1.39 inch AMOLED mipi-dsi panel(400x4000)"
 	depends on FB && JZ_MIPI_DSI
 	help
 	   jz mipi dsi.dpi AMOLED display panel support

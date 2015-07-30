@@ -89,6 +89,20 @@
 #define GPIO_EPD_EN             GPIO_PC(23)
 #define GPIO_EPD_ENOP           GPIO_PC(24)
 #endif
+#ifdef CONFIG_LCD_BOE_TFT320320
+#define GPIO_MIPI_RST_N        GPIO_PC(19)
+#define DSI_TE_GPIO            GPIO_PC(18)
+#define GPIO_LCD_BLK_EN        GPIO_PC(23)
+#define VCC_LCD_1V8_NAME       LDO4_NAME
+#define VCC_LCD_2V8_NAME       LDO6_NAME
+#endif
+#ifdef CONFIG_LCD_H160_TFT320320
+#define GPIO_MIPI_RST_N        GPIO_PD(3)
+#define DSI_TE_GPIO            GPIO_PD(4)
+#define GPIO_LCD_BLK_EN        GPIO_PD(0)
+#define VCC_LCD_1V8_NAME       LDO2_NAME
+#define VCC_LCD_2V8_NAME       LDO4_NAME
+#endif
 #ifdef  CONFIG_LCD_X163
 #define GPIO_LCD_RST                 GPIO_PC(19)
 #define GPIO_LCD_BLK_EN              GPIO_PC(23)
@@ -106,13 +120,12 @@
 #define VCC_LCD_1V8_NAME       LDO4_NAME
 #define VCC_LCD_2V8_NAME       LDO6_NAME
 #endif
-#ifdef CONFIG_JZ_EPD_V12
-#define GPIO_EPD_PWR0           -1
-#define GPIO_EPD_PWR1           -1
-#define GPIO_EPD_PWR2           -1
-#define GPIO_EPD_PWR3           -1
-#define GPIO_EPD_EN             -1
-#define GPIO_EPD_ENOP           -1
+#ifdef CONFIG_LCD_EDO_E1392AM1
+#define GPIO_MIPI_RST_N        GPIO_PC(19)
+#define DSI_TE_GPIO            GPIO_PC(18)
+#define GPIO_LCD_BLK_EN        -1
+#define VCC_LCD_1V8_NAME       LDO4_NAME
+#define VCC_LCD_2V8_NAME       LDO6_NAME
 #endif
 /* ****************************GPIO LCD END********************************** */
 

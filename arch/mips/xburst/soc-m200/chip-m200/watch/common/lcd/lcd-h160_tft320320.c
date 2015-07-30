@@ -73,22 +73,31 @@ int h160_tft320320_reset(struct lcd_device *lcd)
 
 int h160_tft320320_power_on(struct lcd_device *lcd, int enable)
 {
+	int ret;
+
 	if(!is_init && h160_tft320320_init(lcd))
 		return -EFAULT;
 
 	if (enable == POWER_ON_LCD) {
-		regulator_enable(lcd_io_reg);
+		ret = regulator_enable(lcd_io_reg);
+		if (ret)
+			printk(KERN_ERR "failed to enable lcd io reg\n");
 		mdelay(10);
-		regulator_enable(lcd_vcc_reg);
+		ret = regulator_enable(lcd_vcc_reg);
+		if (ret)
+			printk(KERN_ERR "failed to enable lcd vcc reg\n");
 		mdelay(1);
 	} else if (enable == POWER_ON_BL){
-		gpio_direction_output(GPIO_LCD_BLK_EN, 1);
+		if (gpio_is_valid(GPIO_LCD_BLK_EN))
+			gpio_direction_output(GPIO_LCD_BLK_EN, 1);
 	} else {
 		/* power off the power of LCD and it's Backlight */
-		gpio_direction_output(GPIO_MIPI_RST_N, 0);
+		if (gpio_is_valid(GPIO_MIPI_RST_N))
+			gpio_direction_output(GPIO_MIPI_RST_N, 0);
 		regulator_disable(lcd_io_reg);
 		regulator_disable(lcd_vcc_reg);
-		gpio_direction_output(GPIO_LCD_BLK_EN, 0);
+		if (gpio_is_valid(GPIO_LCD_BLK_EN))
+			gpio_direction_output(GPIO_LCD_BLK_EN, 0);
 	}
 
 	return 0;
