@@ -78,43 +78,30 @@
 #define GPIO_EPD_EN             GPIO_PC(23)
 #define GPIO_EPD_ENOP           GPIO_PC(24)
 #endif
-#ifdef CONFIG_LCD_BOE_TFT320320
-#define GPIO_MIPI_RST_N        GPIO_PD(3)
-#define DSI_TE_GPIO            GPIO_PD(4)
-#define GPIO_LCD_BLK_EN        GPIO_PD(0)
-#define VCC_LCD_1V8_NAME       LDO2_NAME
-#define VCC_LCD_2V8_NAME       LDO4_NAME
-#endif
-#ifdef CONFIG_LCD_H160_TFT320320
-#define GPIO_MIPI_RST_N        GPIO_PD(3)
-#define DSI_TE_GPIO            GPIO_PD(4)
-#define GPIO_LCD_BLK_EN        GPIO_PD(0)
-#define VCC_LCD_1V8_NAME       LDO2_NAME
-#define VCC_LCD_2V8_NAME       LDO4_NAME
-#endif
 #ifdef  CONFIG_LCD_X163
-#define GPIO_LCD_RST                 GPIO_PD(3)
-#define DSI_TE_GPIO                  GPIO_PD(4)
-#define GPIO_LCD_BLK_EN              GPIO_PD(0)
-#define VCC_LCD_1V8_NAME             LDO2_NAME
-#define VCC_LCD_3V0_NAME             LDO4_NAME
+#define GPIO_LCD_RST                 GPIO_PC(19)
+#define GPIO_LCD_BLK_EN              GPIO_PC(23)
+#define VCC_LCD_1V8_NAME             LDO4_NAME
+#define VCC_LCD_3V0_NAME             LDO6_NAME
 #define VCC_LCD_BLK_NAME             "lcd_blk_vcc"
+#define DSI_TE_GPIO                  GPIO_PC(18)
 #define GPIO_LCD_SWIRE               GPIO_PC(24)
 #define GPIO_LCD_SWIRE_ACTIVE_LEVEL  1
 #endif
 #ifdef CONFIG_LCD_AUO_H139BLN01
-#define GPIO_MIPI_RST_N        GPIO_PD(3)
-#define DSI_TE_GPIO            GPIO_PD(4)
-#define GPIO_LCD_BLK_EN        GPIO_PD(0)
-#define VCC_LCD_1V8_NAME       LDO2_NAME
-#define VCC_LCD_2V8_NAME       LDO4_NAME
+#define GPIO_MIPI_RST_N        GPIO_PC(19)
+#define DSI_TE_GPIO            GPIO_PC(18)
+#define GPIO_LCD_BLK_EN        -1
+#define VCC_LCD_1V8_NAME       LDO4_NAME
+#define VCC_LCD_2V8_NAME       LDO6_NAME
 #endif
-#ifdef CONFIG_LCD_EDO_E1392AM1
-#define GPIO_MIPI_RST_N        GPIO_PD(3)
-#define DSI_TE_GPIO            GPIO_PD(4)
-#define GPIO_LCD_BLK_EN        GPIO_PD(0)
-#define VCC_LCD_1V8_NAME       LDO2_NAME
-#define VCC_LCD_2V8_NAME       LDO4_NAME
+#ifdef CONFIG_JZ_EPD_V12
+#define GPIO_EPD_PWR0           -1
+#define GPIO_EPD_PWR1           -1
+#define GPIO_EPD_PWR2           -1
+#define GPIO_EPD_PWR3           -1
+#define GPIO_EPD_EN             -1
+#define GPIO_EPD_ENOP           -1
 #endif
 /* ****************************GPIO LCD END********************************** */
 
