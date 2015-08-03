@@ -353,57 +353,13 @@ out:
 static struct i2c_client *sm5007_i2c_client;
 int sm5007_power_off(void)
 {
-#if 0 // dong : 다시 확인 필요
-	int ret;
-	uint8_t reg_val;
-	reg_val = g_soc;
-	reg_val &= 0x7f;
-
 	if (!sm5007_i2c_client)
 		return -EINVAL;
 
-	ret = __sm5007_write(sm5007_i2c_client, SM5007_PSWR, reg_val);
-	if (ret < 0)
-		dev_err(&sm5007_i2c_client->dev,
-					"Error in writing PSWR_REG\n");
-
-	if (g_fg_on_mode == 0) {
-		/* Clear SM5007_FG_CTRL 0x01 bit */
-		ret = __sm5007_read(sm5007_i2c_client,
-				      SM5007_FG_CTRL, &reg_val);
-		if (reg_val & 0x01) {
-			reg_val &= ~0x01;
-			ret = __sm5007_write(sm5007_i2c_client,
-					       SM5007_FG_CTRL, reg_val);
-		}
-		if (ret < 0)
-			dev_err(&sm5007_i2c_client->dev,
-					"Error in writing FG_CTRL\n");
-	}
-
-	/* set rapid timer 300 min */
-	ret = __sm5007_read(sm5007_i2c_client,
-				      TIMSET_REG, &reg_val);
-
-	reg_val |= 0x03;
-
-	ret = __sm5007_write(sm5007_i2c_client,
-					       TIMSET_REG, reg_val);
-	if (ret < 0)
-		dev_err(&sm5007_i2c_client->dev,
-				"Error in writing the TIMSET_Reg\n");
-
-	/* Disable all Interrupt */
-        __sm5007_write(sm5007_i2c_client, SM5007_INTC_INTEN, 0);
-
-	/* Not repeat power ON after power off(Power Off/N_OE) */
-	__sm5007_write(sm5007_i2c_client, SM5007_PWR_REP_CNT, 0x0);
-
 	/* Power OFF */
-	__sm5007_write(sm5007_i2c_client, SM5007_PWR_SLP_CNT, 0x1);
+	__sm5007_write(sm5007_i2c_client, SM5007_CNTL2, 0x4);
 
 	return 0;
-#endif    
 }
 
 static int sm5007_register_reset_notifier(struct jz_notifier *nb)
@@ -591,7 +547,7 @@ static ssize_t attr_reg_get(struct device *dev, struct device_attribute *attr,
 };
 
 static ssize_t attr_addr_get(struct device *dev, struct device_attribute *attr,
-		const char *buf, size_t size)
+		char *buf)
 {
 	ssize_t ret = sprintf(buf, "0x%02x\n", reg_addr);
 	return ret;

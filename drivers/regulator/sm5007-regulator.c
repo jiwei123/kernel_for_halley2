@@ -550,7 +550,6 @@ static struct regulator_ops SM5007_ops = {
 	.enable_time	= SM5007_regulator_enable_time,
 };
 
-
 #define SM5007_REG_BUCK(_id, _en_reg, _en_bit, _slot_pwr_reg, _vout_reg, _vout_mask, _vout_shift,\
 		_min_mv, _max_mv, _step_uV, _nsteps, _ops, _delay, out_list,_lpm_reg, _lpm_mask, _lpm_shift) \
 {								\

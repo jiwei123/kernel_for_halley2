@@ -299,7 +299,7 @@ unsigned int fg_get_soc(struct i2c_client *client)
 		soc = soc + (((ret&0x00ff)*10)/256);
 	}
 
-	fuelgauge->info.batt_soc = soc;
+	fuelgauge->info.batt_soc = 0;
 #ifdef CONFIG_SM5007_FG_DEBUG_LOG
 	printk("%s: read = 0x%x, soc = %d\n", __func__, ret, soc);
 #endif
@@ -797,7 +797,13 @@ static int sm5007_fg_get_property(struct power_supply *psy,
 		val->intval = (fuelgauge->info.batt_soc >= 1000) ? true : false;
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
-		val->intval = ((fuelgauge->info.batt_soc > 1000 ? 1000 : fuelgauge->info.batt_soc)) / 10;
+        //larger than 100%, force to 100%
+        if(fuelgauge->info.batt_soc > 1000)
+            fuelgauge->info.batt_soc = 1000;
+        //smaller than 1% but not 0%, force to 1%
+        if(fulegauge>info.batt_soc < 10 && fuelgauge->info.soc > 0)
+            fuelgauge->info.batt_soc = 10;
+        val->intval = fuelgauge->info.batt_soc / 10;
 		break;
 		/* Battery Temperature */
 	case POWER_SUPPLY_PROP_TEMP:
@@ -830,26 +836,6 @@ static int sm5007_fg_set_property(struct power_supply *psy,
 	if (val->intval == 1)
 		sm5007_fg_irq_check(fuelgauge);
 	break;
-	/*
-	case POWER_SUPPLY_PROP_STATUS:
-		if (val->intval == POWER_SUPPLY_STATUS_FULL)
-			sm5007_fg_full_charged(fuelgauge->client);
-		break;
-	case POWER_SUPPLY_PROP_TEMP:
-		break;
-	case POWER_SUPPLY_PROP_TEMP_AMBIENT:
-		break;
-	case POWER_SUPPLY_PROP_ONLINE:
-		fuelgauge->cable_type = val->intval;
-		if (val->intval == POWER_SUPPLY_TYPE_BATTERY) {
-			fuelgauge->is_charging = false;
-			fuelgauge->info.online = false;
-		} else {
-			fuelgauge->is_charging = true;
-			fuelgauge->info.online = true;
-		}
-		break;
-	*/
 	default:
 		return -EINVAL;
 	}
