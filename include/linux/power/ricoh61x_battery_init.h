@@ -22,6 +22,38 @@
 #ifndef __LINUX_POWER_RICOH61X_BATTERY_INIT_H
 #define __LINUX_POWER_RICOH61X_BATTERY_INIT_H
 
+#ifdef CONFIG_BATTERY_COMPANY_LIST
+#ifdef CONFIG_BATTERY_WAKEUP_320MAH_3700MV
+uint8_t battery_init_para[][32] = {
+    {
+                0x0A, 0x0A, 0x0B, 0xEF, 0x0C, 0x0F, 0x0C, 0x0D,
+                0x0C, 0x1E, 0x0C, 0x36, 0x0C, 0x5C, 0x0C, 0x93,
+                0x0C, 0xC7, 0x0D, 0x0C, 0x0D, 0x64, 0x01, 0x32,
+                0x01, 0x09, 0x0F, 0xC8, 0x05, 0x2C, 0x22, 0x56
+    }
+};
+uint8_t impe_init_para[][20] = {
+    {
+                0x00, 0xC6, 0x00, 0x35, 0x00, 0x01, 0x00, 0x35, 0x00, 0x34,
+                0x00, 0x32, 0x00, 0x35, 0x00, 0x3C, 0x00, 0x34, 0x00, 0x30
+    }
+};
+/*
+<Other Parameter>
+nominal_capacity=320
+cut-off_v=3000
+thermistor_b=3435
+board_impe=0
+bat_impe=0.6320
+load_c=305
+available_c=306
+battery_v=3138
+MakingMode=Normal
+ChargeV=4.20V
+LoadMode=Resistor
+ */
+#endif
+#else
 #if 0
 /*for 520mA*/
 uint8_t battery_init_para[][32] = {
@@ -114,3 +146,4 @@ MakingMode=Normal
 ChargeV=4.20V
 LoadMode=Load
  */
+#endif

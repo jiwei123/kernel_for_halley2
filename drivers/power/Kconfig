@@ -461,6 +461,17 @@ config SMALL_CAPACITY_BATTERY
 	  help
 	  Say "Y" to enable small capacity battery.
 
+menuconfig BATTERY_COMPANY_LIST
+        tristate "The list of supported battery company"
+        help
+          Say Y to select one company battery.
+if BATTERY_COMPANY_LIST
+config BATTERY_WAKEUP_320MAH_3700MV
+        bool "Wake up 320MAH 3.7V battery"
+        help
+          Say Y to enable support for Wake up 320mh 3.7v battery.
+endif
+
 endif
 
 config CHARGER_TPS65090
