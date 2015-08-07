@@ -461,6 +461,13 @@ config SMALL_CAPACITY_BATTERY
 	  help
 	  Say "Y" to enable small capacity battery.
 
+config DEBUG_LOG_RECORDER
+      bool "ricoh fuelgauge debug log recorder"
+	  default y
+	  help
+	  when the system is still debuging the fuelgauge, please enable this,
+	  after debug state, disable it for release.
+
 menuconfig BATTERY_COMPANY_LIST
         tristate "The list of supported battery company"
         help

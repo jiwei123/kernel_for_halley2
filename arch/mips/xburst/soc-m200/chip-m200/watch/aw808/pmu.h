@@ -30,7 +30,7 @@
 #define DC2_INIT_UV     1200
 #define DC3_INIT_UV     3300
 #define DC4_INIT_UV     1800
-#define DC5_INIT_UV     3300
+#define DC5_INIT_UV     3000
 #if defined(CONFIG_AW808_HW_V11_NATURAL_ROUND) || defined(CONFIG_AW808_HW_V11_WISE_SQUARE)
 #define LDO1_INIT_UV    1800
 #else
