@@ -6,11 +6,9 @@ const int config_verify = 1;
 const int config_verify = 0;
 #endif
 
-#ifdef CONFIG_SLPT
-unsigned int slpt_onoff = 1;
-#else
+//even the SLPT has been compiled, the SLPT may be still off.
 unsigned int slpt_onoff = 0;
-#endif
+
 #ifdef CONFIG_WAKEUP_BY_RAISE
 const unsigned int config_wakeup_by_raise = 1;
 #else
