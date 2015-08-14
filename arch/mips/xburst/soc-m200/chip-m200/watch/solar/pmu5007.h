@@ -2,7 +2,7 @@
 #define __PMU5007_H__
 //#ifdef CONFIG_REGULATOR_SM5007
 
-#define PMU_I2C_BUSNUM5007  2
+#define PMU_I2C_BUSNUM5007  0
 /* ****************************PMU BUCK/LDO/PS NAME******************************* */
 #define BUCK1_NAME "cpu_core"
 #define BUCK1_DVS_NAME "buck1_dvs"
