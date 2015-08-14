@@ -801,7 +801,7 @@ static int sm5007_fg_get_property(struct power_supply *psy,
         if(fuelgauge->info.batt_soc > 1000)
             fuelgauge->info.batt_soc = 1000;
         //smaller than 1% but not 0%, force to 1%
-        if(fulegauge>info.batt_soc < 10 && fuelgauge->info.soc > 0)
+        if(fuelgauge->info.batt_soc < 10 && fuelgauge->info.batt_soc > 0)
             fuelgauge->info.batt_soc = 10;
         val->intval = fuelgauge->info.batt_soc / 10;
 		break;
