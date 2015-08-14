@@ -468,17 +468,27 @@ config DEBUG_LOG_RECORDER
 	  when the system is still debuging the fuelgauge, please enable this,
 	  after debug state, disable it for release.
 
-menuconfig BATTERY_COMPANY_LIST
-        tristate "The list of supported battery company"
+menuconfig BATTERY_TYPE_LIST
+        tristate "The list of supported battery"
         help
-          Say Y to select one company battery.
-if BATTERY_COMPANY_LIST
-config BATTERY_WAKEUP_320MAH_3700MV
-        bool "Wake up 320MAH 3.7V battery"
-        help
-          Say Y to enable support for Wake up 320mh 3.7v battery.
-endif
+          Say Y to select one battery from the supported list.
 
+if BATTERY_TYPE_LIST
+config BATTERY_WAKEUP_320MAH_4200MV
+        bool "Wake up 320MAH 4.2V battery"
+        help
+          Say Y to enable support for Wake up 320mah 4.2v battery.
+
+config BATTERY_AW808_320MAH_4200MV
+        bool "AW808 320MAH 4.2V battery"
+        help
+          Say Y to enable support for AW808 320mah 4.2v battery.
+
+config BATTERY_OBAND_300MAH_4350MV
+        bool "Oband 300MAH 4.35V battery"
+        help
+          Say Y to enable support for Oband 300mah 4.35v battery.
+endif
 endif
 
 config CHARGER_TPS65090
