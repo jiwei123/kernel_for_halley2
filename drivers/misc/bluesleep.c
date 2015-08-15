@@ -690,13 +690,8 @@ int bluesleep_suspend(struct platform_device *pdev, pm_message_t state)
 
 int bluesleep_resume(struct platform_device *pdev)
 {
-	if (1 == bt_power_state) {
+	if (1 == bt_power_state)
 		bluesleep_sleep_wakeup();
-#ifdef BT_WAKEUP_SCREEN
-		schedule_delayed_work(&wake_work, HZ);
-#endif
-		schedule_delayed_work(&restore_work, HZ * 2);
-	}
 
 	return 0;
 }
