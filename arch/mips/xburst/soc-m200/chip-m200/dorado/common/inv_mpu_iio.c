@@ -142,8 +142,8 @@ struct mpu_platform_data mpu9250_platform_data = {
         .sec_slave_id   = COMPASS_ID_AK8963,
         .secondary_i2c_addr = 0x0C,
 	.secondary_orientation = {
-		1,  0,  0,
-		0, -1,  0,
+	       -1,  0,  0,
+		0,  1,  0,
 		0,  0, -1
 	},
 #endif
