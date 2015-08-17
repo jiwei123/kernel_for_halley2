@@ -25,33 +25,30 @@
 #include <sound/soc.h>
 #include <sound/jack.h>
 #include <linux/gpio.h>
+#include <mach/jzsnd.h>
 #include "icodec/icdc_d1.h"
 
+static struct snd_codec_data *codec_platform_data = NULL;
 static struct snd_soc_ops watch_i2s_ops = {
 
 };
-
-#if (defined(CONFIG_WATCH_AW808))
-#define WATCH_SPK_GPIO   GPIO_PA(2)
-#define WATCH_SPK_EN	1
-#else
-#define WATCH_SPK_GPIO   -1
-#define WATCH_SPK_EN      1
-#endif
-
-#define WATCH_HP_DET	-1
-#define WATCH_HP_DET_LEVEL	-1
-
 
 static int watch_spk_power(struct snd_soc_dapm_widget *w,
 		struct snd_kcontrol *kcontrol, int event)
 {
 	if (SND_SOC_DAPM_EVENT_ON(event)) {
-		gpio_direction_output(WATCH_SPK_GPIO, WATCH_SPK_EN);
-		printk("gpio speaker enable %d\n", gpio_get_value(WATCH_SPK_GPIO));
+	    if (codec_platform_data && (codec_platform_data->gpio_spk_en.gpio) != -1) {
+	        gpio_direction_output(codec_platform_data->gpio_spk_en.gpio,
+	                codec_platform_data->gpio_spk_en.active_level);
+	        printk("gpio speaker enable %d\n", gpio_get_value(codec_platform_data->gpio_spk_en.gpio));
+	    } else
+	        printk("set speaker enable failed. please check codec_platform_data\n");
 	} else {
-		gpio_direction_output(WATCH_SPK_GPIO, !WATCH_SPK_EN);
-		printk("gpio speaker disable %d\n", gpio_get_value(WATCH_SPK_GPIO));
+	    if (codec_platform_data && (codec_platform_data->gpio_spk_en.gpio) != -1) {
+	        gpio_direction_output(codec_platform_data->gpio_spk_en.gpio, !(codec_platform_data->gpio_spk_en.active_level));
+	        printk("gpio speaker disable %d\n", gpio_get_value(codec_platform_data->gpio_spk_en.gpio));
+	    } else
+	        printk("set speaker disable failed. please check codec_platform_data\n");
 	}
 	return 0;
 }
@@ -109,9 +106,16 @@ static int watch_dlv_dai_link_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_card *card = rtd->card;
 	int err;
 	int jack = 0;
-	err = devm_gpio_request(card->dev, WATCH_SPK_GPIO, "Speaker_en");
-	if (err)
-		return err;
+
+	if (codec_platform_data) {
+	    err = devm_gpio_request(card->dev, codec_platform_data->gpio_spk_en.gpio, "Speaker_en");
+	    if (err)
+	        return err;
+	} else {
+	    pr_err("codec_platform_data gpio_spk_en is NULL\n");
+	    return err;
+	}
+
 
 	err = snd_soc_dapm_new_controls(dapm, watch_dapm_widgets,
 			ARRAY_SIZE(watch_dapm_widgets));
@@ -128,15 +132,18 @@ static int watch_dlv_dai_link_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_jack_add_pins(&watch_icdc_d1_jack,
 			ARRAY_SIZE(watch_icdc_d1_jack_pins),
 			watch_icdc_d1_jack_pins);
-	if (gpio_is_valid(WATCH_HP_DET)) {
-		watch_icdc_d1_jack_gpio[jack].gpio = WATCH_HP_DET;
-		watch_icdc_d1_jack_gpio[jack].invert = !WATCH_HP_DET_LEVEL;
-		snd_soc_jack_add_gpios(&watch_icdc_d1_jack,
-				1,
-				watch_icdc_d1_jack_gpio);
-	} else {
-		icdc_d1_hp_detect(codec, &watch_icdc_d1_jack, SND_JACK_HEADSET);
-	}
+	if (codec_platform_data){
+        if (gpio_is_valid(codec_platform_data->gpio_hp_detect.gpio)) {
+            watch_icdc_d1_jack_gpio[jack].gpio = codec_platform_data->gpio_hp_detect.gpio;
+            watch_icdc_d1_jack_gpio[jack].invert = !(codec_platform_data->gpio_hp_detect.active_level);
+            snd_soc_jack_add_gpios(&watch_icdc_d1_jack,
+                    1,
+                    watch_icdc_d1_jack_gpio);
+        } else {
+            icdc_d1_hp_detect(codec, &watch_icdc_d1_jack, SND_JACK_HEADSET);
+        }
+	} else
+	    pr_debug("codec_platform_data gpio_hp_detect is NULL\n");
 
 	snd_soc_dapm_force_enable_pin(dapm, "Speaker");
 	snd_soc_dapm_force_enable_pin(dapm, "Mic Buildin");
@@ -175,12 +182,13 @@ static struct snd_soc_card watch = {
 
 static int snd_watch_probe(struct platform_device *pdev)
 {
-	int ret = 0;
-	watch.dev = &pdev->dev;
-	ret = snd_soc_register_card(&watch);
-	if (ret)
-		dev_err(&pdev->dev, "snd_soc_register_card failed %d\n", ret);
-	return ret;
+    int ret = 0;
+    watch.dev = &pdev->dev;
+    struct snd_codec_data *codec_platform_data = (struct snd_codec_data *)watch.dev->platform_data;
+    ret = snd_soc_register_card(&watch);
+    if (ret)
+        dev_err(&pdev->dev, "snd_soc_register_card failed %d\n", ret);
+    return ret;
 }
 
 static int snd_watch_remove(struct platform_device *pdev)

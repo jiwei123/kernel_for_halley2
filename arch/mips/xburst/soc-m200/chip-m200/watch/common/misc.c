@@ -1,5 +1,6 @@
 
 #include <linux/platform_device.h>
+#include <mach/jzsnd.h>
 #ifdef CONFIG_MFD_JZ_SADC_V12
 #include <linux/jz_adc.h>
 #ifdef CONFIG_JZ_BATTERY
@@ -36,14 +37,30 @@ static struct platform_device jz_li_ion_charger_device = {
 #endif
 
 #if IS_ENABLED(CONFIG_SND_ASOC_INGENIC_NEWTON_ICDC)
+static struct snd_codec_data snd_newton_platform_data = {
+    .gpio_spk_en = {.gpio = GPIO_SPEAKER_EN, .active_level = GPIO_SPEAKER_EN_LEVEL},
+    .gpio_hp_detect = {.gpio = GPIO_HP_DETECT, .active_level = GPIO_HP_INSERT_LEVEL},
+};
+
 struct platform_device snd_newton_device = {
 	.name = "ingenic-newton",
+    .dev = {
+            .platform_data = &snd_newton_platform_data,
+    },
 };
 #endif
 
 #if IS_ENABLED(CONFIG_SND_ASOC_INGENIC_WATCH_ICDC)
+static struct snd_codec_data snd_watch_platform_data = {
+	.gpio_spk_en = {.gpio = GPIO_SPEAKER_EN, .active_level = GPIO_SPEAKER_EN_LEVEL},
+	.gpio_hp_detect = {.gpio = GPIO_HP_DETECT, .active_level = GPIO_HP_INSERT_LEVEL},
+};
+
 struct platform_device snd_watch_device = {
     .name = "ingenic-watch",
+    .dev = {
+            .platform_data = &snd_watch_platform_data,
+    },
 };
 #endif
 
