@@ -110,7 +110,7 @@
 #define VCC_LCD_1V8_NAME             LDO2_NAME
 #define VCC_LCD_3V0_NAME             LDO4_NAME
 #define VCC_LCD_BLK_NAME             "lcd_blk_vcc"
-#define GPIO_LCD_SWIRE               GPIO_PC(24)
+#define GPIO_LCD_SWIRE               (-1)
 #define GPIO_LCD_SWIRE_ACTIVE_LEVEL  1
 #endif
 #ifdef CONFIG_LCD_AUO_H139BLN01
@@ -188,7 +188,7 @@
 #define GPIO_TP_RESET             GPIO_PC(13)
 #define GPIO_TP_EN			-1
 #define VCC_TOUCHSCREEN PS5_NAME
-#define VIO_TOUCHSCREEN BUCK3_NAME
+#define VIO_TOUCHSCREEN LDO6_NAME
 #endif  /* CONFIG_TOUCHSCREEN_ITE7258 */
 
 /* ****************************GPIO TOUCHSCREEN END************************** */
@@ -336,7 +336,7 @@
 
 /* ***************************GPIO VIBRATOR START***************************** */
 #ifdef	CONFIG_ANDROID_TIMED_REGULATOR
-#define	REG_VDDIO	LDO4_NAME
+#define	REG_VDDIO	PS4_NAME
 #define	MAX_TIMEOUT	18000
 #endif
 
