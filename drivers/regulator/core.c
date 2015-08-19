@@ -105,6 +105,7 @@ static int _regulator_is_enabled(struct regulator_dev *rdev);
 static int _regulator_disable(struct regulator_dev *rdev);
 static int _regulator_do_disable(struct regulator_dev *rdev);
 static int _regulator_enable(struct regulator_dev *rdev);
+static int _regulator_do_enable(struct regulator_dev *rdev);
 static int _regulator_get_voltage(struct regulator_dev *rdev);
 static int _regulator_get_current_limit(struct regulator_dev *rdev);
 static unsigned int _regulator_get_mode(struct regulator_dev *rdev);
@@ -378,7 +379,7 @@ static ssize_t regulator_state_store(struct device *dev,
 	if (*endp != '\n' && *endp)
 		return -EINVAL;
 	if (val)
-		_regulator_enable(rdev);
+		_regulator_do_enable(rdev);
 	else
 		_regulator_do_disable(rdev);
 

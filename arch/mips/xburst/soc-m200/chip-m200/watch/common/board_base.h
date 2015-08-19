@@ -136,4 +136,7 @@ extern struct jz_efuse_platform_data jz_efuse_pdata;
 #ifdef	CONFIG_ANDROID_TIMED_GPIO
 extern	struct platform_device jz_timed_gpio_device;
 #endif
+#ifdef  CONFIG_ANDROID_TIMED_REGULATOR
+extern  struct platform_device jz_timed_regulator_device;
+#endif
 #endif	/* __BOARD_BASE_H__ */
