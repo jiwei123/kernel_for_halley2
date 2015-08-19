@@ -184,7 +184,7 @@ static int snd_watch_probe(struct platform_device *pdev)
 {
     int ret = 0;
     watch.dev = &pdev->dev;
-    *codec_platform_data = (struct snd_codec_data *)watch.dev->platform_data;
+    codec_platform_data = (struct snd_codec_data *)watch.dev->platform_data;
     ret = snd_soc_register_card(&watch);
     if (ret)
         dev_err(&pdev->dev, "snd_soc_register_card failed %d\n", ret);
