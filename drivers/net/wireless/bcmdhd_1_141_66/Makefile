@@ -50,6 +50,11 @@ endif
 # Ioctl timeout 5000ms
 DHDCFLAGS += -DIOCTL_RESP_TIMEOUT=5000
 
+#Support multi chips
+DHDCFLAGS += -DSUPPORT_MULTIPLE_CHIPS
+
+DHDCFLAGS += -DSUPPORT_MULTIPLE_REVISION
+
 # Prevent rx thread monopolize
 DHDCFLAGS += -DWAIT_DEQUEUE
 

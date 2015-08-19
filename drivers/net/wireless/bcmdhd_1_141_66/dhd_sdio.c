@@ -8661,6 +8661,38 @@ concate_revision_bcm43349
 	return 0;
 }
 
+static int concate_revision_bcm43438(dhd_bus_t *bus,
+	char *fw_path, int fw_path_len, char *nv_path, int nv_path_len)
+{
+	uint32 chip_id, chip_ver;
+#if defined(SUPPORT_MULTIPLE_CHIPS)
+	char chipver_tag[10] = "_43438";
+#else
+	char chipver_tag[4] = {0, };
+#endif /* defined(SUPPORT_MULTIPLE_CHIPS) */
+
+	printk(("%s: BCM43438 Multiple Revision Check\n", __FUNCTION__));
+
+	chip_id = bus->sih->chip;
+	chip_ver = bus->sih->chiprev;
+
+	if (chip_ver == 1) {
+		printk(("----- CHIP bcm43438_A1 -----\n"));
+		strcat(chipver_tag, "_a1");
+	} else if (chip_ver == 0) {
+		printk(("----- CHIP bcm43438_A0 -----\n"));
+		strcat(chipver_tag, "_a0");
+	} else {
+		printk(("----- Invalid chip version -----\n"));
+		return -1;
+	}
+
+	strcat(fw_path, chipver_tag);
+	strcat(nv_path, chipver_tag);
+	printk("fw_path:%s nv_path:%s\n", fw_path, nv_path);
+	return 0;
+}
+
 static int concate_revision_bcm43241(dhd_bus_t *bus,
 	char *fw_path, int fw_path_len, char *nv_path, int nv_path_len)
 {
@@ -8852,7 +8884,7 @@ concate_revision(dhd_bus_t *bus, char *fw_path, int fw_path_len, char *nv_path, 
 /* get the base name (prefix) for firmware & nvram from the platform */
 	wifi_get_fw_nv_path(fw_path, nv_path);
 #endif
-
+	printk("concate_revision: chip:%x\n", bus->sih->chip);
 	switch (bus->sih->chip) {
 	case BCM4330_CHIP_ID:
 		res = concate_revision_bcm4330(bus);
@@ -8876,6 +8908,9 @@ concate_revision(dhd_bus_t *bus, char *fw_path, int fw_path_len, char *nv_path, 
 	case BCM4324_CHIP_ID:
 		res = concate_revision_bcm43241(bus, fw_path, fw_path_len, nv_path, nv_path_len);
 		break;
+	case BCM43430_CHIP_ID:
+		res = concate_revision_bcm43438(bus, fw_path, fw_path_len, nv_path, nv_path_len);
+		break;
 	case BCM4350_CHIP_ID:
 		res = concate_revision_bcm4350(bus, fw_path, fw_path_len, nv_path, nv_path_len);
 		break;
@@ -8888,10 +8923,10 @@ concate_revision(dhd_bus_t *bus, char *fw_path, int fw_path_len, char *nv_path, 
 	case BCM43341_CHIP_ID:
 		res = concate_revision_bcm43341(bus, fw_path, fw_path_len, nv_path, nv_path_len);
 		break;
-	case BCM43430_CHIP_ID:
-		DHD_ERROR(("concate_revision: BCM43430_CHIP_ID \n"));
-		res = concate_revision_bcm43430(bus, fw_path, fw_path_len, nv_path, nv_path_len);
-		break;
+	//case BCM43430_CHIP_ID:
+	//	DHD_ERROR(("concate_revision: BCM43430_CHIP_ID \n"));
+	//	res = concate_revision_bcm43430(bus, fw_path, fw_path_len, nv_path, nv_path_len);
+	//	break;
 
 
 	default:
