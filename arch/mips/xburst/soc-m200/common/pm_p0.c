@@ -813,6 +813,9 @@ static void load_func_to_tcsm(unsigned int *tcsm_addr,unsigned int *f_addr,unsig
 	}
 }
 
+extern void show_wakeup_sources(void);
+extern void record_suspend_time(void);
+
 static int m200_pm_enter(suspend_state_t state)
 {
 
@@ -835,6 +838,8 @@ static int m200_pm_enter(suspend_state_t state)
 #ifdef DDR_MEM_TEST
 	test_ddr_data_init();
 #endif
+
+	record_suspend_time();
 
 	for(i = 0;i < SLEEP_TCSM_DATA_LEN;i += 4)
 		REG32(SLEEP_TCSM_RESUME_DATA + i) = 0;
@@ -896,6 +901,9 @@ static int m200_pm_enter(suspend_state_t state)
 	__write_32bit_c0_register($12, 7, 0);
 
 	local_flush_tlb_all();
+
+	show_wakeup_sources();
+
 	return 0;
 }
 
