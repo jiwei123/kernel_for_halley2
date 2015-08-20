@@ -1114,17 +1114,24 @@ static int ofn_i2c_probe(struct i2c_client *client,
 		gpio_direction_output(pdata->gpio_reset, 1);
 	}
 
-	err = gpio_request(pdata->gpio_pd, "gpio power down");
-	if (err < 0) {
-		printk(KERN_INFO "Unable to request GPIO : %d pd\n", pdata->gpio_pd);
-	} else {
-		gpio_direction_output(pdata->gpio_pd, 0);
-	}
+    err = gpio_request(pdata->gpio_int, "gpio int");
+    if (err < 0) {
+        printk("Unable to request GPIO : %d int\n", pdata->gpio_int);
+        goto free_gpio_1;
+    } else {
+        gpio_direction_input(pdata->gpio_int);
+    }
 
-	gpio_direction_output(pdata->gpio_pd, 1);
-	msleep(10);
-//	gpio_direction_output(pdata->gpio_pd, 0);
-//	msleep(10);
+    if (pdata->gpio_pd >= 0) {
+        err = gpio_request(pdata->gpio_pd, "gpio power down");
+        if (err < 0) {
+            printk(KERN_INFO "Unable to request GPIO : %d pd\n", pdata->gpio_pd);
+            goto free_gpio_2;
+        } else {
+            gpio_direction_output(pdata->gpio_pd, 1);
+            msleep(10);
+        }
+    }
 
 	gpio_set_value(pdata->gpio_reset, 0);
 	msleep(10);
@@ -1265,8 +1272,13 @@ free_class_and_device:
 free_chrdev:
     unregister_chrdev(ofndata.major_id, ofn_name);
 free_gpio:
+    if (pdata->gpio_pd >= 0) {
+        gpio_free(pdata->gpio_pd);
+    }
+free_gpio_2:
+    gpio_free(pdata->gpio_int);
+free_gpio_1:
     gpio_free(pdata->gpio_reset);
-    gpio_free(pdata->gpio_pd);
 power_off:
     pdata->power_off();
     pdata->board_exit(&client->dev);
@@ -1295,6 +1307,17 @@ static int ofn_suspend(struct device *dev)
     cancel_delayed_work_sync(&ofndata.x_work);
     cancel_delayed_work_sync(&ofndata.resume_work);
     flush_scheduled_work();
+
+    if (pdata->gpio_reset > 0)
+        gpio_direction_input(pdata->gpio_reset);
+
+    if (pdata->gpio_pd > 0) {
+        gpio_direction_input(pdata->gpio_pd);
+    }
+
+    if (pdata->gpio_int > 0) {
+        gpio_direction_input(pdata->gpio_int);
+    }
 
     pdata->power_off();
     pdata->board_exit(dev);
@@ -1326,19 +1349,19 @@ static void resume_work_func(struct work_struct *work)
         pdata->power_on();
     }
 
-    if (pdata->gpio_reset > 0)
-        gpio_set_value(pdata->gpio_reset, 1);
+    if (pdata->gpio_reset > 0) {
+        gpio_direction_output(pdata->gpio_reset, 1);
+    }
 
     if (pdata->gpio_pd > 0) {
-        gpio_set_value(pdata->gpio_pd, 0);
-        gpio_set_value(pdata->gpio_pd, 1);
+        gpio_direction_output(pdata->gpio_pd, 1);
         msleep(10);
     }
 
     if (pdata->gpio_reset > 0) {
-        gpio_set_value(pdata->gpio_reset, 0);
+        gpio_direction_output(pdata->gpio_reset, 0);
         msleep(10);
-        gpio_set_value(pdata->gpio_reset, 1);
+        gpio_direction_output(pdata->gpio_reset, 1);
         msleep(10);
     }
 
@@ -1431,7 +1454,8 @@ static void resume_open_device(void)
 
     ofn_bank_select(BANK0);
     __write_reg(0x06, 0x02);
-    gpio_direction_output(ofndata.pdata->gpio_pd, 0);
+    if (ofndata.pdata->gpio_pd >= 0)
+        gpio_direction_output(ofndata.pdata->gpio_pd, 0);
     msleep(5);
 
 #if (OFN_SUPPORT == 0)
@@ -1463,7 +1487,8 @@ static void open_device(void) {
 
     ofn_bank_select(BANK0);
     __write_reg(0x06, 0x02);
-    gpio_direction_output(ofndata.pdata->gpio_pd, 0);
+    if (ofndata.pdata->gpio_pd >= 0)
+        gpio_direction_output(ofndata.pdata->gpio_pd, 0);
     msleep(5);
 
 #if (OFN_SUPPORT == 0)
@@ -1486,7 +1511,8 @@ static void close_device(void) {
         __write_reg(0x06, 0x0a);
         __read_reg(0x06, &val);
     } while (val != 0x0a);
-    gpio_direction_output(ofndata.pdata->gpio_pd, 0);
+    if (ofndata.pdata->gpio_pd >= 0)
+        gpio_direction_output(ofndata.pdata->gpio_pd, 1);
     msleep(5);
     ofndata.run_hrd = false;
 }
