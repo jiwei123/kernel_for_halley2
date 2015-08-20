@@ -1,27 +1,31 @@
-/* Description:
- * 	Bluetooth power manager driver with rfkill interface and bluetooth host
- * 	wakeup support.
- *
- * Modified by Sun Jiwei <jwsun@ingenic.cn>
-
- *
+/*
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- */
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * for more details.
+ *
+ * Copyright (C) 2006-2007 - Motorola
+ * Copyright (c) 2008-2010, The Linux Foundation. All rights reserved.
+ *
+ *  Date         Author           Comment
+ * -----------  --------------   --------------------------------
+ * 2006-Apr-28  Motorola         The kernel module for running the Bluetooth(R)
+ *                               Sleep-Mode Protocol from the Host side
+ * 2006-Sep-08  Motorola         Added workqueue for handling sleep work.
+ * 2007-Jan-24  Motorola         Added mbm_handle_ioi() call to ISR.
+ * 2009-Aug-10  Motorola         Changed "add_timer" to "mod_timer" to solve
+ *                               race when flurry of queued work comes in.
+*/
 
-#include <linux/module.h>	/* kernel module definitions */
+#include <linux/module.h>       /* kernel module definitions */
 #include <linux/errno.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
@@ -34,26 +38,49 @@
 #include <linux/version.h>
 #include <linux/workqueue.h>
 #include <linux/platform_device.h>
-#include <linux/suspend.h>
 
 #include <linux/irq.h>
+#include <linux/ioport.h>
 #include <linux/param.h>
 #include <linux/bitops.h>
-#include <linux/input.h>
 #include <linux/termios.h>
 #include <linux/wakelock.h>
 #include <linux/gpio.h>
 #include <linux/serial_core.h>
+#include <mach/msm_serial_hs.h>
+
 #include <net/bluetooth/bluetooth.h>
-#include <net/bluetooth/hci_core.h>	/* event notifications */
-#include <linux/bt-rfkill.h>
-#include "../bluetooth/hci_uart.h"
+#include <net/bluetooth/hci_core.h> /* event notifications */
+#include "hci_uart.h"
 
-#define BT_SLEEP_ERR  printk
-#define BT_SLEEP_DBG  pr_debug
+#include <linux/barcode_emul.h>
 
-#define VERSION         "1.1"
-#define PROC_DIR        "bluetooth/sleep"
+
+#define BT_SLEEP_DBG
+#ifndef BT_SLEEP_DBG
+#define BT_DBG(fmt, arg...)
+#endif
+#undef  BT_DBG
+#undef BT_ERR
+#define BT_DBG(fmt, arg...) pr_err(fmt " [BT]\n", ##arg)
+#define BT_ERR(fmt, arg...) pr_err(fmt " [BT]\n", ##arg)
+
+/*
+ * Defines
+ */
+
+#define VERSION	 "1.1"
+#define PROC_DIR	"bluetooth/sleep"
+
+#define POLARITY_LOW 0
+#define POLARITY_HIGH 1
+
+enum msm_hs_clk_states_e {
+	MSM_HS_CLK_PORT_OFF,     /* port not in use */
+	MSM_HS_CLK_OFF,          /* clock disabled */
+	MSM_HS_CLK_REQUEST_OFF,  /* disable after TX and RX flushed */
+	MSM_HS_CLK_ON,           /* clock enabled */
+};
 
 struct bluesleep_info {
 	unsigned host_wake;
@@ -61,146 +88,188 @@ struct bluesleep_info {
 	unsigned host_wake_irq;
 	struct uart_port *uport;
 	struct wake_lock wake_lock;
+	int irq_polarity;
+	int has_ext_wake;
 };
 
 /* work function */
 static void bluesleep_sleep_work(struct work_struct *work);
+static void bluesleep_uart_awake_work(struct work_struct *work);
 
 /* work queue */
 DECLARE_DELAYED_WORK(sleep_workqueue, bluesleep_sleep_work);
+DECLARE_DELAYED_WORK(uart_awake_workqueue, bluesleep_uart_awake_work);
 
 /* Macros for handling sleep work */
 #define bluesleep_rx_busy()     schedule_delayed_work(&sleep_workqueue, 0)
 #define bluesleep_tx_busy()     schedule_delayed_work(&sleep_workqueue, 0)
 #define bluesleep_rx_idle()     schedule_delayed_work(&sleep_workqueue, 0)
 #define bluesleep_tx_idle()     schedule_delayed_work(&sleep_workqueue, 0)
+#define bluesleep_uart_work()     schedule_delayed_work(&uart_awake_workqueue, 0)
 
-#define DEFINE_TIMER_INTERVAL (jiffies + 2 * HZ)
+/* 3 second timeout */
+#define TX_TIMER_INTERVAL  3
 
 /* state variable names and bit positions */
-#define BT_PROTO        0x01
-#define BT_TXDATA       0x02
-#define BT_ASLEEP       0x04
+#define BT_PROTO	 0x01
+#define BT_TXDATA	 0x02
+#define BT_ASLEEP	 0x04
+#define BT_EXT_WAKE	0x08
+#define BT_SUSPEND	0x10
 
-/* global pointer to a single hci device. */
-#ifndef CONFIG_BT_BLUEDROID_SUPPORT
-static struct hci_dev *bluesleep_hdev;
-#endif
+static bool bt_enabled;
 
+static struct platform_device *bluesleep_uart_dev;
 static struct bluesleep_info *bsi;
-#ifdef BT_WAKEUP_SCREEN
-static struct delayed_work wake_work;
-static struct input_dev *bt_input_dev;
-#endif
-
-/* module usage */
-static atomic_t open_count = ATOMIC_INIT(1);
 
 /*
  * Local function prototypes
  */
-#ifndef CONFIG_BT_BLUEDROID_SUPPORT
-static int bluesleep_hci_event(struct notifier_block *this,
-			       unsigned long event, void *data);
-#endif
-
-int bluesleep_start(void);
-void bluesleep_stop(void);
-
-/*just restore pin status after 2s when BT controller wake HOST*/
-static struct delayed_work restore_work;
-static void (*restore_pin) (int);
 
 /*
  * Global variables
  */
 /** Global state flags */
-static volatile unsigned long flags;
+static unsigned long flags;
 
-static int bt_uart_rts;
-
-/*Clobal bt on/off state*/
-extern int bt_power_state;
-
-/** Workqueue to respond to change in hostwake line */
-struct work_struct hostwake_work;
-struct workqueue_struct *hostwake_work_queue;
+/** Tasklet to respond to change in hostwake line */
+static struct tasklet_struct hostwake_task;
 
 /** Transmission timer */
 static void bluesleep_tx_timer_expire(unsigned long data);
 static DEFINE_TIMER(tx_timer, bluesleep_tx_timer_expire, 0, 0);
 
 /** Lock for state transitions */
-static spinlock_t rw_lock;
-
-#ifndef CONFIG_BT_BLUEDROID_SUPPORT
-/** Notifier block for HCI events */
-struct notifier_block hci_event_nblock = {
-	.notifier_call = bluesleep_hci_event,
-};
-#endif
+struct mutex bluesleep_mutex;
 
 struct proc_dir_entry *bluetooth_dir, *sleep_dir;
+
+
+/* extern variable and functions */
+extern int poweroff_charging;
 
 /*
  * Local functions
  */
 
+static int bluesleep_get_uart_state(void)
+{
+	int state = 0;
+
+	state = msm_hs_get_clock_state(bsi->uport);
+	return state;
+}
+
+static void bluesleep_uart_awake_work(struct work_struct *work)
+{
+	int clk_state;
+
+	if (!bsi->uport) {
+		BT_DBG("hsuart_power called. But uport is null");
+		return;
+	}
+
+	clk_state = bluesleep_get_uart_state();
+	if (clk_state == MSM_HS_CLK_OFF) {
+		BT_DBG("bluesleep_uart_awake_work : hsuart_power on");
+		msm_hs_request_clock_on(bsi->uport);
+		msm_hs_set_mctrl(bsi->uport, TIOCM_RTS);
+	}else if(clk_state == MSM_HS_CLK_REQUEST_OFF){
+		bluesleep_uart_work();
+	}
+}
+
 static void hsuart_power(int on)
 {
-	if (on) {
-		/*msm_hs_request_clock_on(bsi->uport);
-		   msm_hs_set_mctrl(bsi->uport, TIOCM_RTS); */
-	} else {
-		//    msm_hs_set_mctrl(bsi->uport, 0);
-		//    msm_hs_request_clock_off(bsi->uport);
+	int clk_state;
+
+	if (test_bit(BT_SUSPEND, &flags) && !on) {
+		BT_DBG("hsuart_power OFF- it's suspend state. so return.");
+		return;
 	}
-	BT_SLEEP_ERR("uart power %d\n", on);
-}
 
-#ifdef BT_WAKEUP_SCREEN
-static void wake_up_screen_work(struct work_struct *work)
-{
-	input_report_key(bt_input_dev, KEY_BACK, 1);
-	input_report_key(bt_input_dev, KEY_BACK, 0);
-	printk("BT wake up screen___restore__KEY_BACK.\n");
-}
-#endif
+	if (!bsi->uport) {
+		BT_DBG("hsuart_power called. But uport is null");
+		return;
+	}
 
-static void wake_up_restore_work(struct work_struct *work)
-{
-	restore_pin(1);
-	BT_SLEEP_ERR("restore_pin now.\n");
+	if (on) {
+		if(test_bit(BT_TXDATA, &flags)) {
+			BT_DBG("hsuart_power on");
+			msm_hs_request_clock_on(bsi->uport);
+			msm_hs_set_mctrl(bsi->uport, TIOCM_RTS);
+			return;
+		}
+
+		clk_state = bluesleep_get_uart_state();
+		if(clk_state == MSM_HS_CLK_REQUEST_OFF) {
+			BT_DBG("hsuart_power wait");
+			bluesleep_uart_work();
+		} else {
+			BT_DBG("hsuart_power on");
+			msm_hs_request_clock_on(bsi->uport);
+			msm_hs_set_mctrl(bsi->uport, TIOCM_RTS);
+		}
+	} else {
+		BT_DBG("hsuart_power off");
+		msm_hs_set_mctrl(bsi->uport, 0);
+		msm_hs_request_clock_off(bsi->uport);
+	}
 }
 
 /**
  * @return 1 if the Host can go to sleep, 0 otherwise.
  */
-static int bluesleep_can_sleep(void)
+int bluesleep_can_sleep(void)
 {
 	/* check if WAKE_BT_GPIO and BT_WAKE_GPIO are both deasserted */
-	BT_SLEEP_DBG("bt_wake %d, host_wake %d, uport %p\n",
-		     gpio_get_value(bsi->ext_wake)
-		     , gpio_get_value(bsi->host_wake)
-		     , bsi->uport);
-	return (!gpio_get_value(bsi->ext_wake)) &&
-	    (!gpio_get_value(bsi->host_wake)) && (bsi->uport != NULL);
+	return (!gpio_get_value(bsi->host_wake) &&
+		(bsi->uport != NULL));
 }
 
-static void bluesleep_sleep_wakeup(void)
+void bluesleep_sleep_wakeup(void)
 {
-    /* Start the timer */
-    mod_timer(&tx_timer, DEFINE_TIMER_INTERVAL);
-
-    if (test_bit(BT_ASLEEP, &flags)) {
-        BT_SLEEP_ERR("waking up...\n");
-        wake_lock(&bsi->wake_lock);
-        gpio_set_value(bsi->ext_wake, 1);
-        clear_bit(BT_ASLEEP, &flags);
-        /*Activating UART */
-        hsuart_power(1);
-    }
+	if (test_bit(BT_ASLEEP, &flags)) {
+		BT_DBG("waking up...");
+		/*Activating UART */
+		hsuart_power(1);
+		wake_lock(&bsi->wake_lock);
+		/* Start the timer */
+		mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ));
+		if (bsi->has_ext_wake == 1) {
+			gpio_set_value(bsi->ext_wake, 1);
+		}
+		set_bit(BT_EXT_WAKE, &flags);
+		clear_bit(BT_ASLEEP, &flags);
+	}
+	else {
+		BT_DBG("bluesleep_sleep_wakeup : already wake up, so start timer...");
+		mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ));
+	}
 }
+
+static void bluesleep_tx_data_wakeup(void)
+{
+	if (test_bit(BT_ASLEEP, &flags)) {
+		BT_DBG("waking up from BT Write...");
+
+		wake_lock(&bsi->wake_lock);
+		/* Start the timer */
+		mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ));
+		if (bsi->has_ext_wake == 1) {
+			gpio_set_value(bsi->ext_wake, 1);
+		}
+		set_bit(BT_EXT_WAKE, &flags);
+		clear_bit(BT_ASLEEP, &flags);
+	}
+	else {
+		BT_DBG("bluesleep_tx_data_wakeup : already wake up, so start timer...");
+		mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ));
+	}
+}
+
+
+
 
 /**
  * @brief@  main sleep work handling function which update the flags
@@ -208,275 +277,197 @@ static void bluesleep_sleep_wakeup(void)
  */
 static void bluesleep_sleep_work(struct work_struct *work)
 {
+	if (mutex_is_locked(&bluesleep_mutex))
+		BT_DBG("Wait for mutex unlock in bluesleep_sleep_work");
+
+	if (bsi->uport == NULL) {
+		BT_DBG("bluesleep_sleep_work - uport is null");
+		return;
+	}
+
+	if (bsi->uport->state == NULL) {
+		BT_DBG("bluesleep_sleep_work - bsi->uport->state is null");
+		return;
+	}
+
+	if (bsi->uport->state->port.tty == NULL) {
+		BT_DBG("bluesleep_sleep_work - bsi->uport->state->port.tty is null");
+		return;
+	}
+	mutex_lock(&bluesleep_mutex);
+
 	if (bluesleep_can_sleep()) {
-		BT_SLEEP_ERR("can sleep...\n");
 		/* already asleep, this is an error case */
 		if (test_bit(BT_ASLEEP, &flags)) {
-			BT_SLEEP_ERR("already asleep\n");
+			BT_DBG("already asleep");
+			mutex_unlock(&bluesleep_mutex);
 			return;
 		}
 
-		if (bsi->uport->ops->tx_empty(bsi->uport)) {
-			BT_SLEEP_ERR("going to sleep...\n");
+		if (msm_hs_tx_empty(bsi->uport)) {
+			if (test_bit(BT_TXDATA, &flags)) {
+				BT_DBG("TXDATA remained. Wait until timer expires.");
+
+				mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ));
+				mutex_unlock(&bluesleep_mutex);
+				return;
+			}
+
+			BT_DBG("going to sleep...");
+
 			set_bit(BT_ASLEEP, &flags);
 			/*Deactivating UART */
 			hsuart_power(0);
+
+			/* Moved from Timer expired */
+			if (bsi->has_ext_wake == 1)
+				gpio_set_value(bsi->ext_wake, 0);
+			clear_bit(BT_EXT_WAKE, &flags);
+
+			/*Deactivating UART */
 			/* UART clk is not turned off immediately. Release
-			 * wakelock after 500 ms.
-			 */
-			//       wake_lock_timeout(&bsi->wake_lock, HZ / 2);
-			wake_lock_timeout(&bsi->wake_lock, 1000);
-		} else {
-			BT_SLEEP_ERR
-			    ("tx buffer is not empty, modify timer...\n");
-			/*lgh add */
-			gpio_set_value(bsi->ext_wake, 1);
-			/*lgh add end */
-			mod_timer(&tx_timer, DEFINE_TIMER_INTERVAL);
+			* wakelock after 125 ms.
+			*/
+			wake_lock_timeout(&bsi->wake_lock, HZ / 8);
+			} else {
+			BT_DBG("host can enter sleep but some tx remained.");
+
+			mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ));
+			mutex_unlock(&bluesleep_mutex);
 			return;
 		}
-	} else if ((!gpio_get_value(bsi->ext_wake))
-		   && !test_bit(BT_ASLEEP, &flags)) {
-		BT_SLEEP_DBG("can not sleep, bt_wake %d\n",
-			     gpio_get_value(bsi->ext_wake));
-		mod_timer(&tx_timer, DEFINE_TIMER_INTERVAL);
-		gpio_set_value(bsi->ext_wake, 1);
+	} else if (!test_bit(BT_EXT_WAKE, &flags)
+			&& !test_bit(BT_ASLEEP, &flags)) {
+		BT_DBG("host_wake high and BT_EXT_WAKE & BT_ASLEEP already freed.");
+		mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ));
+		if (bsi->has_ext_wake == 1) {
+			gpio_set_value(bsi->ext_wake, 1);
+		}
+		set_bit(BT_EXT_WAKE, &flags);
 	} else {
 		bluesleep_sleep_wakeup();
 	}
+	mutex_unlock(&bluesleep_mutex);
 }
 
 /**
- * A workqueue that runs in workqueue context and reads the value
+ * A tasklet function that runs in tasklet context and reads the value
  * of the HOST_WAKE GPIO pin and further defer the work.
- * @param work Not used.
+ * @param data Not used.
  */
-static void bluesleep_hostwake_work(struct work_struct *work)
+static void bluesleep_hostwake_task(unsigned long data)
 {
-	unsigned long irq_flags;
+	BT_DBG("hostwake line change");
 
-	BT_SLEEP_DBG("hostwake line change\n");
-
-	spin_lock_irqsave(&rw_lock, irq_flags);
-
-	if (!gpio_get_value(bsi->host_wake))
+	if ((gpio_get_value(bsi->host_wake) == bsi->irq_polarity))
 		bluesleep_rx_busy();
 	else
 		bluesleep_rx_idle();
-
-	spin_unlock_irqrestore(&rw_lock, irq_flags);
 }
 
 /**
  * Handles proper timer action when outgoing data is delivered to the
  * HCI line discipline. Sets BT_TXDATA.
  */
-void bluesleep_outgoing_data(void)
+static void bluesleep_outgoing_data(void)
 {
-	unsigned long irq_flags;
+	if (mutex_is_locked(&bluesleep_mutex))
+		BT_DBG("Wait for mutex unlock in bluesleep_outgoing_data");
 
-	spin_lock_irqsave(&rw_lock, irq_flags);
-
+	mutex_lock(&bluesleep_mutex);
 	/* log data passing by */
 	set_bit(BT_TXDATA, &flags);
 
+	BT_DBG("bluesleep_outgoing_data.");
+
 	/* if the tx side is sleeping... */
-	if (!gpio_get_value(bsi->ext_wake)) {
+	if (!test_bit(BT_EXT_WAKE, &flags))
+		BT_DBG("BT_EXT_WAKE freed");
 
-		BT_SLEEP_ERR("tx was sleeping\n");
-		bluesleep_sleep_wakeup();
-	}
+	if (!test_bit(BT_ASLEEP, &flags))
+		BT_DBG("BT_ASLEEP freed");
 
-	spin_unlock_irqrestore(&rw_lock, irq_flags);
-}
+		/*
+		** Uart Clk should be enabled promptly
+		** before bluedroid write TX data.
+		*/
+		hsuart_power(1);
 
-#ifndef CONFIG_BT_BLUEDROID_SUPPORT
-/**
- * Handles HCI device events.
- * @param this Not used.
- * @param event The event that occurred.
- * @param data The HCI device associated with the event.
- * @return <code>NOTIFY_DONE</code>.
- */
-static int bluesleep_hci_event(struct notifier_block *this,
-			       unsigned long event, void *data)
-{
-	struct hci_dev *hdev = (struct hci_dev *)data;
-	struct hci_uart *hu;
-	struct uart_state *state;
+		bluesleep_tx_data_wakeup();
 
-	if (!hdev)
-		return NOTIFY_DONE;
-
-	//BT_SLEEP_ERR("hci event %d\n", event);
-	switch (event) {
-	case HCI_DEV_REG:
-		BT_SLEEP_ERR("hci event %ld hdev = %p\n", event, hdev);
-		if (!bluesleep_hdev) {
-			bluesleep_hdev = hdev;
-			hu = (struct hci_uart *)hdev->driver_data;
-			state = (struct uart_state *)(hu->tty->driver_data);
-			bsi->uport = state->uart_port;
-			/* if bluetooth started with a new device, start bluesleep also. */
-			// bluesleep_start();
-		}
-		break;
-	case HCI_DEV_UNREG:
-		/* if bluetooth stopped, stop bluesleep also */
-		// bluesleep_stop();
-		BT_SLEEP_ERR("hci event %ld\n", event);
-
-		bluesleep_hdev = NULL;
-		bsi->uport = NULL;
-		break;
-	case HCI_DEV_WRITE:
-		bluesleep_outgoing_data();
-		break;
-	}
-
-	return NOTIFY_DONE;
-}
-
-#else
-
-void bluesleep_uart_open(struct uart_port *uport)
-{
-	BT_DBG(" \n #### bluesleep_uart_open");
-
-	BT_DBG("bluesleep_uart_open");
-	if (bsi->uport == NULL) {
-		BT_DBG("bluesleep_uart_open done");
-		bsi->uport = uport;
-	}
-}
-
-void bluesleep_uart_close(struct uart_port *uport)
-{
-
-	BT_DBG(" \n #### bluesleep_uart_close");
-
-	BT_DBG("bluesleep_uart_close");
-	if (bsi->uport == uport) {
-		BT_DBG("bluesleep_uart_close done");
-		bsi->uport = NULL;
-	}
-}
-
-#endif
-
-/**
- * Handles transmission timer expiration.
- * @param data Not used.
- */
-static void bluesleep_tx_timer_expire(unsigned long data)
-{
-	unsigned long irq_flags;
-
-	spin_lock_irqsave(&rw_lock, irq_flags);
-
-	BT_SLEEP_DBG("Tx timer expired\n");
-
-	/* were we silent during the last timeout? */
-	if (!test_bit(BT_TXDATA, &flags) && (!gpio_get_value(bsi->host_wake))) {
-		BT_SLEEP_DBG("Tx has been idle\n");
-		gpio_set_value(bsi->ext_wake, 0);
-		bluesleep_tx_idle();
-	} else {
-		BT_SLEEP_DBG("Tx data during last period\n");
-		mod_timer(&tx_timer, DEFINE_TIMER_INTERVAL);
-	}
-
-	/* clear the incoming data flag */
-	clear_bit(BT_TXDATA, &flags);
-
-	spin_unlock_irqrestore(&rw_lock, irq_flags);
-}
-
-/**
- * Schedules a workqueue to run when receiving an interrupt on the
- * <code>HOST_WAKE</code> GPIO pin.
- * @param irq Not used.
- * @param dev_id Not used.
- */
-static irqreturn_t bluesleep_hostwake_isr(int irq, void *dev_id)
-{
-	//nvUART gpio_clear_detect_status(bsi->host_wake_irq);
-	/* schedule a workqueue to handle the change in the host wake line */
-	queue_work(hostwake_work_queue, &hostwake_work);
-	return IRQ_HANDLED;
+	mutex_unlock(&bluesleep_mutex);
 }
 
 /**
  * Starts the Sleep-Mode Protocol on the Host.
- * @return On success, 0. On error, -1, and <code>errno</code> is set
- * appropriately.
  */
-int bluesleep_start(void)
+static void bluesleep_start(void)
 {
 	int retval;
-	unsigned long irq_flags;
-
-	spin_lock_irqsave(&rw_lock, irq_flags);
 
 	if (test_bit(BT_PROTO, &flags)) {
-		spin_unlock_irqrestore(&rw_lock, irq_flags);
-		return 0;
-	}
-
-	spin_unlock_irqrestore(&rw_lock, irq_flags);
-
-	if (!atomic_dec_and_test(&open_count)) {
-		atomic_inc(&open_count);
-		return -EBUSY;
-	}
-
-	/* start the timer */
-	mod_timer(&tx_timer, DEFINE_TIMER_INTERVAL);
-
-	/* assert BT_WAKE */
-	gpio_set_value(bsi->ext_wake, 1);
-	retval = request_irq(bsi->host_wake_irq, bluesleep_hostwake_isr,
-			     IRQF_DISABLED | IRQF_TRIGGER_RISING,
-			     "bluetooth hostwake", NULL);
-	if (retval < 0) {
-		BT_SLEEP_ERR("Couldn't acquire BT_HOST_WAKE IRQ err (%d)\n",
-			     retval);
-		goto fail;
-	}
-
-	retval = enable_irq_wake(bsi->host_wake_irq);
-	if (retval < 0) {
-		BT_SLEEP_ERR
-		    ("Couldn't enable BT_HOST_WAKE as wakeup interrupt (%d)\n",
-		     retval);
-		free_irq(bsi->host_wake_irq, NULL);
-		goto fail;
-	}
-
-	BT_SLEEP_ERR("set BT_PROTO\n");
-	set_bit(BT_PROTO, &flags);
-	wake_lock(&bsi->wake_lock);
-	return 0;
-      fail:
-	del_timer(&tx_timer);
-	atomic_inc(&open_count);
-
-	return retval;
-}
-
-void bluesleep_stop(void)
-{
-	unsigned long irq_flags;
-
-	spin_lock_irqsave(&rw_lock, irq_flags);
-
-	if (!test_bit(BT_PROTO, &flags)) {
-		spin_unlock_irqrestore(&rw_lock, irq_flags);
 		return;
 	}
 
+	/* start the timer */
+	mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ));
+
 	/* assert BT_WAKE */
-	gpio_set_value(bsi->ext_wake, 0);
+	if (bsi->has_ext_wake == 1) {
+		gpio_set_value(bsi->ext_wake, 1);
+	}
+	set_bit(BT_EXT_WAKE, &flags);
+	retval = enable_irq_wake(bsi->host_wake_irq);
+	if (retval < 0) {
+		BT_ERR("Couldn't enable BT_HOST_WAKE as wakeup interrupt");
+		goto fail;
+	}
+	set_bit(BT_PROTO, &flags);
+	wake_lock(&bsi->wake_lock);
+	return;
+fail:
+	del_timer(&tx_timer);
+
+	return;
+}
+
+static void bluesleep_abnormal_stop(void)
+{
+    BT_ERR("bluesleep_abnormal_stop");
+
+    if (!test_bit(BT_PROTO, &flags)) {
+        BT_ERR("(bluesleep_abnormal_stop) proto is not set. Failed to stop bluesleep");
+        bsi->uport = NULL;
+        return;
+    }
+
+    del_timer(&tx_timer);
+    clear_bit(BT_PROTO, &flags);
+
+    if (disable_irq_wake(bsi->host_wake_irq))
+        BT_ERR("Couldn't disable hostwake IRQ wakeup mode\n");
+
+	wake_lock_timeout(&bsi->wake_lock, HZ / 8);
+
+    clear_bit(BT_TXDATA, &flags);
+    bsi->uport = NULL;
+}
+
+/**
+ * Stops the Sleep-Mode Protocol on the Host.
+ */
+static void bluesleep_stop(void)
+{
+	if (!test_bit(BT_PROTO, &flags)) {
+		BT_ERR("(bluesleep_stop_wq) proto is not set. Failed to stop bluesleep");
+		bsi->uport = NULL;
+		return;
+	}
+	/* assert BT_WAKE */
+	if (bsi->has_ext_wake == 1) {
+		gpio_set_value(bsi->ext_wake, 1);
+	}
+	set_bit(BT_EXT_WAKE, &flags);
 	del_timer(&tx_timer);
 	clear_bit(BT_PROTO, &flags);
 
@@ -485,42 +476,143 @@ void bluesleep_stop(void)
 		hsuart_power(1);
 	}
 
-	atomic_inc(&open_count);
+	if (disable_irq_wake(bsi->host_wake_irq))
+		BT_ERR("Couldn't disable hostwake IRQ wakeup mode\n");
 
-	spin_unlock_irqrestore(&rw_lock, irq_flags);
-/*
-        if (disable_irq_wake(bsi->host_wake_irq))
-                BT_SLEEP_ERR("Couldn't disable hostwake IRQ wakeup mode\n");
-*/
-	free_irq(bsi->host_wake_irq, NULL);
-	wake_lock_timeout(&bsi->wake_lock, HZ / 2);
+	wake_lock_timeout(&bsi->wake_lock, HZ / 8);
+
+	bsi->uport = NULL;
+}
+
+struct uart_port *bluesleep_get_uart_port(void)
+{
+	struct uart_port *uport = NULL;
+
+	uport = msm_hs_get_uart_port(0);
+
+	return uport;
+}
+
+static int bluesleep_read_proc_lpm(char *page, char **start, off_t offset,
+					int count, int *eof, void *data)
+{
+    *eof = 1;
+	return snprintf(page, count, "lpm: %u\n", bt_enabled?1:0 );
+}
+
+static int bluesleep_write_proc_lpm(struct file *file, const char *buffer,
+					unsigned long count, void *data)
+{
+	char b;
+
+	if (count < 1)
+		return -EINVAL;
+
+	if (copy_from_user(&b, buffer, 1))
+		return -EFAULT;
+
+	if (b == '0') {
+		BT_ERR("(bluesleep_write_proc_lpm) Unreg HCI notifier.");
+		/* HCI_DEV_UNREG */
+		bluesleep_stop();
+		bt_enabled = false;
+		//bsi->uport = NULL;
+	} else if (b == '1') {
+		BT_ERR("(bluesleep_write_proc_lpm) Reg HCI notifier.");
+		/* HCI_DEV_REG */
+		if (!bt_enabled) {
+			bt_enabled = true;
+			bsi->uport = bluesleep_get_uart_port();
+			/* if bluetooth started, start bluesleep*/
+			bluesleep_start();
+		}
+	} else if (b == '2') {
+        BT_ERR("(bluesleep_write_proc_lpm) don`t control ext_wake & uart clk");
+		if(bt_enabled) {
+			bt_enabled = false;
+            bluesleep_abnormal_stop();
+        }
+	}
+
+	return count;
+}
+
+static int bluesleep_read_proc_btwrite(char *page, char **start, off_t offset,
+					int count, int *eof, void *data)
+{
+	*eof = 1;
+	return snprintf(page, count, "unsupported to read\n");
+}
+
+static int bluesleep_write_proc_btwrite(struct file *file, const char *buffer,
+					unsigned long count, void *data)
+{
+	char b;
+
+	if (count < 1)
+		return -EINVAL;
+
+	if (copy_from_user(&b, buffer, 1))
+		return -EFAULT;
+
+	/* HCI_DEV_WRITE */
+	if (b != '0')
+		bluesleep_outgoing_data();
+
+	return count;
+}
+
+/**
+ * Handles transmission timer expiration.
+ * @param data Not used.
+ */
+static void bluesleep_tx_timer_expire(unsigned long data)
+{
+	/* were we silent during the last timeout? */
+	if (!test_bit(BT_TXDATA, &flags)) {
+		BT_DBG("Tx has been idle");
+
+		bluesleep_tx_idle();
+	} else {
+		BT_DBG("Tx data during last period");
+		mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL*HZ));
+	}
+
+	/* clear the incoming data flag */
+	clear_bit(BT_TXDATA, &flags);
+}
+
+/**
+ * Schedules a tasklet to run when receiving an interrupt on the
+ * <code>HOST_WAKE</code> GPIO pin.
+ * @param irq Not used.
+ * @param dev_id Not used.
+ */
+static irqreturn_t bluesleep_hostwake_isr(int irq, void *dev_id)
+{
+	/* schedule a tasklet to handle the change in the host wake line */
+	tasklet_schedule(&hostwake_task);
+	return IRQ_HANDLED;
 }
 
 /**
  * Read the <code>BT_WAKE</code> GPIO pin value via the proc interface.
  * When this function returns, <code>page</code> will contain a 1 if the
  * pin is high, 0 otherwise.
- * @param file Not used.
- * @param buffer The buffer to write to.
- * @param count The number of bytes to be read.
- * @param offset
- * @return On success, the number of bytes read. On error, -1, and
- * <code>errno</code> is set appropriately.
+ * @param page Buffer for writing data.
+ * @param start Not used.
+ * @param offset Not used.
+ * @param count Not used.
+ * @param eof Whether or not there is more data to be read.
+ * @param data Not used.
+ * @return The number of bytes written.
  */
-
-static ssize_t bluepower_read_proc_btwake(struct file *file, char __user *buffer,
-		size_t count, loff_t *offset)
+static int bluepower_read_proc_btwake(char *page, char **start, off_t offset,
+					int count, int *eof, void *data)
 {
-	char buf[32];
-	int len;
-	if(*offset == 0){
-		len = sprintf(buf,"btwake:%u\n",gpio_get_value(bsi->ext_wake));
-		copy_to_user(buffer, buf, len);
-		*offset += len;
-		return len;
-	}else{
-		return 0;
-	}
+	*eof = 1;
+	return snprintf(page, count, "btwake:%u\n", \
+				test_bit(BT_EXT_WAKE, &flags));
 }
 
 /**
@@ -528,12 +620,12 @@ static ssize_t bluepower_read_proc_btwake(struct file *file, char __user *buffer
  * @param file Not used.
  * @param buffer The buffer to read from.
  * @param count The number of bytes to be written.
- * @param offset Not used.
+ * @param data Not used.
  * @return On success, the number of bytes written. On error, -1, and
  * <code>errno</code> is set appropriately.
  */
-static ssize_t bluepower_write_proc_btwake(struct file *file, const char *buffer,
-		size_t count, loff_t *offset)
+static int bluepower_write_proc_btwake(struct file *file, const char *buffer,
+					unsigned long count, void *data)
 {
 	char *buf;
 
@@ -548,20 +640,22 @@ static ssize_t bluepower_write_proc_btwake(struct file *file, const char *buffer
 		kfree(buf);
 		return -EFAULT;
 	}
-
 	if (buf[0] == '0') {
-		gpio_set_value(bsi->ext_wake, 0);
-		BT_SLEEP_ERR("bsi->ext_wake, 0\n");
+		if (bsi->has_ext_wake == 1) {
+			gpio_set_value(bsi->ext_wake, 0);
+		}
+		clear_bit(BT_EXT_WAKE, &flags);
 	} else if (buf[0] == '1') {
-		gpio_set_value(bsi->ext_wake, 1);
-		BT_SLEEP_ERR("bsi->ext_wake, 1 \n");
+		if (bsi->has_ext_wake == 1) {
+			gpio_set_value(bsi->ext_wake, 1);
+		}
+		set_bit(BT_EXT_WAKE, &flags);
 	} else {
 		kfree(buf);
 		return -EINVAL;
 	}
 
 	kfree(buf);
-
 	return count;
 }
 
@@ -569,82 +663,65 @@ static ssize_t bluepower_write_proc_btwake(struct file *file, const char *buffer
  * Read the <code>BT_HOST_WAKE</code> GPIO pin value via the proc interface.
  * When this function returns, <code>page</code> will contain a 1 if the pin
  * is high, 0 otherwise.
- * @param file Not used.
- * @param buffer The buffer to write to.
- * @param count The number of bytes to be read.
- * @param offset
- * @return On success, the number of bytes read. On error, -1, and
- * <code>errno</code> is set appropriately.
+ * @param page Buffer for writing data.
+ * @param start Not used.
+ * @param offset Not used.
+ * @param count Not used.
+ * @param eof Whether or not there is more data to be read.
+ * @param data Not used.
+ * @return The number of bytes written.
  */
-static ssize_t bluepower_read_proc_hostwake(struct file *file, char __user *buffer,
-		size_t count, loff_t *offset)
+static int bluepower_read_proc_hostwake(char *page, char **start, off_t offset,
+					int count, int *eof, void *data)
 {
-	char buf[32];
-	int len;
-	if(*offset == 0){
-		len = sprintf(buf,"hostwake: %u \n",gpio_get_value(bsi->host_wake));
-		copy_to_user(buffer, buf, len);
-		*offset += len;
-		return len;
-	}else{
-		return 0;
-	}
+	*eof = 1;
+	return snprintf(page, count, "hostwake: %u\n", \
+				gpio_get_value(bsi->host_wake));
 }
+
 
 /**
  * Read the low-power status of the Host via the proc interface.
  * When this function returns, <code>page</code> contains a 1 if the Host
  * is asleep, 0 otherwise.
- * @param file Not used.
- * @param buffer The buffer to write to.
- * @param count The number of bytes to be read.
- * @param offset
- * @return On success, the number of bytes read. On error, -1, and
- * <code>errno</code> is set appropriately.
+ * @param page Buffer for writing data.
+ * @param start Not used.
+ * @param offset Not used.
+ * @param count Not used.
+ * @param eof Whether or not there is more data to be read.
+ * @param data Not used.
+ * @return The number of bytes written.
  */
-static ssize_t bluesleep_read_proc_asleep(struct file *file, char __user *buffer,
-		size_t count, loff_t *offset)
+static int bluesleep_read_proc_asleep(char *page, char **start, off_t offset,
+					int count, int *eof, void *data)
 {
 	unsigned int asleep;
-	char buf[32];
-	int len;
-	if(*offset == 0){
-		asleep = test_bit(BT_ASLEEP, &flags) ? 1 : 0;
-		len = sprintf(buf,"asleep: %u\n", asleep);
-		copy_to_user(buffer, buf, len);
-		*offset += len;
-		return len;
-	}else{
-		return 0;
-	}
+
+	asleep = test_bit(BT_ASLEEP, &flags) ? 1 : 0;
+	*eof = 1;
+	return snprintf(page, count, "asleep: %u\n", asleep);
 }
 
 /**
  * Read the low-power protocol being used by the Host via the proc interface.
  * When this function returns, <code>page</code> will contain a 1 if the Host
  * is using the Sleep Mode Protocol, 0 otherwise.
- * @param file Not used.
- * @param buffer The buffer to write to.
- * @param count The number of bytes to be read.
- * @param offset
- * @return On success, the number of bytes read. On error, -1, and
- * <code>errno</code> is set appropriately.
+ * @param page Buffer for writing data.
+ * @param start Not used.
+ * @param offset Not used.
+ * @param count Not used.
+ * @param eof Whether or not there is more data to be read.
+ * @param data Not used.
+ * @return The number of bytes written.
  */
-static ssize_t bluesleep_read_proc_proto(struct file *file, char __user *buffer,
-		size_t count, loff_t *offset)
+static int bluesleep_read_proc_proto(char *page, char **start, off_t offset,
+					int count, int *eof, void *data)
 {
 	unsigned int proto;
-	char buf[32];
-	int len;
-	if(*offset == 0){
-		proto = test_bit(BT_PROTO, &flags) ? 1 : 0;
-		len = sprintf(buf,"proto:%u\n", proto);
-		copy_to_user(buffer, buf, len);
-		*offset += len;
-		return len;
-	}else{
-		return 0;
-	}
+
+	proto = test_bit(BT_PROTO, &flags) ? 1 : 0;
+	*eof = 1;
+	return snprintf(page, count, "proto: %u\n", proto);
 }
 
 /**
@@ -652,12 +729,12 @@ static ssize_t bluesleep_read_proc_proto(struct file *file, char __user *buffer,
  * @param file Not used.
  * @param buffer The buffer to read from.
  * @param count The number of bytes to be written.
- * @param offset Not used.
+ * @param data Not used.
  * @return On success, the number of bytes written. On error, -1, and
  * <code>errno</code> is set appropriately.
  */
-static ssize_t bluesleep_write_proc_proto(struct file *file, const char *buffer,
-                                        size_t count, loff_t *offset)
+static int bluesleep_write_proc_proto(struct file *file, const char *buffer,
+					unsigned long count, void *data)
 {
 	char proto;
 
@@ -666,8 +743,6 @@ static ssize_t bluesleep_write_proc_proto(struct file *file, const char *buffer,
 
 	if (copy_from_user(&proto, buffer, 1))
 		return -EFAULT;
-
-	BT_SLEEP_ERR("write proto %c\n", proto);
 
 	if (proto == '0')
 		bluesleep_stop();
@@ -678,329 +753,171 @@ static ssize_t bluesleep_write_proc_proto(struct file *file, const char *buffer,
 	return count;
 }
 
-int bluesleep_suspend(struct platform_device *pdev, pm_message_t state)
+void bluesleep_setup_uart_port(struct platform_device *uart_dev)
 {
-
-	if (1 == bt_power_state) {
-		gpio_direction_output(bt_uart_rts, 1);
-	}
-
-	return 0;
+	bluesleep_uart_dev = uart_dev;
 }
 
-int bluesleep_resume(struct platform_device *pdev)
-{
-	if (1 == bt_power_state)
-		bluesleep_sleep_wakeup();
-
-	return 0;
-}
-
-static int btsleep_suspend_notifier(struct notifier_block *nb,
-        unsigned long event,
-        void *dummy) {
-
-    switch (event) {
-    case PM_POST_SUSPEND:
-        schedule_delayed_work(&restore_work, msecs_to_jiffies(100));
-        break;
-    };
-
-    return 0;
-}
-
-static struct notifier_block btsleep_notif_block = {
-    .notifier_call = btsleep_suspend_notifier,
-};
-
-static int /*__init*/ bluesleep_probe(struct platform_device *pdev)
+static int bluesleep_probe(struct platform_device *pdev)
 {
 	int ret;
-	struct bt_rfkill_platform_data *pdata = NULL;
-	char name[64];
-	struct proc_dir_entry *ent;
+	struct resource *res;
 
-	/* proc fs fops */
-	static const struct file_operations btwake_ops = {
-		.owner = THIS_MODULE,
-		.read = bluepower_read_proc_btwake,
-		.write = bluepower_write_proc_btwake,
-	};
-	static const struct file_operations hostwake_ops = {
-		.owner = THIS_MODULE,
-		.read = bluepower_read_proc_hostwake,
-	};
-	static const struct file_operations proto_ops = {
-		.owner = THIS_MODULE,
-		.read = bluesleep_read_proc_proto,
-		.write = bluesleep_write_proc_proto,
-	};
-	static const struct file_operations asleep_ops = {
-		.owner = THIS_MODULE,
-		.read = bluesleep_read_proc_asleep,
-	};
-	BT_SLEEP_ERR("bluesleep probe enter\n");
+    BT_ERR("bluesleep probe\n");
 
-#ifndef CONFIG_BT_BLUEDROID_SUPPORT
-	bluesleep_hdev = NULL;
-#endif
-
-	bluetooth_dir = proc_mkdir("bluetooth", NULL);
-	if (bluetooth_dir == NULL) {
-		BT_SLEEP_ERR("Unable to create /proc/bluetooth directory\n");
+	bsi = kzalloc(sizeof(struct bluesleep_info), GFP_KERNEL);
+	if (!bsi) {
+        BT_ERR("failed to allocate memory to bsi\n");
 		return -ENOMEM;
 	}
 
-	sleep_dir = proc_mkdir("sleep", bluetooth_dir);
-	if (sleep_dir == NULL) {
-		BT_SLEEP_ERR("Unable to create /proc/%s directory\n", PROC_DIR);
-		ret = -ENOMEM;
-		goto fail1;
-	}
+	res = platform_get_resource_byname(pdev, IORESOURCE_IO,
+				"gpio_host_wake");
 
-
-	/* Creating read/write "btwake" entry */
-	ent = proc_create("btwake", 0, sleep_dir, &btwake_ops);
-	if (ent == NULL) {
-		BT_SLEEP_DBG("Unable to create /proc/%s/btwake entry\n", PROC_DIR);
-		ret = -ENOMEM;
-		goto fail2;
-	}
-	/* read proc entries */
-	ent = proc_create("hostwake", 0, sleep_dir, &hostwake_ops);
-	if (ent == NULL) {
-		BT_SLEEP_DBG("Unable to create /proc/%s/hostwake entry\n", PROC_DIR);
-		ret = -ENOMEM;
-		goto fail3;
-	}
-
-	/* read/write proc entries */
-	ent = proc_create("proto", 0, sleep_dir, &proto_ops);
-	if (ent == NULL) {
-		BT_SLEEP_DBG("Unable to create /proc/%s/proto entry\n", PROC_DIR);
-		ret = -ENOMEM;
-		goto fail4;
-	}
-
-	/* read proc entries */
-	ent = proc_create("asleep", 0, sleep_dir, &asleep_ops);
-	if (ent == NULL) {
-		BT_SLEEP_DBG("Unable to create /proc/%s/asleep entry\n", PROC_DIR);
-		ret = -ENOMEM;
-		goto fail5;
-	}
-	flags = 0;		/* clear all status bits */
-
-	/* Initialize spinlock. */
-	spin_lock_init(&rw_lock);
-
-	/* Initialize timer */
-	init_timer(&tx_timer);
-	tx_timer.function = bluesleep_tx_timer_expire;
-	tx_timer.data = 0;
-
-	/* create the workqueue for the hostwake */
-	snprintf(name, sizeof(name), "blue_sleep");
-	hostwake_work_queue = create_singlethread_workqueue(name);
-	if (hostwake_work_queue == NULL) {
-		BT_SLEEP_ERR("Unable to create workqueue \n");
+	if (!res) {
+		BT_ERR("couldn't find host_wake gpio\n");
 		ret = -ENODEV;
-		goto fail6;
+		goto free_bsi;
 	}
 
-	/* Initialise the work */
-	INIT_WORK(&hostwake_work, bluesleep_hostwake_work);
-
-#ifdef CONFIG_BT
-#ifndef CONFIG_BT_BLUEDROID_SUPPORT
-	hci_register_notifier(&hci_event_nblock);
-#endif
-#endif
-	bsi = kzalloc(sizeof(struct bluesleep_info), GFP_KERNEL);
-	if (!bsi) {
-	    BT_SLEEP_ERR("kzalloc struct bluesleep_info failed\n");
-		ret = -ENOMEM;
-		goto fail7;
-	}
-	memset(bsi, 0, sizeof(struct bluesleep_info));
-
-	BT_SLEEP_DBG("bluesleep probe mallac bluesleep_info done\n");
-
-	pdata = pdev->dev.platform_data;
-	if (!pdata) {
-		BT_SLEEP_ERR
-		    ("Can not find data about bt_rfkill_platform_data\n");
-		ret = -ENODEV;
-		goto fail8;
-	}
-
-	bsi->host_wake = pdata->gpio.bt_int;
-
-	BT_SLEEP_DBG("bluesleep hostwake = %d\n", bsi->host_wake);
+	bsi->host_wake = res->start;
 
 	ret = gpio_request(bsi->host_wake, "bt_host_wake");
-	if (ret) {
-	    BT_SLEEP_ERR("gpio_request bt_host_wake failed\n");
-	    goto fail8;
+	if (ret)
+	{
+		BT_ERR("bluesleep_probe gpio_request for host_wake is failed");
+		goto free_bsi;
 	}
 
-	// configure host_wake as input
-	BT_SLEEP_DBG("bluesleep set hostwake as input\n");
+	/* configure host_wake as input */
+#if !defined(CONFIG_BT_BCM4354)
+	BT_ERR("configure input direction\n");
+	gpio_tlmm_config(GPIO_CFG(bsi->host_wake, 0, GPIO_CFG_INPUT,
+					GPIO_CFG_NO_PULL, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
 	ret = gpio_direction_input(bsi->host_wake);
 	if (ret < 0) {
-		pr_err("gpio-keys: failed to configure input"
-		       " direction for GPIO %d, error %d\n",
-		       bsi->host_wake, ret);
+		BT_ERR("gpio-keys: failed to configure input direction for GPIO %d, error %d",
+				bsi->host_wake, ret);
+		gpio_free(bsi->host_wake);
+		goto free_bsi;
+	}
+#endif
+	res = platform_get_resource_byname(pdev, IORESOURCE_IO,
+				"gpio_ext_wake");
+
+	if (!res)
+		bsi->has_ext_wake = 0;
+	else
+		bsi->has_ext_wake = 1;
+
+	if (bsi->has_ext_wake) {
+		bsi->ext_wake = res->start;
+
+		ret = gpio_request(bsi->ext_wake, "bt_ext_wake");
+		if (ret)
+		{
+			BT_ERR("bluesleep_probe gpio_request for bt_ext_wake is failed");
+			goto free_bt_host_wake;
+		}
+
+		/* configure ext_wake as output mode*/
+		ret = gpio_direction_output(bsi->ext_wake, 0);
+		if (ret < 0) {
+			BT_ERR("gpio-keys: failed to configure output direction for GPIO %d, error %d",
+				  bsi->ext_wake, ret);
+			gpio_free(bsi->ext_wake);
+			goto free_bt_host_wake;
+		}
+	} else
+		set_bit(BT_EXT_WAKE, &flags);
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_IRQ,
+						"host_wake");
+	if (!res) {
+		BT_ERR("couldn't find host_wake irq\n");
+		ret = -ENODEV;
 		goto free_bt_host_wake;
 	}
-
-	BT_SLEEP_DBG("bluesleep try to get bt_wake\n");
-
-	bsi->ext_wake = pdata->gpio.bt_wake;
-
-	BT_SLEEP_DBG("bluesleep btwake = %d\n", bsi->ext_wake);
-
-	ret = gpio_request(bsi->ext_wake, "bt_ext_wake");
-	if (ret)
-		goto free_bt_host_wake;
-
-	// configure ext_wake as output mode
-	BT_SLEEP_DBG("bluesleep set bt_wake as output\n");
-	ret = gpio_direction_output(bsi->ext_wake, 1);
-	if (ret < 0) {
-		pr_err("gpio-keys: failed to configure output"
-		       " direction for GPIO %d, error %d\n",
-		       bsi->ext_wake, ret);
-		goto free_bt_ext_wake;
-	}
-
-	BT_SLEEP_DBG("allocat irq hostwake = %d\n", bsi->host_wake);
-
-	bsi->host_wake_irq = gpio_to_irq(bsi->host_wake);
-	BT_SLEEP_DBG("irq = bsi->host_wake_irq %d\n", bsi->host_wake_irq);
+	bsi->host_wake_irq = res->start;
 	if (bsi->host_wake_irq < 0) {
-		BT_SLEEP_ERR("couldn't find host_wake irq\n");
+		BT_ERR("couldn't find host_wake irq\n");
 		ret = -ENODEV;
 		goto free_bt_ext_wake;
 	}
-
-	bt_uart_rts = pdata->gpio.bt_uart_rts;
-	ret = gpio_request(bt_uart_rts, "bt_uart_rts");
-	if (ret < 0) {
-	    BT_SLEEP_ERR("gpio_request bt_uart_rts failed\n");
-		goto fail9;
-	}
+	if (res->flags & IORESOURCE_IRQ_LOWEDGE)
+		bsi->irq_polarity = POLARITY_LOW;/*low edge (falling edge)*/
+	else
+		bsi->irq_polarity = POLARITY_HIGH;/*anything else*/
 
 	wake_lock_init(&bsi->wake_lock, WAKE_LOCK_SUSPEND, "bluesleep");
+	clear_bit(BT_SUSPEND, &flags);
 
-    ret = register_pm_notifier(&btsleep_notif_block);
-    if (ret)
-        BT_SLEEP_ERR("btsleep register_pm_notifier failed %d\n", ret);
-
-#ifdef BT_WAKEUP_SCREEN
-	bt_input_dev = input_allocate_device();
-	if (!bt_input_dev) {
-		printk("bt dev Can't allocate input dev\n");
-		ret = -ENOMEM;
-		goto fail10;
+	if (bsi->irq_polarity == POLARITY_LOW) {
+		ret = request_irq(bsi->host_wake_irq, bluesleep_hostwake_isr,
+				IRQF_DISABLED | IRQF_TRIGGER_FALLING,
+				"bluetooth_hostwake", NULL);
+	} else {
+		ret = request_irq(bsi->host_wake_irq, bluesleep_hostwake_isr,
+				IRQF_DISABLED | IRQF_TRIGGER_RISING,
+				"bluetooth_hostwake", NULL);
 	}
-
-	bt_input_dev->evbit[0] = BIT_MASK(EV_KEY);
-	bt_input_dev->name = "bt_int";
-	bt_input_dev->phys = "bt_int/input0";
-	bt_input_dev->dev.parent = &pdev->dev;
-	set_bit(KEY_POWER, bt_input_dev->keybit);
-	ret = input_register_device(bt_input_dev);
-	if (ret != 0) {
-		printk("bt input_register_device error\n");
+	if (ret  < 0) {
+		BT_ERR("Couldn't acquire BT_HOST_WAKE IRQ");
+		goto free_bt_ext_wake;
 	}
-
-	INIT_DELAYED_WORK(&wake_work, wake_up_screen_work);
-#endif
-
-	/*just restore pin status after 2s when BT controller wake HOST */
-	restore_pin = pdata->restore_pin_status;
-	INIT_DELAYED_WORK(&restore_work, wake_up_restore_work);
-	/*end */
-
-	gpio_set_value(bsi->ext_wake, 1);
-
-	BT_SLEEP_DBG("exit probe\n");
 
 	return 0;
 
-#ifdef BT_WAKEUP_SCREEN
-fail10:
-	gpio_free(bt_uart_rts);
-#endif
-fail9:
-	free_irq(bsi->host_wake_irq, NULL);
 free_bt_ext_wake:
 	gpio_free(bsi->ext_wake);
 free_bt_host_wake:
 	gpio_free(bsi->host_wake);
-fail8:
+free_bsi:
 	kfree(bsi);
-fail7:
-#ifdef CONFIG_BT
-#ifndef CONFIG_BT_BLUEDROID_SUPPORT
-	hci_unregister_notifier(&hci_event_nblock);
-#endif
-#endif
-	destroy_workqueue(hostwake_work_queue);
-fail6:
-	remove_proc_entry("asleep", sleep_dir);
-fail5:
-	remove_proc_entry("proto", sleep_dir);
-fail4:
-	remove_proc_entry("hostwake", sleep_dir);
-fail3:
-	remove_proc_entry("btwake", sleep_dir);
-fail2:
-	remove_proc_entry("sleep", bluetooth_dir);
-fail1:
-	remove_proc_entry("bluetooth", 0);
-
+	bsi = NULL;
 	return ret;
 }
 
 static int bluesleep_remove(struct platform_device *pdev)
 {
-	/* assert bt wake */
-	/*gpio_set_value(bsi->ext_wake, 0); config is converse */
-	gpio_set_value(bsi->ext_wake, 1);
-	if (test_bit(BT_PROTO, &flags)) {
-		if (disable_irq_wake(bsi->host_wake_irq))
-			BT_SLEEP_ERR
-			    ("Couldn't disable hostwake IRQ wakeup mode \n");
-		del_timer(&tx_timer);
-		if (test_bit(BT_ASLEEP, &flags))
-			hsuart_power(1);
-	}
-#ifdef BT_WAKEUP_SCREEN
-	input_free_device(bt_input_dev);
-#endif
-	gpio_free(bt_uart_rts);
 	free_irq(bsi->host_wake_irq, NULL);
-	gpio_free(bsi->ext_wake);
-	gpio_free(bsi->host_wake);
-	kfree(bsi);
-#ifdef CONFIG_BT
-#ifndef CONFIG_BT_BLUEDROID_SUPPORT
-	hci_unregister_notifier(&hci_event_nblock);
-#endif
-#endif
-	destroy_workqueue(hostwake_work_queue);
-	remove_proc_entry("asleep", sleep_dir);
-	remove_proc_entry("proto", sleep_dir);
-	remove_proc_entry("hostwake", sleep_dir);
-	remove_proc_entry("btwake", sleep_dir);
-	remove_proc_entry("sleep", bluetooth_dir);
-	remove_proc_entry("bluetooth", 0);
 	gpio_free(bsi->host_wake);
 	gpio_free(bsi->ext_wake);
 	wake_lock_destroy(&bsi->wake_lock);
 	kfree(bsi);
+	bsi = NULL;
+	return 0;
+}
+
+
+static int bluesleep_resume(struct platform_device *pdev)
+{
+	if (test_bit(BT_SUSPEND, &flags)) {
+#ifndef CONFIG_BT_BCM4354
+		if (!bt_enabled) {
+			gpio_tlmm_config(GPIO_CFG(bsi->host_wake, 0, GPIO_CFG_INPUT,
+						GPIO_CFG_NO_PULL, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
+		}
+#endif
+		if ((bsi->uport != NULL) &&
+			(gpio_get_value(bsi->host_wake) == bsi->irq_polarity)) {
+				BT_DBG("bluesleep resume form BT event...");
+				hsuart_power(1);
+		}
+		clear_bit(BT_SUSPEND, &flags);
+	}
+	return 0;
+}
+
+static int bluesleep_suspend(struct platform_device *pdev, pm_message_t state)
+{
+#ifndef CONFIG_BT_BCM4354
+	if (!bt_enabled) {
+		gpio_tlmm_config(GPIO_CFG(bsi->host_wake, 0, GPIO_CFG_INPUT,
+						GPIO_CFG_PULL_DOWN, GPIO_CFG_16MA), GPIO_CFG_ENABLE);
+	}
+#endif
+	set_bit(BT_SUSPEND, &flags);
 	return 0;
 }
 
@@ -1010,39 +927,183 @@ static struct platform_driver bluesleep_driver = {
 	.suspend = bluesleep_suspend,
 	.resume = bluesleep_resume,
 	.driver = {
-		   .name = "bluesleep",
-		   .owner = THIS_MODULE,
-		   },
+		.name = "bluesleep",
+		.owner = THIS_MODULE,
+	},
 };
-
+/**
+ * Initializes the module.
+ * @return On success, 0. On error, -1, and <code>errno</code> is set
+ * appropriately.
+ */
 static int __init bluesleep_init(void)
 {
 	int retval;
+	struct proc_dir_entry *ent;
 
-	BT_SLEEP_ERR("BlueSleep Mode Driver Ver %s\n", VERSION);
+	if (poweroff_charging == 1) {
+		BT_ERR("bluesleep exit : lpm %d\n", poweroff_charging);
+		return -ENODEV;
+	}
+
+	BT_INFO("BlueSleep Mode Driver Ver %s", VERSION);
+
+	bt_enabled = false;
 
 	retval = platform_driver_register(&bluesleep_driver);
+
 	if (retval)
 		return retval;
 
+	if (bsi == NULL)
+	{
+		BT_ERR("bluesleep_init failed. bsi is NULL!!");
+		return -1;
+	}
+
+	bluetooth_dir = proc_mkdir("bluetooth", NULL);
+	if (bluetooth_dir == NULL) {
+		BT_ERR("Unable to create /proc/bluetooth directory");
+		return -ENOMEM;
+	}
+
+	sleep_dir = proc_mkdir("sleep", bluetooth_dir);
+	if (sleep_dir == NULL) {
+		BT_ERR("Unable to create /proc/%s directory", PROC_DIR);
+		return -ENOMEM;
+	}
+
+	/* Creating read/write "btwake" entry */
+	ent = create_proc_entry("btwake", 0, sleep_dir);
+	if (ent == NULL) {
+		BT_ERR("Unable to create /proc/%s/btwake entry", PROC_DIR);
+		retval = -ENOMEM;
+		goto fail;
+	}
+	ent->read_proc = bluepower_read_proc_btwake;
+	ent->write_proc = bluepower_write_proc_btwake;
+
+	/* read only proc entries */
+	if (create_proc_read_entry("hostwake", 0, sleep_dir,
+				bluepower_read_proc_hostwake, NULL) == NULL) {
+		BT_ERR("Unable to create /proc/%s/hostwake entry", PROC_DIR);
+		retval = -ENOMEM;
+		goto fail;
+	}
+
+	/* read/write proc entries */
+	ent = create_proc_entry("proto", 0, sleep_dir);
+	if (ent == NULL) {
+		BT_ERR("Unable to create /proc/%s/proto entry", PROC_DIR);
+		retval = -ENOMEM;
+		goto fail;
+	}
+	ent->read_proc = bluesleep_read_proc_proto;
+	ent->write_proc = bluesleep_write_proc_proto;
+
+	/* read only proc entries */
+	if (create_proc_read_entry("asleep", 0,
+			sleep_dir, bluesleep_read_proc_asleep, NULL) == NULL) {
+		BT_ERR("Unable to create /proc/%s/asleep entry", PROC_DIR);
+		retval = -ENOMEM;
+		goto fail;
+	}
+
+	/* read/write proc entries */
+	ent = create_proc_entry("lpm", 0, sleep_dir);
+	if (ent == NULL) {
+		BT_ERR("Unable to create /proc/%s/lpm entry", PROC_DIR);
+		retval = -ENOMEM;
+		goto fail;
+	}
+	ent->read_proc = bluesleep_read_proc_lpm;
+	ent->write_proc = bluesleep_write_proc_lpm;
+
+	/* read/write proc entries */
+	ent = create_proc_entry("btwrite", 0, sleep_dir);
+	if (ent == NULL) {
+		BT_ERR("Unable to create /proc/%s/btwrite entry", PROC_DIR);
+		retval = -ENOMEM;
+		goto fail;
+	}
+	ent->read_proc = bluesleep_read_proc_btwrite;
+	ent->write_proc = bluesleep_write_proc_btwrite;
+
+	flags = 0; /* clear all status bits */
+
+	/* Initialize spinlock. */
+	mutex_init(&bluesleep_mutex);
+
+	/* Initialize timer */
+	init_timer(&tx_timer);
+	tx_timer.function = bluesleep_tx_timer_expire;
+	tx_timer.data = 0;
+
+	/* initialize host wake tasklet */
+	tasklet_init(&hostwake_task, bluesleep_hostwake_task, 0);
+
+	/* assert bt wake */
+	/* block code for FPGA to be set-up
+	if (bsi->has_ext_wake == 1) {
+		ret = ice_gpiox_set(bsi->ext_wake, 1);
+		if (ret)
+			BT_ERR("(bluesleep_init) failed to set ext_wake 1.");
+	}
+	*/
+	set_bit(BT_EXT_WAKE, &flags);
+
 	return 0;
+
+fail:
+	remove_proc_entry("btwrite", sleep_dir);
+	remove_proc_entry("lpm", sleep_dir);
+	remove_proc_entry("asleep", sleep_dir);
+	remove_proc_entry("proto", sleep_dir);
+	remove_proc_entry("hostwake", sleep_dir);
+	remove_proc_entry("btwake", sleep_dir);
+	remove_proc_entry("sleep", bluetooth_dir);
+	remove_proc_entry("bluetooth", 0);
+	return retval;
+}
+
+/**
+ * Cleans up the module.
+ */
+static void __exit bluesleep_exit(void)
+{
+	if (bsi == NULL)
+		return;
+
+	/* assert bt wake */
+	if (bsi->has_ext_wake == 1) {
+		gpio_set_value(bsi->ext_wake, 1);
+	}
+	set_bit(BT_EXT_WAKE, &flags);
+	if (test_bit(BT_PROTO, &flags)) {
+		if (disable_irq_wake(bsi->host_wake_irq))
+			BT_ERR("Couldn't disable hostwake IRQ wakeup mode\n");
+		free_irq(bsi->host_wake_irq, NULL);
+		del_timer(&tx_timer);
+		if (test_bit(BT_ASLEEP, &flags))
+			hsuart_power(1);
+	}
+
+	platform_driver_unregister(&bluesleep_driver);
+
+	remove_proc_entry("btwrite", sleep_dir);
+	remove_proc_entry("lpm", sleep_dir);
+	remove_proc_entry("asleep", sleep_dir);
+	remove_proc_entry("proto", sleep_dir);
+	remove_proc_entry("hostwake", sleep_dir);
+	remove_proc_entry("btwake", sleep_dir);
+	remove_proc_entry("sleep", bluetooth_dir);
+	remove_proc_entry("bluetooth", 0);
+
+	mutex_destroy(&bluesleep_mutex);
 }
 
 module_init(bluesleep_init);
-
-static void __exit bluesleep_exit(void)
-{
-	platform_driver_unregister(&bluesleep_driver);
-
-}
-
 module_exit(bluesleep_exit);
-
-#ifdef CONFIG_BT_BLUEDROID_SUPPORT
-EXPORT_SYMBOL(bluesleep_outgoing_data);
-EXPORT_SYMBOL(bluesleep_uart_open);
-EXPORT_SYMBOL(bluesleep_uart_close);
-#endif
 
 MODULE_DESCRIPTION("Bluetooth Sleep Mode Driver ver %s " VERSION);
 #ifdef MODULE_LICENSE
