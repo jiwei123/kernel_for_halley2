@@ -543,7 +543,7 @@ static int serial_jz47xx_startup(struct uart_port *port)
 	(void) serial_in(up, UART_RX);
 	(void) serial_in(up, UART_IIR);
 	(void) serial_in(up, UART_MSR);
-	printk("setupup uart %s =================================\n",up->name);
+	printk("startup uart %s\n",up->name);
 	return 0;
 }
 
@@ -732,21 +732,21 @@ static unsigned short *serial47xx_get_divisor(struct uart_port *port, unsigned i
 	}
 
 	while (1) {
-		     umr = port->uartclk / (baud * div);
-		     if (umr > 32) {
+		umr = port->uartclk / (baud * div);
+		if (umr > 32) {
 			div++;
 			continue;
-		      }
-		     if (umr < 4) {
+		}
+		if (umr < 4) {
 			break;
-		      }
-		     for (i = 0; i < 12; i++) {
+		}
+		for (i = 0; i < 12; i++) {
 			a[i] = umr;
 			b[i] = 0;
 			sum = 0;
 			for (j = 0; j <= i; j++) {
 				sum += a[j];
-			 }
+			}
 
 			/* the precision could be 1/2^(36) due to the value of t0 */
 			t0 = 0x1000000000LL;
@@ -759,32 +759,32 @@ static unsigned short *serial47xx_get_divisor(struct uart_port *port, unsigned i
 			err = t1 - t2 - t3;
 
 			if (err > 0) {
-			   a[i] += 1;
-			   b[i] = 1;
-			 }
-		      }
+				a[i] += 1;
+				b[i] = 1;
+			}
+		}
 
-		    uacr = 0;
-		    for (i = 0; i < 12; i++) {
+		uacr = 0;
+		for (i = 0; i < 12; i++) {
 			if (b[i] == 1) {
 				uacr |= 1 << i;
 			}
-		     }
-                    if (div_best ==0){
+		}
+		if (div_best ==0){
 			div_best = div;
 			umr_best = umr;
 			uacr_best = uacr;
-		     }
+		}
 
 		/* the best value of umr should be near 16, and the value of uacr should better be smaller */
-		    if (abs(umr - 16) < abs(umr_best - 16) || (abs(umr - 16) == abs(umr_best - 16) && uacr_best > uacr))
-                     {
+		if (abs(umr - 16) < abs(umr_best - 16) || (abs(umr - 16) == abs(umr_best - 16) && uacr_best > uacr))
+		{
 			div_best = div;
 			umr_best = umr;
 			uacr_best = uacr;
-		     }
-		   div++;
-	         }
+		}
+		div++;
+	}
 
 	quot1[0] = div_best;
 	quot1[1] = umr_best;
@@ -892,6 +892,21 @@ static void serial_jz47xx_console_write(struct console *co, const char *s, unsig
 	serial_out(up, UART_IER, ier);
 	spin_unlock(&up->port.lock);
 }
+
+struct uart_port *serial_get_uart_port(int port_index)
+{
+    struct uart_state *state = serial_jz47xx_reg.state + port_index;
+
+    /* The uart_driver structure stores the states in an array.
+     * Thus the corresponding offset from the drv->state returns
+     * the state for the uart_port that is requested
+     */
+    if (port_index == state->uart_port->line)
+        return state->uart_port;
+
+    return NULL;
+}
+EXPORT_SYMBOL(serial_get_uart_port);
 
 static int __init serial_jz47xx_console_setup(struct console *co, char *options)
 {

@@ -83,8 +83,6 @@ static int bt_power_control(struct bt_power *bt_power, int enable)
 
 	switch (enable)	{
 	case RFKILL_STATE_SOFT_BLOCKED:
-		bluesleep_stop();
-		msleep(15);
 		bcm_power_down();
 		bt_disable_power(bt_power);
 
@@ -120,7 +118,6 @@ static int bt_power_control(struct bt_power *bt_power, int enable)
 		}
 
 		mdelay(15);
-		bluesleep_start();
 		break;
 	default:
 		break;
