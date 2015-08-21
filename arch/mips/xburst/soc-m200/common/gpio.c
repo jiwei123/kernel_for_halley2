@@ -947,6 +947,31 @@ void dump_gpio_pin(int port, int pin) {
 	printk(KERN_ERR "in  : %d\n", (readl(jz_gpio_chips[i].reg + PXPIN) & (1 << pin)) != 0);
 }
 
+void dump_gpio_port(int port) {
+	int i = port;
+
+	printk(KERN_ERR "gpio port %d\n", port);
+	printk(KERN_ERR "int : %08x\n", readl(jz_gpio_chips[i].reg + PXINT));
+	printk(KERN_ERR "mask: %08x\n", readl(jz_gpio_chips[i].reg + PXMSK));
+	printk(KERN_ERR "pat1: %08x\n", readl(jz_gpio_chips[i].reg + PXPAT1));
+	printk(KERN_ERR "pat0: %08x\n", readl(jz_gpio_chips[i].reg + PXPAT0));
+	printk(KERN_ERR "flag: %08x\n", readl(jz_gpio_chips[i].reg + PXFLG));
+	printk(KERN_ERR "in  : %08x\n", readl(jz_gpio_chips[i].reg + PXPIN));
+}
+
+void show_gpio_wakeup_sources(int port) {
+	int i;
+
+	unsigned int msk = readl(jz_gpio_chips[port].reg + PXMSK);
+	unsigned int flag = readl(jz_gpio_chips[port].reg + PXFLG);
+
+	for (i = 0; i < 32; ++i) {
+		if ((flag & (1 << i)) && !(msk & (1 << i)))
+			printk(KERN_ERR "WAKE UP: GPIO_P%c%02d\n", 'A' + port, i);
+	}
+
+}
+
 /* -------------------------gpio register----------------------- */
 static int dump_gpio_regs_l(char *buffer, int port)
 {
