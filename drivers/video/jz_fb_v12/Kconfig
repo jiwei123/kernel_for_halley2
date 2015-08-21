@@ -9,11 +9,6 @@ menuconfig FB_JZ_V12
 	help
 	  Framebuffer support for the M200 SoC.
 
-config FB_DISPLAY_ALWAYS_ON
-	bool "FB_DISPLAY_ALWAYS_ON"
-	depends on FB_JZ_V12
-	default n
-
 config DELAY_AFTER_LCD_DISPLAY_ON
 	int "delay ms after the lcd display on, when fb resume"
 	depends on FB_JZ_V12
