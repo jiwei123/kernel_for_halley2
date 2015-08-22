@@ -435,6 +435,14 @@ static __always_inline void slpt_task_run_everytime(int need_to_go_kernel) {
 	return;
 }
 
+static inline int slpt_is_enabled(void) {
+#ifdef CONFIG_SLPT
+	return !!slpt_task_is_enabled;
+#else
+	return 0;
+#endif
+}
+
 extern void slpt_task_init_everytime(void);
 extern void slpt_cache_prefetch_ops(void);
 

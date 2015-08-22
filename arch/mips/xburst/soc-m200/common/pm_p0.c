@@ -860,13 +860,13 @@ static int m200_pm_enter(suspend_state_t state)
 	/* disable externel clock Oscillator in sleep mode bit4*/
 	/* select 32K crystal as RTC clock in sleep mode bit2*/
 	opcr_tmp = read_save_reg_add(CPM_IOBASE + CPM_OPCR);
-#ifdef CONFIG_SLPT
-	opcr_tmp &= ~((1 << 7) | (1 << 6) | (1 << 4)| (1 << 27));
-	opcr_tmp |= (0xff << 8) | (1<<30) | (1 << 2)  | (1 << 23);
-#else
-	opcr_tmp &= ~((1 << 7) | (1 << 6) | (1 << 4));
-	opcr_tmp |= (0xff << 8) | (1<<30) | (1 << 2) | (1 << 27) | (1 << 23);
-#endif
+	if (slpt_is_enabled()) {
+		opcr_tmp &= ~((1 << 7) | (1 << 6) | (1 << 4)| (1 << 27));
+		opcr_tmp |= (0xff << 8) | (1<<30) | (1 << 2)  | (1 << 23);
+	} else {
+		opcr_tmp &= ~((1 << 7) | (1 << 6) | (1 << 4));
+		opcr_tmp |= (0xff << 8) | (1<<30) | (1 << 2) | (1 << 27) | (1 << 23);
+	}
 	cpm_outl(opcr_tmp,CPM_OPCR);
 	/*
 	 * set sram pdma_ds & open nfi
