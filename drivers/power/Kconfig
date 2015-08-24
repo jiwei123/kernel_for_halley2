@@ -488,6 +488,11 @@ config BATTERY_OBAND_300MAH_4350MV
         bool "Oband 300MAH 4.35V battery"
         help
           Say Y to enable support for Oband 300mah 4.35v battery.
+
+config BATTERY_OBAND_310MAH_4350MV
+        bool "Oband 310MAH 4.35V battery"
+        help
+          Say Y to enable support for Oband 310mah 4.35v battery.
 endif
 endif
 

@@ -258,7 +258,7 @@ static int BatteryTableFlageDef=0;
 static int BatteryTypeDef=0;
 static int Battery_Type(void)
 {
-#ifdef CONFIG_LARGE_CAPACITY_BATTERY
+#if defined (CONFIG_LARGE_CAPACITY_BATTERY)
 	BatteryTypeDef = 0;
 #elif defined(CONFIG_SMALL_CAPACITY_BATTERY)
 	BatteryTypeDef = 1;
@@ -266,10 +266,11 @@ static int Battery_Type(void)
 	BatteryTypeDef = 2;
 #elif defined(CONFIG_200MAH_CAPACITY_BATTERY)
 	BatteryTypeDef = 3;
-#elif defined(CONFIG_BATTERY_WAKEUP_320MAH_4200MV)
+#elif defined(CONFIG_BATTERY_WAKEUP_320MAH_4200MV)\
 	|| defined(CONFIG_BATTERY_AW808_320MAH_4200MV)
 	BatteryTypeDef = 4;
-#elif defined(CONFIG_BATTERY_OBAND_300MAH_4350MV)
+#elif defined(CONFIG_BATTERY_OBAND_300MAH_4350MV)\
+	|| defined(CONFIG_BATTERY_OBAND_310MAH_4350MV)
 	BatteryTypeDef = 5;
 #endif
 	return BatteryTypeDef;

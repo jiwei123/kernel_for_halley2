@@ -355,7 +355,7 @@ static struct ricoh619_battery_platform_data ricoh619_battery_data = {
 		.jt_ichg_h 	= 0x04,	/* ICHG Hi   	= 0 - 0x1D (100mA - 3000mA) */
 		.jt_ichg_l 	= 0x01,	/* ICHG Low   	= 0 - 0x1D (100mA - 3000mA) */
 	},
-	/*the battery for oband 300mah 4.35v */
+	/*the battery for oband 300mah 4.35v; oband 310mah 4.35v  */
 	.type[5] = {
 		.ch_vfchg 	= 0x04,	/* VFCHG	= 0 - 4 (4.05v, 4.10v, 4.15v, 4.20v, 4.35v) */
 		.ch_vrchg 	= 0x04,	/* VRCHG	= 0 - 4 (3.85v, 3.90v, 3.95v, 4.00v, 4.10v) */
