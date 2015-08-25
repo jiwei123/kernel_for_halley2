@@ -163,57 +163,16 @@ enum slpt_key_id {
 
 extern struct slpt_key slpt_key_list[SLPT_K_NUMS];
 
-/* general way */
 #ifdef CONFIG_SLPT
+/* general way */
 extern int slpt_get_key_id(const char *name, unsigned long **val_addr);
 extern int slpt_set_key_by_id(unsigned int id, unsigned long val);
 extern int slpt_get_key_by_id(unsigned int id, unsigned long *val);
-#else
-//these empty functions just for fake call while compiling
-__attribute__((weak)) int slpt_get_key_id(const char *name, unsigned long **val_addr)
-{
-	return 0;
-}
- __attribute__((weak)) int slpt_set_key_by_id(unsigned int id, unsigned long val)
-{
-	return 0;
-}
-__attribute__((weak)) int slpt_get_key_by_id(unsigned int id, unsigned long *val)
-{
-	return 0;
-}
-#endif
-
-#define SLPT_SET_KEY(id, val) slpt_set_key_by_id(id, (unsigned long)(val))
-#define SLPT_GET_KEY(id, val)                            \
-    do {                                                 \
-        unsigned long __tmp_val = 0;                     \
-        slpt_get_key_by_id(id, &__tmp_val);	             \
-        *(val) = (typeof(*(val))) __tmp_val;             \
-                                                         \
-    } while (0)
 
 /* other way */
-#ifdef CONFIG_SLPT
 extern struct slpt_key *slpt_find_key(const char *name);
 extern int slpt_set_key_by_name(const char *name, unsigned long val);
 extern int slpt_get_key_by_name(const char *name, unsigned long *val);
-#else
-//these empty functions just for fake call while compiling
-__attribute__((weak)) struct slpt_key *slpt_find_key(const char *name)
-{
-	struct slpt_key* sk = 0;
-	return sk;
-}
-__attribute__((weak)) int slpt_set_key_by_name(const char *name, unsigned long val)
-{
-	return 0;
-}
-__attribute__((weak)) int slpt_get_key_by_name(const char *name, unsigned long *val)
-{
-	return 0;
-}
-#endif
 
 static __always_inline void slpt_set_key_no_cached(unsigned int id, unsigned long val) {
 	struct slpt_key *list =  (void *)KSEG1ADDR((unsigned long)slpt_key_list);
@@ -232,6 +191,54 @@ static __always_inline void slpt_get_key_no_cached(unsigned int id, unsigned lon
 
 	*val = list[id].val;
 }
+
+#else  /* CONFIG_SLPT */
+
+static inline int slpt_get_key_id(const char *name, unsigned long **val_addr)
+{
+	return 0;
+}
+static inline int slpt_set_key_by_id(unsigned int id, unsigned long val)
+{
+	return 0;
+}
+static inline int slpt_get_key_by_id(unsigned int id, unsigned long *val)
+{
+	return 0;
+}
+
+static inline struct slpt_key *slpt_find_key(const char *name)
+{
+	struct slpt_key* sk = 0;
+	return sk;
+}
+
+static inline int slpt_set_key_by_name(const char *name, unsigned long val)
+{
+	return 0;
+}
+static inline int slpt_get_key_by_name(const char *name, unsigned long *val)
+{
+	return 0;
+}
+
+static __always_inline void slpt_set_key_no_cached(unsigned int id, unsigned long val) {
+	
+}
+
+static __always_inline void slpt_get_key_no_cached(unsigned int id, unsigned long *val) {
+
+}
+#endif  /* CONFIG_SLPT */
+
+#define SLPT_SET_KEY(id, val) slpt_set_key_by_id(id, (unsigned long)(val))
+#define SLPT_GET_KEY(id, val)                            \
+    do {                                                 \
+        unsigned long __tmp_val = 0;                     \
+        slpt_get_key_by_id(id, &__tmp_val);	             \
+        *(val) = (typeof(*(val))) __tmp_val;             \
+                                                         \
+    } while (0)
 
 /*
  * power state
@@ -435,14 +442,6 @@ static __always_inline void slpt_task_run_everytime(int need_to_go_kernel) {
 	return;
 }
 
-static inline int slpt_is_enabled(void) {
-#ifdef CONFIG_SLPT
-	return !!slpt_task_is_enabled;
-#else
-	return 0;
-#endif
-}
-
 extern void slpt_task_init_everytime(void);
 extern void slpt_cache_prefetch_ops(void);
 
@@ -457,6 +456,16 @@ static __always_inline void slpt_task_init_everytime(void) {
 
 static __always_inline void slpt_cache_prefetch_ops(void) {
 
+}
+#endif
+
+#ifdef CONFIG_SLPT
+static inline int slpt_is_enabled(void) {
+	return !!slpt_task_is_enabled;
+}
+#else
+static inline int slpt_is_enabled(void) {
+	return 0;
 }
 #endif
 
