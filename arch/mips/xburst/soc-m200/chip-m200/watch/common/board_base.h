@@ -106,6 +106,18 @@ extern struct mipi_dsim_lcd_device  auo_x163_device;
 #ifdef CONFIG_LCD_AUO_H139BLN01
 extern struct mipi_dsim_lcd_device  auo_h139bln01_device;
 #endif
+#ifdef CONFIG_LCD_EDO_E1392AM1
+extern struct mipi_dsim_lcd_device  edo_e1392am1_device;
+#endif
+#ifdef CONFIG_LCD_ORISE_OTM3201A
+extern struct mipi_dsim_lcd_device orise_otm3201a_device;
+#endif
+#ifdef CONFIG_LCD_BOE_TFT320320
+extern struct mipi_dsim_lcd_device  boe_tft320320_device;
+#endif
+#ifdef CONFIG_LCD_H160_TFT320320
+extern struct mipi_dsim_lcd_device  h160_tft320320_device;
+#endif
 #ifdef CONFIG_LCD_TRULY_TDO_HD0499K
 extern struct mipi_dsim_lcd_device	truly_tdo_hd0499k_device;
 #endif

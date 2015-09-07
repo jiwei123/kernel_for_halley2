@@ -255,6 +255,22 @@ static int __init board_base_init(void)
 	mipi_dsi_register_lcd_device(&auo_h139bln01_device);
 #endif
 
+#ifdef CONFIG_LCD_EDO_E1392AM1
+	mipi_dsi_register_lcd_device(&edo_e1392am1_device);
+#endif
+
+#ifdef CONFIG_LCD_ORISE_OTM3201A
+	mipi_dsi_register_lcd_device(&orise_otm3201a_device);
+#endif
+
+#ifdef CONFIG_LCD_BOE_TFT320320
+	mipi_dsi_register_lcd_device(&boe_tft320320_device);
+#endif
+
+#ifdef CONFIG_LCD_H160_TFT320320
+	mipi_dsi_register_lcd_device(&h160_tft320320_device);
+#endif
+
 	pdevices_array_size = ARRAY_SIZE(platform_devices_array);
 	for(i = 0; i < pdevices_array_size; i++) {
 		if(platform_devices_array[i].size)

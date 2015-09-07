@@ -65,12 +65,18 @@ int orise_otm3201a_reset(struct lcd_device *lcd)
 
 int orise_otm3201a_power_on(struct lcd_device *lcd, int enable)
 {
+	int ret;
+
 	if(!is_init && orise_otm3201a_init(lcd))
 		return -EFAULT;
 
 	if (enable) {
-		regulator_enable(lcd_vcc_reg);
-		regulator_enable(lcd_io_reg);
+		ret = regulator_enable(lcd_vcc_reg);
+		if (ret)
+			printk(KERN_ERR "failed to enable lcd vcc reg\n");
+		ret = regulator_enable(lcd_io_reg);
+		if (ret)
+			printk(KERN_ERR "failed to enable lcd io reg\n");
 	} else {
 		regulator_disable(lcd_io_reg);
 		regulator_disable(lcd_vcc_reg);
