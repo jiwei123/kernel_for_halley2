@@ -938,7 +938,7 @@ static int xfer_read_noirq(struct jz_i2c *i2c, unsigned char * const buf,
 		if (ret)
 			break;
 
-		msleep(1);
+		mdelay(1);
 	}
 
 	ret = i2c_check_error(i2c);
@@ -1002,7 +1002,7 @@ static int xfer_write_noirq(struct jz_i2c *i2c, unsigned char * const buf,
 		if (ret)
 			break;
 
-		msleep(1);
+		mdelay(1);
 	}
 
 	ret = i2c_check_error(i2c);
