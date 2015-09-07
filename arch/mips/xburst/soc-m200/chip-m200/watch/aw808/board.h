@@ -365,4 +365,12 @@
 #endif
 #endif
 /* ****************************GPIO DRV2605 END****************************** */
+
+/* ****************************GPIO MMA955XL START*************************** */
+#if defined(CONFIG_SENSORS_MMA955XL_I2C)
+#define MMA955XL_WAKEUP_AP     GPIO_PA(9)
+#define AP_WAKEUP_MMA955XL     GPIO_PA(15)
+#define MMA955XL_INTO_N        GPIO_PA(13)
+#endif
+/* ****************************GPIO MMA955XL END***************************** */
 #endif /* __BOARD_H__ */

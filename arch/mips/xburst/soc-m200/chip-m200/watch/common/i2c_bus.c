@@ -20,6 +20,17 @@ static struct frizz_platform_data frizz_pdata = {
 #endif
 /* *****************************sensor hub end**************************** */
 
+/* *****************************pedometer start ************************** */
+#if defined(CONFIG_SENSORS_MMA955XL_I2C)
+#include <linux/i2c/mma955xl_pedometer.h>
+static struct mma955xl_platform_data mma955xl_pdata = {
+		.sensor_int0_n = MMA955XL_INTO_N,
+		.ap_wakeup_mcu = AP_WAKEUP_MMA955XL,
+		.mcu_wakeup_ap = MMA955XL_WAKEUP_AP,
+};
+#endif
+/* *****************************pedometer  end *************************** */
+
 /* *****************************touchscreen******************************* */
 #ifdef CONFIG_TOUCHSCREEN_GWTC9XXXB
 static struct jztsc_pin fpga_tsc_gpio[] = {
@@ -460,7 +471,12 @@ struct i2c_board_info jz_i2c2_devs[] __initdata = {
 		.platform_data = &mpu9250_platform_data,
 	},
 #endif /*CONFIG_INV_MPU_IIO*/
-
+#ifdef CONFIG_SENSORS_MMA955XL_I2C
+    {
+        I2C_BOARD_INFO("mma955xl", 0x4C),
+        .platform_data = &mma955xl_pdata,
+    },
+#endif
 };
 #endif  /*I2C2*/
 

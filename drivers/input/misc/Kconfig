@@ -674,3 +674,4 @@ config INPUT_SENSORS_SI1132
 	  Say Y if you want to use si1132 sensor driver.
 
 endif
+source  "drivers/input/misc/mma955xl/Kconfig"
