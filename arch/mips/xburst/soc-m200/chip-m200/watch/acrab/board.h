@@ -237,6 +237,25 @@
 #define HOST_WAKE_WL         (-1)
 /* ****************************GPIO WIFI END********************************* */
 
+/* ***************************GPIO VIBRATOR START***************************** */
+#ifdef	CONFIG_ANDROID_TIMED_REGULATOR
+#define	REG_VDDIO	LDO4_NAME
+#define	MAX_TIMEOUT	18000
+#endif
+
+#ifdef	CONFIG_ANDROID_TIMED_GPIO
+
+#if defined(CONFIG_WATCH_SOLAR)
+#define	VIBRATOR_EN		GPIO_PC(18)
+#define	ACTIVE_LEVEL	0
+#else
+#define	VIBRATOR_EN		-1
+#define	ACTIVE_LEVEL	0
+#endif
+
+#define	MAX_TIMEOUT	15000
+#endif
+
 /* ****************************GPIO BLUETOOTH START************************** */
 /* BT gpio */
 #define HOST_WAKE_BT        GPIO_PC(13)

@@ -1270,7 +1270,8 @@ static int jzmmc_get_card_detect(struct mmc_host *mmc)
 
 	dev_vdbg(host->dev, "get card present\n");
 	if ((host->pdata->removal == NONREMOVABLE)
-	    || (host->pdata->removal == MANUAL)) {
+	    || (host->pdata->removal == MANUAL)
+	    || (host->pdata->removal == DONTCARE)) {
 		return test_bit(JZMMC_CARD_PRESENT, &host->flags);
 	}
 
