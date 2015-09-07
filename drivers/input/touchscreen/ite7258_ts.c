@@ -56,6 +56,8 @@
 #include "ITE7258_FPB1504A.h" /* foxconn board */
 #elif defined(CONFIG_ITE7258_HDL015SQ01)
 #include "ITE7258_HDL015SQ01.h" /* x3 board */
+#elif defined(CONFIG_ITE7258_TWS20381A0)
+#include "ITE7258_TWS20381A0.h" /* F1 board */
 #else
 unsigned char *algorithm_raw_data = NULL;
 unsigned char *configurate_raw_data = NULL;
@@ -456,9 +458,11 @@ static int ite7258_fw_upgrade_with_app_file(struct i2c_client *client, char *nam
 
 static int ite7258_sys_power_on(struct ite7258_ts_data *ts)
 {
+    regulator_enable(ts->vcc_reg);
+    msleep(20);
     if (ts->vio_reg)
         regulator_enable(ts->vio_reg);
-    regulator_enable(ts->vcc_reg);
+
     gpio_direction_output(ts->rst, 1);
     msleep(10);
     gpio_direction_output(ts->rst, 0);
@@ -692,7 +696,7 @@ static int ite7258_firmware_version_check(struct ite7258_ts_data *ite7258_ts)
 
     host_firmware_algo_ver_tmp = host_firmware_algo_ver & 0xFFFF0000;
     tp_firmware_algo_ver_tmp   = ite7258_ts->tp_firmware_algo_ver & 0xFFFF0000;
-    if (host_firmware_algo_ver_tmp == tp_firmware_algo_ver_tmp) {
+    if ((host_firmware_algo_ver_tmp == tp_firmware_algo_ver_tmp) || (tp_firmware_algo_ver_tmp == 0x0)) {
 
         if (host_firmware_algo_ver != ite7258_ts->tp_firmware_algo_ver ||
             host_firmware_cfg_ver != ite7258_ts->tp_firmware_cfg_ver) {
@@ -863,13 +867,6 @@ static int ite7258_read_Touchdata(struct ite7258_ts_data *data)
 		ret = ite7258_i2c_Read(data->client, pucPoint, 1, pucPoint, 1); //from addr 0x80
 		if(!( pucPoint[0] & 0x80 || pucPoint[0] & 0x01 )){
 			msleep(10);
-			if(data->is_suspend)
-			{
-			input_mt_sync(data->input_dev);
-			input_sync(data->input_dev);
-
-				return 0;
-			}
 			input_mt_sync(data->input_dev);
 			input_sync(data->input_dev);
 			return 0;
@@ -1204,9 +1201,10 @@ static void ite7258_ts_do_resume(struct ite7258_ts_data *ts)
 	if (ts->is_suspend) {
 		mutex_lock(&ts->lock);
 		//flush_scheduled_work();
+		regulator_enable(ts->vcc_reg);
+		msleep(20);
 		if (ts->vio_reg)
 			regulator_enable(ts->vio_reg);
-		regulator_enable(ts->vcc_reg);
 		dev_dbg(&ts->client->dev, "[FTS]ite7258 resume.\n");
 		gpio_direction_output(ts->rst, 1);
 		msleep(10);
@@ -1299,9 +1297,13 @@ static int ite7258_gpio_request(struct ite7258_ts_data *ts)
         gpio_direction_input(ts->irq);
 
         gpio_direction_output(ts->rst, 1);
+        msleep(10);
         gpio_direction_output(ts->rst, 0);
-        if (ts->rst_level)
+        msleep(10);
+        if (ts->rst_level) {
             gpio_direction_output(ts->rst, ts->rst_level);
+            msleep(10);
+        }
 
         return 0;
 }
@@ -1457,18 +1459,18 @@ static int ite7258_ts_probe(struct i2c_client *client,
         ite7258_ts->vcc_name = pdata->vcc_name;
         ite7258_ts->vio_name = pdata->vccio_name;
 
-        err = ite7258_gpio_request(ite7258_ts);
-        if(err){
-                dev_err(&client->dev, "failed to request gpio\n");
-                goto exit_gpio_failed;
-        }
-
         err = ite7258_regulator_get(ite7258_ts);
         if(err){
                 dev_err(&client->dev, "failed to get regulator\n");
                 goto exit_regulator_failed;
         }
         msleep(10);
+
+        err = ite7258_gpio_request(ite7258_ts);
+        if(err){
+                dev_err(&client->dev, "failed to request gpio\n");
+                goto exit_gpio_failed;
+        }
         if(ite7258_print_version(ite7258_ts)){
             dev_err(&client->dev, "print version failed\n");
             err = -ENOMEM;
@@ -1569,20 +1571,22 @@ exit_input_register_device_failed:
 
 exit_input_dev_alloc_failed:
 exit_get_version:
+        gpio_free(ite7258_ts->rst);
+        gpio_free(ite7258_ts->irq);
+
+exit_gpio_failed:
         regulator_disable(ite7258_ts->vcc_reg);
         regulator_put(ite7258_ts->vcc_reg);
-		if (ite7258_ts->vio_reg) {
-			regulator_disable(ite7258_ts->vio_reg);
-			regulator_put(ite7258_ts->vio_reg);
-		}
+        if (ite7258_ts->vio_reg) {
+            regulator_disable(ite7258_ts->vio_reg);
+            regulator_put(ite7258_ts->vio_reg);
+        }
         i2c_set_clientdata(client, NULL);
 
 exit_regulator_failed:
-        gpio_free(ite7258_ts->rst);
-        gpio_free(ite7258_ts->irq);
         kfree(update);
+
 exit_alloc_update_failed:
-exit_gpio_failed:
         kfree(ite7258_ts);
 
 exit_alloc_data_failed:

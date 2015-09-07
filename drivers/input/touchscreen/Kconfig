@@ -231,6 +231,12 @@ config ITE7258_HDL015SQ01
          help
          HDL015SQ01 is the FPC type
          HDL015SQ01 for x3
+config ITE7258_TWS20381A0
+         bool "TWS20381A0_update_fireware"
+         depends on ITE7258_EXT_FUNC
+         help
+         TWS20381A0 is the FPC type
+         TWS20381A0 for F1
 endchoice
 endif
 
