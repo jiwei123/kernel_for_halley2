@@ -89,7 +89,7 @@ static struct jztsc_platform_data ite7258_tsc_pdata = {
 	.y_max          = 320,
 	.irqflags = IRQF_TRIGGER_LOW | IRQF_DISABLED,
 	.vcc_name = VCC_TOUCHSCREEN,
-#if (defined(CONFIG_WATCH_ACRAB) || defined(CONFIG_WATCH_AW808))
+#if (defined(CONFIG_WATCH_ACRAB) || defined(CONFIG_WATCH_AW808) || defined(CONFIG_WATCH_SOLAR))
 	.vccio_name = VIO_TOUCHSCREEN,
 #endif
 };
