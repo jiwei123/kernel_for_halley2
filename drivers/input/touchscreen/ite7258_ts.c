@@ -459,7 +459,6 @@ static int ite7258_fw_upgrade_with_app_file(struct i2c_client *client, char *nam
 static int ite7258_sys_power_on(struct ite7258_ts_data *ts)
 {
     regulator_enable(ts->vcc_reg);
-    msleep(20);
     if (ts->vio_reg)
         regulator_enable(ts->vio_reg);
 
@@ -857,27 +856,30 @@ static void ite7258_report_value(struct ite7258_ts_data *data)
 
 static int ite7258_read_Touchdata(struct ite7258_ts_data *data)
 {
-        int ret = -1;
-	int flag = 1;
+	int ret = -1;
 	int xraw, yraw,pressure;
-
 	unsigned char pucPoint[14];
-	while(flag){
-		pucPoint[0] = QUERY_BUF_ADDR; //reg addr 
-		ret = ite7258_i2c_Read(data->client, pucPoint, 1, pucPoint, 1); //from addr 0x80
-		if(!( pucPoint[0] & 0x80 || pucPoint[0] & 0x01 )){
-			msleep(10);
-			input_mt_sync(data->input_dev);
-			input_sync(data->input_dev);
-			return 0;
-			//continue;
-		}
-		flag = 0;
+
+	if (data->is_suspend) {
+		input_mt_sync(data->input_dev);
+		input_sync(data->input_dev);
+		return 0;
+	}
+	pucPoint[0] = QUERY_BUF_ADDR; //reg addr
+	ret = ite7258_i2c_Read(data->client, pucPoint, 1, pucPoint, 1);
+
+	if((pucPoint[0] & 0x01)) { // is busy
+		return 0;
+	}
+	if((pucPoint[0] & 0x80)) {
 		pucPoint[0] = POINT_INFO_BUF_ADDR;
-		ret = ite7258_i2c_Read(data->client, pucPoint, 1, pucPoint, 14); //from addr 0xE0
+		ret = ite7258_i2c_Read(data->client, pucPoint, 1, pucPoint, 14);
+		if(pucPoint[1] & 0x01) { //Palm
+			return 0;
+		}
 
 #ifdef  CONFIG_ITE7258_MULTITOUCH
-		if(pucPoint[0] & 0x01){
+		if (pucPoint[0] & 0x01) {
 			xraw = ((pucPoint[3] & 0x0F) << 8) + pucPoint[2];
 			yraw = ((pucPoint[3] & 0xF0) << 4) + pucPoint[4];
 			pressure = (pucPoint[5] & 0x0F);
@@ -888,21 +890,19 @@ static int ite7258_read_Touchdata(struct ite7258_ts_data *data)
 			input_mt_sync(data->input_dev);
 			//input_sync(data->input_dev);
 		}
-#if 1
-		if(pucPoint[0] & 0x02){
-			xraw = ((pucPoint[7] & 0x0F) << 8) + pucPoint[6]; 
-			yraw = ((pucPoint[7] & 0xF0) << 4) + pucPoint[8]; 
+		if (pucPoint[0] & 0x02) {
+			xraw = ((pucPoint[7] & 0x0F) << 8) + pucPoint[6];
+			yraw = ((pucPoint[7] & 0xF0) << 4) + pucPoint[8];
 			pressure = (pucPoint[9] & 0x0F);
 			data->x_pos = xraw;
 			data->y_pos = yraw;
 			data->pressure = pressure;
 			ite7258_report_value(data);
-					input_mt_sync(data->input_dev);
-			//      	input_sync(data->input_dev);
+			input_mt_sync(data->input_dev);
+			//input_sync(data->input_dev);
 		}
 		input_mt_sync(data->input_dev);
 		input_sync(data->input_dev);
-#endif
 #else
 		if(pucPoint[0] & 0x01){
 			xraw = ((pucPoint[3] & 0x0F) << 8) + pucPoint[2];
@@ -1202,7 +1202,6 @@ static void ite7258_ts_do_resume(struct ite7258_ts_data *ts)
 		mutex_lock(&ts->lock);
 		//flush_scheduled_work();
 		regulator_enable(ts->vcc_reg);
-		msleep(20);
 		if (ts->vio_reg)
 			regulator_enable(ts->vio_reg);
 		dev_dbg(&ts->client->dev, "[FTS]ite7258 resume.\n");
