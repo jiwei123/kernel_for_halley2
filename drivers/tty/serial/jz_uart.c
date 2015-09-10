@@ -479,6 +479,22 @@ static void serial_jz47xx_break_ctl(struct uart_port *port, int break_state)
 	spin_unlock_irqrestore(&up->port.lock, flags);
 }
 
+static void init_hw_stopped_status(struct uart_port *uport)
+{
+	struct tty_port tport = uport->state->port;
+	struct tty_struct *tty = tport.tty;
+
+	if (tport.flags & ASYNC_CTS_FLOW) {
+		unsigned int mctrl;
+		spin_lock_irq(&uport->lock);
+		if (!((mctrl = uport->ops->get_mctrl(uport)) & TIOCM_CTS))
+			tty->hw_stopped = 1;
+		else
+			tty->hw_stopped = 0;
+		spin_unlock_irq(&uport->lock);
+	}
+}
+
 static int serial_jz47xx_startup(struct uart_port *port)
 {
 	struct uart_jz47xx_port *up = (struct uart_jz47xx_port *)port;
@@ -543,6 +559,8 @@ static int serial_jz47xx_startup(struct uart_port *port)
 	(void) serial_in(up, UART_RX);
 	(void) serial_in(up, UART_IIR);
 	(void) serial_in(up, UART_MSR);
+
+	init_hw_stopped_status(port);
 	printk("startup uart %s\n",up->name);
 	return 0;
 }
