@@ -135,19 +135,6 @@ int bluesleep_tty_strcmp(const char* name)
 	}
 }
 EXPORT_SYMBOL(bluesleep_tty_strcmp);
-#else
-int get_bluetooth_uart_port(void)
-{
-	int res;
-	const char *s = BLUETOOTH_UPORT_NAME + 4;
-
-	int ret = kstrtoint(s, 10, &res);
-	if (ret < 0)
-		return -1;
-
-	return res;
-}
-EXPORT_SYMBOL(get_bluetooth_uart_port);
 #endif
 #endif /* CONFIG_BROADCOM_RFKILL */
 
