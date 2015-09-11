@@ -12,6 +12,7 @@
 #include <linux/delay.h>
 #include <soc/gpio.h>
 #include <asm/atomic.h>
+#include <linux/i2c/i2c_power_manager.h>
 
 #define PAH8001
 #ifndef PAH8001
@@ -110,6 +111,9 @@ static int _read_index = 0;
 static int _write_index = 0;
 static atomic_t device_working_flag = ATOMIC_INIT(0);
 static atomic_t devices_configed = ATOMIC_INIT(0);
+
+static struct i2c_power_device *device = NULL;
+static struct i2c_control_operations func;
 
 unsigned char ofn_write_reg(unsigned char addr, unsigned char data);
 unsigned char ofn_read_reg(unsigned char addr, unsigned char *data);
@@ -1066,6 +1070,68 @@ static int ofn_init_mouse_data(void)
 #endif				//if (OFN_MOUSE == 0)
 #endif
 
+static void ofn_power_on(struct pah8001_platform_data *pdata)
+{
+    if (pdata->power_on)
+        pdata->power_on();
+}
+
+static void ofn_power_off(struct pah8001_platform_data *pdata)
+{
+    if (pdata->power_off)
+        pdata->power_off();
+}
+
+static int ofn_init_chip(struct pah8001_platform_data *pdata)
+{
+    int err = 0;
+    u8 buf = 0;
+
+    //  Test I2C communication
+    err = __read_reg(0x0, &buf);
+    if (err == false) {
+        printk("pah8001: Failed to read register 0x0!!!\n");
+        err = -EIO;
+        return err;
+    }
+
+    gpio_set_value(pdata->gpio_reset, 1);
+
+    gpio_direction_input(pdata->gpio_int);
+
+    if (pdata->gpio_pd >= 0) {
+        gpio_set_value(pdata->gpio_pd, 1);
+        msleep(10);
+    }
+
+    gpio_set_value(pdata->gpio_reset, 0);
+    msleep(10);
+    gpio_set_value(pdata->gpio_reset, 1);
+    msleep(10);
+
+    //Software Power Down Mode
+    ofn_bank_select(BANK0);
+    if (err < 0) {
+        printk("%s : ofn_bank_select error\n", __func__);
+        return err;
+    }
+
+    err = __write_reg(0x06, 0x0a);
+    if (err < 0) {
+        printk("ofn write reg error\n");
+        return err;
+    }
+    msleep(5);
+
+    err = ofn_init_reg();
+    if (err < 0) {
+        printk("ofn_init_reg error\n");
+        return err;
+    }
+
+    return 0;
+}
+
 static int ofn_i2c_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
@@ -1074,9 +1140,6 @@ static int ofn_i2c_probe(struct i2c_client *client,
 	unsigned char buf = 0;
 
 	pdata = (struct pah8001_platform_data *) client->dev.platform_data;
-	//struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
-	// check = i2c_check_functionality(adapter, I2C_FUNC_SMBUS_BYTE);
-	//printk("[ofn_sensor]%s (%d) : i2c_check_functionality = %d\n", __func__, __LINE__, check);
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_BYTE)) {
 		err = -EIO;
@@ -1095,29 +1158,18 @@ static int ofn_i2c_probe(struct i2c_client *client,
         }
     }
 
-    if (pdata->power_on) {
-        pdata->power_on();
+    err = gpio_request(pdata->gpio_reset, "gpio reset");
+    if (err < 0) {
+        printk("Unable to request GPIO : %d reset\n", pdata->gpio_reset);
+        goto free_gpio_1;
+    } else {
+        gpio_direction_output(pdata->gpio_reset, 1);
     }
-
-    //  Test I2C communication
-    err = __read_reg(0x0, &buf);
-    if (err == false) {
-        err = -EIO;
-        goto power_off;
-    }
-
-	err = gpio_request(pdata->gpio_reset, "gpio reset");
-	if (err < 0) {
-		printk("Unable to request GPIO : %d reset\n", pdata->gpio_reset);
-		goto power_off;
-	} else {
-		gpio_direction_output(pdata->gpio_reset, 1);
-	}
 
     err = gpio_request(pdata->gpio_int, "gpio int");
     if (err < 0) {
         printk("Unable to request GPIO : %d int\n", pdata->gpio_int);
-        goto free_gpio_1;
+        goto free_gpio_2;
     } else {
         gpio_direction_input(pdata->gpio_int);
     }
@@ -1126,30 +1178,31 @@ static int ofn_i2c_probe(struct i2c_client *client,
         err = gpio_request(pdata->gpio_pd, "gpio power down");
         if (err < 0) {
             printk(KERN_INFO "Unable to request GPIO : %d pd\n", pdata->gpio_pd);
-            goto free_gpio_2;
+            goto free_gpio;
         } else {
             gpio_direction_output(pdata->gpio_pd, 1);
             msleep(10);
         }
     }
 
-	gpio_set_value(pdata->gpio_reset, 0);
-	msleep(10);
-	gpio_set_value(pdata->gpio_reset, 1);
-	msleep(10);
+    func.power_on = ofn_power_on;
+    func.power_off = ofn_power_off;
+    func.init_chip = ofn_init_chip;
 
-	//Software Power Down Mode
-	ofn_bank_select(BANK0);
-	err = __write_reg(0x06, 0x0a);
-	if (err < 0) {
-	    goto free_gpio;
-	}
-	msleep(5);
-	/******************************************************************************/
-	err = ofn_init_reg();
-	if (err < 0) {
-	    goto free_gpio;
-	}
+    device = register_i2c_power_device(i2c_adapter_id(client->adapter), &func, pdata);
+    if (!device) {
+        err = -1;
+        goto board_exit;
+    }
+
+    err = i2c_power_device_on(device);
+
+    //  Test I2C communication
+    err = __read_reg(0x0, &buf);
+    if (err == false) {
+        err = -EIO;
+        goto power_off;
+    }
 
 	err = register_chrdev(0, ofn_name, &ofn_fops);	//\B9\AE\C0\DA \C0\E5ġ return value\B4\C2 major number \C7Ҵ\E7
 	if (err < 0) {
@@ -1271,6 +1324,11 @@ free_class_and_device:
     class_destroy(ofndata.ofn_class);
 free_chrdev:
     unregister_chrdev(ofndata.major_id, ofn_name);
+power_off:
+    i2c_power_device_off(device);
+    unregister_i2c_power_device(device);
+board_exit:
+    pdata->board_exit(&client->dev);
 free_gpio:
     if (pdata->gpio_pd >= 0) {
         gpio_free(pdata->gpio_pd);
@@ -1279,9 +1337,6 @@ free_gpio_2:
     gpio_free(pdata->gpio_int);
 free_gpio_1:
     gpio_free(pdata->gpio_reset);
-power_off:
-    pdata->power_off();
-    pdata->board_exit(&client->dev);
     return err;
 }
 
@@ -1319,8 +1374,8 @@ static int ofn_suspend(struct device *dev)
         gpio_direction_input(pdata->gpio_int);
     }
 
-    pdata->power_off();
-    pdata->board_exit(dev);
+    i2c_power_device_off(device);
+
     atomic_set(&devices_configed, 0);
 
 //    printk("%s (%d) : ofn suspend \n", __func__, __LINE__);
@@ -1337,17 +1392,7 @@ static void resume_work_func(struct work_struct *work)
 
     pdata = ofndata.pdata;
 
-    if (pdata->board_init) {
-        err = pdata->board_init(&(ofndata.client->dev));
-        if (err < 0) {
-            pr_err("ofn board_init failed ! errno = %d\n", err);
-            return;
-        }
-    }
-
-    if (pdata->power_on) {
-        pdata->power_on();
-    }
+    i2c_power_device_on(device);
 
     if (pdata->gpio_reset > 0) {
         gpio_direction_output(pdata->gpio_reset, 1);
