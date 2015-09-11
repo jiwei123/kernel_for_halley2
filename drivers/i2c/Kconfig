@@ -124,4 +124,11 @@ config I2C_DEBUG_BUS
 	  a problem with I2C support and want to see more of what is going
 	  on.
 
+config I2C_POWER_MANAGER
+    bool "I2C bus power manager"
+    help
+    Say Y here if you want to manager the power of I2C device. Select this
+    if your hardware is a I2C bus connected multi device & the devices
+    can not power on or power off cause it may pull low I2C bus.
+
 endif # I2C
