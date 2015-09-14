@@ -57,6 +57,7 @@ static const unsigned int sm5703_ldo_output_list[] = {
     2900*1000,
     3000*1000,
     3300*1000,
+    -1,
 };
 
 struct SM5007_regulator {
@@ -283,7 +284,7 @@ static int __SM5007_set_voltage(struct device *parent,
             if ((min_uV < ri->min_uV) || (max_uV > ri->max_uV))
                 return -EDOM;
 
-			for (i = 0; i < 16; i++)
+			for (i = 0; i < 17; i++)
 			{
 				if(sm5703_ldo_output_list[i] > min_uV) {
 					vsel = i - 1;
@@ -338,7 +339,7 @@ static int SM5007_get_voltage(struct regulator_dev *rdev)
 {
 	struct SM5007_regulator *ri = rdev_get_drvdata(rdev);
 	struct device *parent = to_SM5007_dev(rdev);
-	uint8_t vout_val, read_val;
+	uint8_t vout_val = 0, read_val;
 	uint8_t vsel;
 	int ret = 0;
 

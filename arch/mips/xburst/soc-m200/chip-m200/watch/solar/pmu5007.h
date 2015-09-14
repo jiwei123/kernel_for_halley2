@@ -36,7 +36,7 @@
 #else
 #define BUCK4_INIT_UV     3300
 #endif
-#define LDO1_INIT_UV    1800
+#define LDO1_INIT_UV    3300
 #define LDO2_INIT_UV    1800
 #define LDO3_INIT_UV    3000
 #define LDO4_INIT_UV    2800
@@ -44,7 +44,7 @@
 #define LDO6_INIT_UV    1800
 #define LDO7_INIT_UV    2800
 #define LDO8_INIT_UV    1800
-#define LDO9_INIT_UV    3300
+#define LDO9_INIT_UV    1800
 #define PS1_INIT_UV     BUCK1_INIT_UV
 #define PS2_INIT_UV     BUCK2_INIT_UV
 #define PS3_INIT_UV     BUCK3_INIT_UV
@@ -58,11 +58,11 @@
 #define BUCK3_ALWAYS_ON     1
 #define BUCK4_ALWAYS_ON     1
 #define LDO1_ALWAYS_ON    1
-#define LDO2_ALWAYS_ON    1
+#define LDO2_ALWAYS_ON    0
 #define LDO3_ALWAYS_ON    1
-#define LDO4_ALWAYS_ON    1
+#define LDO4_ALWAYS_ON    0
 #define LDO5_ALWAYS_ON    1
-#define LDO6_ALWAYS_ON    1
+#define LDO6_ALWAYS_ON    0
 #define LDO7_ALWAYS_ON    1
 #define LDO8_ALWAYS_ON    1
 #define LDO9_ALWAYS_ON    1
@@ -70,7 +70,7 @@
 #define PS2_ALWAYS_ON     1
 #define PS3_ALWAYS_ON     1
 #define PS4_ALWAYS_ON     0
-#define PS5_ALWAYS_ON     1
+#define PS5_ALWAYS_ON     0
 /* ****************************PMU BUCK/LDO ALWAYS ON END********************** */
 
 /* ****************************PMU BUCK/LDO BOOT ON**************************** */
@@ -79,11 +79,11 @@
 #define BUCK3_BOOT_ON     1
 #define BUCK4_BOOT_ON     1
 #define LDO1_BOOT_ON    1
-#define LDO2_BOOT_ON    1
+#define LDO2_BOOT_ON    0
 #define LDO3_BOOT_ON    1
-#define LDO4_BOOT_ON    1
+#define LDO4_BOOT_ON    0
 #define LDO5_BOOT_ON    1
-#define LDO6_BOOT_ON    1
+#define LDO6_BOOT_ON    0
 #define LDO7_BOOT_ON    1
 #define LDO8_BOOT_ON    1
 #define LDO9_BOOT_ON    1
@@ -91,7 +91,7 @@
 #define PS2_BOOT_ON     1
 #define PS3_BOOT_ON     1
 #define PS4_BOOT_ON     0
-#define PS5_BOOT_ON     1
+#define PS5_BOOT_ON     0
 /* ****************************PMU BUCK/LDO BOOT ON END************************ */
 
 /* ****************************PMU LDO LPM_ATTACH_TO_STM AND BUCKS AUTO_MODE************************ */
