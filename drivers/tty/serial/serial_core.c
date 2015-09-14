@@ -514,6 +514,9 @@ static int uart_write(struct tty_struct *tty,
 	struct circ_buf *circ;
 	unsigned long flags;
 	int c, ret = 0;
+#ifdef CONFIG_BT_BLUEDROID_SUPPORT
+	int timeout = 10;
+#endif
 
 	/*
 	 * This means you called this function _after_ the port was
@@ -550,6 +553,22 @@ static int uart_write(struct tty_struct *tty,
 		ret += c;
 	}
 	spin_unlock_irqrestore(&port->lock, flags);
+
+#ifdef CONFIG_BT_BLUEDROID_SUPPORT
+	/*
+	 * When BT module is sleeping, bluesleep_outgoing_data will wake it
+	 * up, but it may take a little long time to wait tty->hw_stopped
+	 * to be 0. Otherwise, it may cause HCI timeout problem.
+	 */
+	if(!bluesleep_tty_strcmp(tty->name)) {
+		while (tty->hw_stopped && timeout--) {
+			printk("serial_core: wait hw_stopped to be 0\n");
+			mdelay(1);
+		}
+		if (tty->hw_stopped && (timeout < 0))
+			printk("serial_core: waiting hw_stopped timeout!\n");
+	}
+#endif
 
 	uart_start(tty);
 	return ret;
