@@ -180,6 +180,34 @@ static void  ite7258_wait_command_done(struct i2c_client *client)
         }while(rbuffer[0] & 0x01 && count < 500);
 }
 
+static void ite7258_enter_sleep_mode(struct ite7258_ts_data *ts)
+{
+		unsigned char wbuf[8] = {0xFF};
+		int ret = 0;
+		struct i2c_client *client = ts->client;
+
+		ite7258_wait_command_done(client);
+		wbuf[0] = CMD_BUF_ADDR;
+		wbuf[1] = 0x04;
+		wbuf[2] = 0x00;
+		wbuf[3] = 0x02;
+		ret = ite7258_i2c_Write(client, wbuf, 4); //sleep power mode
+		if (ret < 0)
+			printk("ite7258_enter_sleep_mode failed i2c write error\n");
+}
+
+static void ite7258_exit_sleep_mode(struct ite7258_ts_data *ts)
+{
+		unsigned char wbuf[8] = {0xFF};
+		int ret = 0;
+		struct i2c_client *client = ts->client;
+
+		wbuf[0] = QUERY_BUF_ADDR;
+		ret = ite7258_i2c_Read(client, wbuf, 1, wbuf, 1);
+		if (ret < 0)
+			printk("ite7258_exit_sleep_mode failed\n");
+}
+
 static bool ite7258_enter_update_mode(struct i2c_client *client)
 {
         unsigned char cmd_data_buf[MAX_BUFFER_SIZE];
@@ -458,9 +486,7 @@ static int ite7258_fw_upgrade_with_app_file(struct i2c_client *client, char *nam
 
 static int ite7258_sys_power_on(struct ite7258_ts_data *ts)
 {
-    regulator_enable(ts->vcc_reg);
-    if (ts->vio_reg)
-        regulator_enable(ts->vio_reg);
+    ite7258_exit_sleep_mode(ts);
 
     gpio_direction_output(ts->rst, 1);
     msleep(10);
@@ -479,9 +505,7 @@ static int ite7258_sys_power_on(struct ite7258_ts_data *ts)
 static int ite7258_sys_power_off(struct ite7258_ts_data *ts)
 {
     ts->is_suspend = 1;
-    if (ts->vio_reg)
-        regulator_disable(ts->vio_reg);
-    regulator_disable(ts->vcc_reg);
+    ite7258_enter_sleep_mode(ts);
 
    return 0;
 }
@@ -955,11 +979,11 @@ static irqreturn_t ite7258_ts_interrupt(int irq, void *dev_id)
         return IRQ_HANDLED;
 }
 
-#if 1
-static void ite7258_idle_mode(struct i2c_client *client)
+static void ite7258_idle_mode(struct ite7258_ts_data *ts)
 {
         unsigned char wbuf[8] = {0xFF};
         int ret = 0;
+        struct i2c_client *client = ts->client;
 
         wbuf[0] = CMD_BUF_ADDR;
         wbuf[1] = 0x12;
@@ -991,7 +1015,7 @@ static void ite7258_idle_mode(struct i2c_client *client)
         if (ret < 0)
             printk("ite7258_idle_mode i2c write error\n");
 }
-#endif
+
 
 static int ite7258_print_version(struct ite7258_ts_data *ite7258_ts)
 {
@@ -1184,13 +1208,9 @@ static void ite7258_ts_do_suspend(struct ite7258_ts_data *ts)
 {
 	if (ts->is_suspend == 0) {
 		mutex_lock(&ts->lock);
-		//flush_work(&ts->work);
-		//flush_scheduled_work();
-	        disable_irq(ts->irq);
+		disable_irq(ts->irq);
 		ts->is_suspend = 1;
-		if (ts->vio_reg)
-			regulator_disable(ts->vio_reg);
-		regulator_disable(ts->vcc_reg);
+		ite7258_enter_sleep_mode(ts);
 		mutex_unlock(&ts->lock);
 	        dev_dbg(&ts->client->dev, "[FTS]ite7258 suspend\n");
 	}
@@ -1200,10 +1220,7 @@ static void ite7258_ts_do_resume(struct ite7258_ts_data *ts)
 {
 	if (ts->is_suspend) {
 		mutex_lock(&ts->lock);
-		//flush_scheduled_work();
-		regulator_enable(ts->vcc_reg);
-		if (ts->vio_reg)
-			regulator_enable(ts->vio_reg);
+		ite7258_exit_sleep_mode(ts);
 		dev_dbg(&ts->client->dev, "[FTS]ite7258 resume.\n");
 		gpio_direction_output(ts->rst, 1);
 		msleep(10);
@@ -1555,7 +1572,7 @@ static int ite7258_ts_probe(struct i2c_client *client,
                 dev_err(&client->dev, "ite7258_probe: request irq failed\n");
                 goto exit_irq_request_failed;
         }
-		//ite7258_idle_mode(client);
+        ite7258_exit_sleep_mode(ite7258_ts);
 
         return 0;
 
