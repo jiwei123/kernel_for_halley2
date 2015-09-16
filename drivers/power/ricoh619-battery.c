@@ -2983,7 +2983,7 @@ static int ricoh61x_init_battery(struct ricoh61x_battery_info *info)
 
 #endif
 
-	ret = ricoh61x_write(info->dev->parent, VINDAC_REG, 0x01);
+	ret = ricoh61x_write(info->dev->parent, VINDAC_REG, 0x00);
 	if (ret < 0) {
 		dev_err(info->dev, "Error in writing the control register\n");
 		return ret;
@@ -3031,6 +3031,11 @@ static int ricoh61x_init_charger(struct ricoh61x_battery_info *info)
 		}
 	}
 
+    	err = ricoh61x_write(info->dev->parent, CHGCTL2_REG, 0x00);
+        if (err < 0) {
+                dev_err(info->dev, "Error in writing the control2 register\n");
+                goto free_device;
+        }
 
 	/* REGISET1:(0xB6) setting */
 	if ((info->ch_ilim_adp != 0xFF) || (info->ch_ilim_adp <= 0x1D)) {
