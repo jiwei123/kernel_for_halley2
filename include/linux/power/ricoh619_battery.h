@@ -47,6 +47,7 @@
 #define VSYSDATAL_REG	0x71
 
 #define CHGCTL1_REG		0xB3
+#define CHGCTL2_REG     	0xB4
 #define	REGISET1_REG	0xB6
 #define	REGISET2_REG	0xB7
 #define	CHGISET_REG		0xB8
