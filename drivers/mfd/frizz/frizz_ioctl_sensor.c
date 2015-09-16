@@ -338,7 +338,7 @@ int right_hand_wear(unsigned int isrighthand) {
 	head.prefix = 0x02;
 	packet.header.prefix = 0xFF;
 	packet.header.type = 0x81;
-	packet.header.sen_id = 0xA6;
+	packet.header.sen_id = 0x88;
 	packet.header.num = 0x02;
 	packet.data[0] = head.w;
 	packet.data[1] = isrighthand;
