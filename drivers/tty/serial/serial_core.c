@@ -515,7 +515,7 @@ static int uart_write(struct tty_struct *tty,
 	unsigned long flags;
 	int c, ret = 0;
 #ifdef CONFIG_BT_BLUEDROID_SUPPORT
-	int timeout = 10;
+	int timeout = 50;
 #endif
 
 	/*
@@ -563,7 +563,7 @@ static int uart_write(struct tty_struct *tty,
 	if(!bluesleep_tty_strcmp(tty->name)) {
 		while (tty->hw_stopped && timeout--) {
 			printk("serial_core: wait hw_stopped to be 0\n");
-			mdelay(1);
+			mdelay(2);
 		}
 		if (tty->hw_stopped && (timeout < 0))
 			printk("serial_core: waiting hw_stopped timeout!\n");
