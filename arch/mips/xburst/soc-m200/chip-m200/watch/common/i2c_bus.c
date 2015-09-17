@@ -382,6 +382,95 @@ static struct pah8001_platform_data pah8001_pdata = {
 #endif
 /* *****************************pixart pah8001 end************************ */
 
+/* *****************************pixart pac7673 start********************** */
+#ifdef CONFIG_SENSORS_PIXART_PAC7673
+#include <linux/input/pac7673.h>
+
+#if !defined(PAC7673_VDD_NAME)
+#define PAC7673_VDD_NAME    NULL
+#endif
+
+static struct regulator *pac7673_power_vdd = NULL;
+static atomic_t pac7673_powered = ATOMIC_INIT(0);
+static int pac7673_early_init(struct device *dev)
+{
+    int res;
+
+    if (!pac7673_power_vdd) {
+        pac7673_power_vdd = regulator_get(dev, PAC7673_VDD_NAME);
+        if (IS_ERR(pac7673_power_vdd)) {
+            pr_err("%s -> get regulator VDD failed\n", __func__);
+            res = -ENODEV;
+
+        }
+    }
+
+    return 0;
+}
+
+static int pac7673_exit(struct device *dev)
+{
+    if (pac7673_power_vdd != NULL && !IS_ERR(pac7673_power_vdd)) {
+        regulator_put(pac7673_power_vdd);
+        pac7673_power_vdd = NULL;       //Must set pointer to NULL
+    }
+
+    atomic_set(&pac7673_powered, 0);
+
+    return 0;
+}
+
+static int pac7673_power_on(void)
+{
+    int res;
+    static int cnt = 0;
+    if (!atomic_read(&pac7673_powered)) {
+        if (!IS_ERR(pac7673_power_vdd)) {
+            if (cnt == 0) {
+                regulator_disable(pac7673_power_vdd);
+                cnt++;
+            }
+            res = regulator_enable(pac7673_power_vdd);
+        } else {
+            pr_err("%s -> VDD power unavailable!\n", __func__);
+            res = -ENODEV;
+        }
+        msleep(1);
+
+        atomic_set(&pac7673_powered, 1);
+    }
+
+    return 0;
+}
+
+static int pac7673_power_off(void)
+{
+    int res;
+    if (atomic_read(&pac7673_powered)) {
+        if (!IS_ERR(pac7673_power_vdd)) {
+            res = regulator_disable(pac7673_power_vdd);
+        } else {
+            pr_err("%s -> VDD power unavailable!\n", __func__);
+            res = -ENODEV;
+        }
+
+        atomic_set(&pac7673_powered, 0);
+    }
+
+    return 0;
+}
+
+static struct pac7673_platform_data pac7673_pdata = {
+    .gpio_int = GPIO_PAC7673_INT,
+    .board_init = pac7673_early_init,
+    .board_exit = pac7673_exit,
+    .power_on = pac7673_power_on,
+    .power_off = pac7673_power_off,
+};
+
+#endif
+/* *****************************pixart pac7673 end************************ */
+
 #if (defined(CONFIG_I2C_GPIO) || defined(CONFIG_I2C0_V12_JZ))
 struct i2c_board_info jz_i2c0_devs[] __initdata = {
 #ifdef CONFIG_TOUCHSCREEN_GWTC9XXXB
@@ -512,6 +601,15 @@ struct i2c_board_info jz_i2c3_devs[] __initdata = {
         .platform_data = &drv2667_plat_data,
     },
 #endif
+
+#ifdef  CONFIG_SENSORS_PIXART_PAC7673
+    {
+        I2C_BOARD_INFO("pac7673", 0x48),
+        .irq = (IRQ_GPIO_BASE + GPIO_PAC7673_INT),
+        .platform_data = &pac7673_pdata,
+    },
+#endif
+
 };
 #endif  /*I2C3*/
 
