@@ -22,7 +22,7 @@
 #include <linux/circ_buf.h>
 #include <linux/timer.h>
 #include <linux/syscore_ops.h>
-
+#include <linux/freezer.h>
 
 #include <asm/uaccess.h>
 
@@ -104,7 +104,7 @@ struct jzdmic_dev {
 	struct device *dev;
 };
 
-
+static DECLARE_WAIT_QUEUE_HEAD(waiter);
 
 static int jzdmic_open(struct inode *inode, struct file *filp)
 {
@@ -123,6 +123,7 @@ static int jzdmic_open(struct inode *inode, struct file *filp)
 	xfer->buf = (char *)TCSM_DATA_BUFFER_ADDR;
 	xfer->head = (char *)KSEG1ADDR(wakeup_module_get_dma_address()) - xfer->buf;;
 	xfer->tail = xfer->head;
+	clear_bit(F_READBLOCK, &jzdmic->flags);
 
 	mod_timer(&jzdmic->record_timer, jiffies + msecs_to_jiffies(20));
 
@@ -174,8 +175,7 @@ static int jzdmic_read(struct file *filp, char *buf, size_t count, loff_t *f_pos
 		}
 		if(mcount > 0) {
 			/*means data not complete yet, we block here until ready*/
-			set_bit(F_READBLOCK, &jzdmic->flags);
-			wait_for_completion(&jzdmic->read_completion);
+			wait_event_freezable(waiter, test_bit(F_READBLOCK, &jzdmic->flags));
 			clear_bit(F_READBLOCK, &jzdmic->flags);
 		}
 
@@ -299,9 +299,9 @@ static void record_timer_handler(unsigned long data)
 	xfer->head = (char *)KSEG1ADDR(trans_addr) - xfer->buf;
 	spin_unlock_irqrestore(&jzdmic->lock, flags);
 
-	if(test_bit(F_READBLOCK, &jzdmic->flags)) {
-		complete(&jzdmic->read_completion);
-	}
+	set_bit(F_READBLOCK, &jzdmic->flags);
+	wake_up_interruptible(&waiter);
+
 	//printk("record_timer:xfer->head:%08x\n", xfer->head);
 	mod_timer(&jzdmic->record_timer, jiffies + msecs_to_jiffies(20));
 
