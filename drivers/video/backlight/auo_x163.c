@@ -29,6 +29,10 @@
 #include <video/mipi_display.h>
 #include <mach/jz_dsim.h>
 
+extern struct regulator_dev *regulator_to_rdev(struct regulator *regulator);
+extern int ricoh61x_regulator_set_sleep_mode_power(struct regulator_dev *rdev, int power_on);
+
+
 #define POWER_IS_ON(pwr)	((pwr) == FB_BLANK_UNBLANK)
 #define POWER_IS_OFF(pwr)	((pwr) == FB_BLANK_POWERDOWN)
 #define POWER_IS_NRM(pwr)	((pwr) == FB_BLANK_NORMAL)
@@ -83,6 +87,13 @@ static void auo_x163_regulator_enable(struct auo_x163 *lcd)
 {
 	regulator_enable(lcd->vcc_lcd_3v0_reg);
 	regulator_enable(lcd->vcc_lcd_1v8_reg);
+
+#if defined(CONFIG_SLPT) && defined(CONFIG_REGULATOR_RICOH619)
+	ricoh61x_regulator_set_sleep_mode_power(regulator_to_rdev(lcd->vcc_lcd_3v0_reg), 1);
+	ricoh61x_regulator_set_sleep_mode_power(regulator_to_rdev(lcd->vcc_lcd_1v8_reg), 1);
+#endif
+
+
 	msleep(10);
 }
 
@@ -91,7 +102,6 @@ static void auo_x163_regulator_disable(struct auo_x163 *lcd)
 	int ret = 0;
 
 	/* quick action buttons to lcd display abnormal */
-
 	ret = bl_regulator(lcd, 0);
 	if (ret < 0)
 		pr_err("auo_x163: disable bl regulator err\n");
@@ -99,13 +109,19 @@ static void auo_x163_regulator_disable(struct auo_x163 *lcd)
 	/* next arrival operation mast delay >120ms */
 	msleep(120);
 
-	ret = regulator_disable(lcd->vcc_lcd_1v8_reg);
+	ret = regulator_force_disable(lcd->vcc_lcd_1v8_reg);
 	if (ret)
 		printk("can't disable auo_x163 vcc_1v8_reg ++++++++++\n");
 
-	ret = regulator_disable(lcd->vcc_lcd_3v0_reg);
+	ret = regulator_force_disable(lcd->vcc_lcd_3v0_reg);
 	if (ret)
 		printk("can't disable auo_x163 vcc_3v0_reg ++++++++++\n");
+
+#if defined(CONFIG_SLPT) && defined(CONFIG_REGULATOR_RICOH619)
+	ricoh61x_regulator_set_sleep_mode_power(regulator_to_rdev(lcd->vcc_lcd_3v0_reg), 0);
+	ricoh61x_regulator_set_sleep_mode_power(regulator_to_rdev(lcd->vcc_lcd_1v8_reg), 0);
+#endif
+
 }
 
 static void auo_x163_sleep_in(struct auo_x163 *lcd)
@@ -513,7 +529,7 @@ static int auo_x163_resume(struct mipi_dsim_lcd_device *dsim_dev, int mode)
 	mutex_lock(&lcd->lock);
 
     if (!lcd->ddi_pd->lcd_pdata->lcd_enabled) {
-        auo_x163_regulator_enable(lcd);
+	auo_x163_regulator_enable(lcd);
     }
 
     mutex_unlock(&lcd->lock);

@@ -328,6 +328,29 @@ int ricoh61x_regulator_disable_eco_slp_mode(struct regulator_dev *rdev)
 }
 EXPORT_SYMBOL_GPL(ricoh61x_regulator_disable_eco_slp_mode);
 
+int ricoh61x_regulator_set_sleep_mode_power(struct regulator_dev *rdev, int power_on)
+{
+	struct ricoh61x_regulator *ri = rdev_get_drvdata(rdev);
+	struct device *parent = to_ricoh61x_dev(rdev);
+	int ret = 0;
+
+	if (power_on) {
+		/* keep enable when pmu enter sleep-mode. */
+		ret = ricoh61x_write(parent, ri->slot_reg, 0xff);
+		if(ret < 0) {
+			dev_err(ri->dev, "Unable to set %d, reg[%d] sleep slot, err: %d \n", ri->desc.id, ri->slot_reg, ret);
+		}
+	} else {
+		/* keep disable when pmu enter sleep-mode. */
+		ret = ricoh61x_write(parent, ri->slot_reg, 0xf0);
+		if(ret < 0) {
+			dev_err(ri->dev, "Unable to set %d, reg[%d] sleep slot, err: %d \n", ri->desc.id, ri->slot_reg, ret);
+		}
+	}
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(ricoh61x_regulator_set_sleep_mode_power);
 
 static struct regulator_ops ricoh61x_ops = {
 	.list_voltage	= ricoh61x_list_voltage,

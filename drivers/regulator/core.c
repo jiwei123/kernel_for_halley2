@@ -101,6 +101,12 @@ struct regulator {
 	struct dentry *debugfs;
 };
 
+struct regulator_dev *regulator_to_rdev(struct regulator *regulator)
+{
+       return regulator->rdev;
+}
+EXPORT_SYMBOL_GPL(regulator_to_rdev);
+
 static int _regulator_is_enabled(struct regulator_dev *rdev);
 static int _regulator_disable(struct regulator_dev *rdev);
 static int _regulator_do_disable(struct regulator_dev *rdev);
