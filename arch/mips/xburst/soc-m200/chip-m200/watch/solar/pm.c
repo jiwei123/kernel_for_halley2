@@ -77,7 +77,7 @@ __initdata int gpio_ss_table[][2] = {
 	{32*3+6,	GSS_IGNORE		},	/* PRE-TEST */
 	{32*3+7,	GSS_IGNORE		},	/* USB_DET_N */
 	{32*3+8,	GSS_IGNORE		},	/* HOST_WAKEUP_BT */
-	{32*3+9,	GSS_OUTPUT_LOW		},	/* BT_nRST/REGEN */
+	{32*3+9,	GSS_IGNORE		},	/* BT_nRST/REGEN */
 	{32*3+10,	GSS_IGNORE		},	/* BT_WAKEUP_HOST */
 	{32*3+11,	GSS_IGNORE		},	/*  */
 	{32*3+12,	GSS_OUTPUT_LOW		},	/* WL_WAKEUP_HOST */
