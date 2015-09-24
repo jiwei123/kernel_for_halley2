@@ -153,7 +153,9 @@ static int jz_pwm_enable(struct pwm_chip *chip, struct pwm_device *pwm)
 	struct tcu_device *tcu_pwm = jz_pwm->pwm_chrs[pwm->hwpwm].tcu_cha;
 
 	tcu_enable(tcu_pwm);
-
+#ifdef CONFIG_CLEAR_PWM_OUTPUT
+	jzgpio_set_func(GPIO_PORT_E, GPIO_FUNC_0, 0x1 << pwm->hwpwm);
+#endif
 	return 0;
 }
 
@@ -163,6 +165,9 @@ static void jz_pwm_disable(struct pwm_chip *chip, struct pwm_device *pwm)
 	struct tcu_device *tcu_pwm = jz_pwm->pwm_chrs[pwm->hwpwm].tcu_cha;
 
 	tcu_disable(tcu_pwm);
+#ifdef CONFIG_CLEAR_PWM_OUTPUT
+	gpio_direction_output((GPIO_PORT_E * 32 + pwm->hwpwm), 0);
+#endif
 }
 
 static const struct pwm_ops jz_pwm_ops = {

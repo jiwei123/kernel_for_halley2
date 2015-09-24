@@ -204,6 +204,10 @@ config PWM_VT8500
 config JZ_PWM
 	bool "JZ PWM driver"
 	default y
+config CLEAR_PWM_OUTPUT
+	bool "Clear PWM output level"
+	depends on JZ_PWM
+	default y
 comment "JZ PWM function pin select"
 	depends on JZ_PWM
 config JZ_PWM_GPIO_E0
