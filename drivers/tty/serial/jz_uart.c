@@ -159,7 +159,8 @@ static inline void receive_chars(unsigned long data)
 		/*  Break interrupt error | prrity error | Frame error | overun error */
 		if (unlikely(status & (UART_LSR_BI | UART_LSR_PE |
 						UART_LSR_FE | UART_LSR_OE))) {
-			printk("jz_uart: error status(UART_LSR) 0x%x\n", status);
+			printk("jz_uart: port %d error status(UART_LSR) 0x%x\n",
+					up->port.line, status);
 
 			if (status & UART_LSR_BI) {
 				status &= ~(UART_LSR_FE | UART_LSR_PE);
