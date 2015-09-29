@@ -101,12 +101,12 @@ static const struct snd_soc_dapm_route audio_map[] = {
 	{"Speaker", NULL, "AOLON"},
 
 	/* mic is connected to AIP/N1 */
-	{"AIP1", NULL, "Mic Buildin"},
-	{"AIN1", NULL, "Mic Buildin"},
-	{"AIP2", NULL, "Mic Jack"},
+	{"AIP1", NULL, "MICBIAS1"},
+	{"AIN1", NULL, "MICBIAS1"},
+	{"AIP2", NULL, "MICBIAS1"},
 
-	{"Mic Buildin", NULL, "MICBIAS1"},
-	{"Mic Jack", NULL, "MICBIAS1"},
+	{"MICBIAS1", NULL, "Mic Buildin"},
+	{"MICBIAS1", NULL, "Mic Jack"},
 };
 
 static int dorado_dlv_dai_link_init(struct snd_soc_pcm_runtime *rtd)
@@ -144,9 +144,6 @@ static int dorado_dlv_dai_link_init(struct snd_soc_pcm_runtime *rtd)
 	} else {
 		icdc_d1_hp_detect(codec, &dorado_icdc_d1_jack, SND_JACK_HEADSET);
 	}
-
-	snd_soc_dapm_force_enable_pin(dapm, "Speaker");
-	snd_soc_dapm_force_enable_pin(dapm, "Mic Buildin");
 
 	snd_soc_dapm_sync(dapm);
 	return 0;

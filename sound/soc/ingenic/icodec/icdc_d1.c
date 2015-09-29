@@ -220,8 +220,12 @@ static int icdc_d1_set_bias_level(struct snd_soc_codec *codec,
 			msleep(400);
 			icdc_d1_reset_gain(codec);
 		}
+		snd_soc_update_bits(codec, DLV_REG_AICR_ADC, DLV_AICR_AICR_SB_MASK, 0);
+		snd_soc_update_bits(codec, DLV_REG_AICR_DAC, DLV_AICR_AICR_SB_MASK, 0);
 		break;
 	case SND_SOC_BIAS_OFF:
+		snd_soc_update_bits(codec, DLV_REG_AICR_ADC, DLV_AICR_AICR_SB_MASK, DLV_AICR_AICR_SB_MASK);
+		snd_soc_update_bits(codec, DLV_REG_AICR_DAC, DLV_AICR_AICR_SB_MASK, DLV_AICR_AICR_SB_MASK);
 		snd_soc_update_bits(codec, DLV_REG_CR_VIC, DLV_CR_VIC_SB_SLEEP_MASK, DLV_CR_VIC_SB_SLEEP_MASK);
 		snd_soc_update_bits(codec, DLV_REG_CR_VIC, DLV_CR_VIC_SB_MASK, DLV_CR_VIC_SB_MASK);
 		break;
@@ -685,11 +689,6 @@ static const struct snd_soc_dapm_widget icdc_d1_dapm_widgets[] = {
 };
 
 static const struct snd_soc_dapm_route intercon[] = {
-	{ "MICBIAS1",  NULL,  "AIP1" },
-	{ "MICBIAS1",  NULL,  "AIN1" },
-	{ "MICBIAS1",  NULL,  "AIP2" },
-	{ "MICBIAS2",  NULL,  "AIP3" },
-
 	/*input*/
 	{ "AIL Mux", "AIPN1", "AIP1" },
 	{ "AIL Mux", "AIPN1", "AIN1" },
@@ -744,11 +743,23 @@ static const struct snd_soc_dapm_route intercon[] = {
 
 static int icdc_d1_suspend(struct snd_soc_codec *codec)
 {
+	struct icdc_d1 *icdc_d1 = snd_soc_codec_get_drvdata(codec);
+
+	icdc_d1_set_bias_level(codec, SND_SOC_BIAS_OFF);
+	snd_soc_update_bits(codec, DLV_REG_CR_CK, DLV_CR_CK_SB_MASK, DLV_CR_CK_SB_MASK);
+	if (icdc_d1_debug)
+		dump_registers_hazard(icdc_d1);
 	return 0;
 }
 
 static int icdc_d1_resume(struct snd_soc_codec *codec)
 {
+	struct icdc_d1 *icdc_d1 = snd_soc_codec_get_drvdata(codec);
+
+	snd_soc_update_bits(codec, DLV_REG_CR_CK, DLV_CR_CK_SB_MASK, 0);
+	icdc_d1_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
+	if (icdc_d1_debug)
+		dump_registers_hazard(icdc_d1);
 	return 0;
 }
 
@@ -915,13 +926,8 @@ static int icdc_d1_probe(struct snd_soc_codec *codec)
 	/*codec select i2s interface*/
 	snd_soc_update_bits(codec, DLV_REG_AICR_ADC, DLV_AICR_AUDIOIF_MASK,
 			DLV_AICR_AUDIOIF_I2S << DLV_AICR_AUDIOIF_SHIFT);
-
-	/*FIXME*/
-	snd_soc_update_bits(codec, DLV_REG_AICR_ADC, DLV_AICR_AICR_SB_MASK, 0);
 	snd_soc_update_bits(codec, DLV_REG_AICR_DAC, DLV_AICR_AUDIOIF_MASK,
 			DLV_AICR_AUDIOIF_I2S << DLV_AICR_AUDIOIF_SHIFT);
-	/*FIXME*/
-	snd_soc_update_bits(codec, DLV_REG_AICR_DAC, DLV_AICR_AICR_SB_MASK, 0);
 
 	/*codec mixer in input normal default*/
 	snd_soc_write(codec, DLV_EXREG_MIX0, 0x50);	/*AIDACX_SEL should be configured to 01 in normal mode*/
