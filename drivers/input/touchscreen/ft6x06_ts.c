@@ -486,9 +486,13 @@ static int ft6x06_ts_probe(struct i2c_client *client,
 	set_bit(ABS_PRESSURE, input_dev->absbit);
 	set_bit(EV_SYN, input_dev->evbit);
 	set_bit(BTN_TOUCH, input_dev->keybit);
-
+#ifndef CONFIG_ANDROID
+	input_set_abs_params(input_dev, ABS_X, 0, ft6x06_ts->va_x_max * 8 / 5, 0, 0);
+	input_set_abs_params(input_dev, ABS_Y, 0, ft6x06_ts->va_y_max * 5 / 3, 0, 0);
+#else
 	input_set_abs_params(input_dev, ABS_X, 0, ft6x06_ts->va_x_max, 0, 0);
 	input_set_abs_params(input_dev, ABS_Y, 0, ft6x06_ts->va_y_max, 0, 0);
+#endif  /*CONFIG_ANDROID*/
 	input_set_abs_params(input_dev, ABS_PRESSURE, 0, PRESS_MAX, 0 , 0);
 #endif
 	set_bit(EV_KEY, input_dev->evbit);
