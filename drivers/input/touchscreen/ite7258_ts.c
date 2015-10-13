@@ -176,7 +176,8 @@ static void  ite7258_wait_command_done(struct i2c_client *client)
                 rbuffer[0] = 0x00; 
                 ite7258_i2c_Read(client, wbuffer, 1, rbuffer, 1);
                 count++;
-                msleep(1);
+                if(rbuffer[0] & 0x01)
+                    mdelay(1);
         }while(rbuffer[0] & 0x01 && count < 500);
 }
 
@@ -338,33 +339,32 @@ static bool ite7258_setupdate_offset(struct i2c_client *client,
 static bool ite7258_really_update(struct i2c_client *client, 
                 unsigned int length, char *date, unsigned short offset)
 {
+#define READ_BUFFER_LENGTH       64
         unsigned int index = 0;
-        unsigned char buffer[131] = {0};
-        unsigned char buf_write[131] = {0};
-        unsigned char buf_read[131] = {0};
-        unsigned char read_length;
+        unsigned char buffer[READ_BUFFER_LENGTH+3] = {0};
+        unsigned char buf_write[READ_BUFFER_LENGTH+3] = {0};
+        unsigned char buf_read[READ_BUFFER_LENGTH+3] = {0};
+
         int retry_count;
-        int i;
-        int ret;
-        read_length = 128;
+        int i = 0;
+        int ret = -1;
         while(index < length){
                 retry_count = 0;
                 do{
                         ite7258_setupdate_offset(client, offset + index);
                         buffer[0] = 0x20;
                         buffer[1] = 0x62;
-                        buffer[2] = 128;
-                        for (i = 0; i < 128; i++) {
-                                buf_write[i] = buffer[3 + i] = date[index + i];
-                        }
-                        ret = ite7258_i2c_Write(client, buffer, 131);
+                        buffer[2] = READ_BUFFER_LENGTH;
+                        memcpy(&buf_write[0],  &date[index], READ_BUFFER_LENGTH);
+                        memcpy(&buffer[3], &date[index], READ_BUFFER_LENGTH);
+                        ret = ite7258_i2c_Write(client, buffer, READ_BUFFER_LENGTH+3);
                         if (ret < 0)
                             printk("ite7258_really_update i2c write error\n");
 
                         // Read from Flash
                         buffer[0] = 0x20;
                         buffer[1] = 0x63;
-                        buffer[2] = read_length;
+                        buffer[2] = READ_BUFFER_LENGTH;
 
                         ite7258_setupdate_offset(client, offset + index);
                         ret = ite7258_i2c_Write(client, buffer, 3);
@@ -373,21 +373,24 @@ static bool ite7258_really_update(struct i2c_client *client,
                         ite7258_wait_command_done(client);
 
                         buffer[0] = 0xA0;
-                        ite7258_i2c_Read(client, buffer, 1, buf_read, read_length);
+                        ite7258_i2c_Read(client, buffer, 1, buf_read, READ_BUFFER_LENGTH);
                         // Compare
-                        for (i = 0; i < 128; i++) {
-                                if (buf_read[i] != buf_write[i]) {
-                                        break;
-                                }
+                        ret = memcmp(buf_read,buf_write, READ_BUFFER_LENGTH);
+                        if(ret == 0) {
+                            i = READ_BUFFER_LENGTH;
+                            break;
                         }
-                        if (i == 128) break;
+                        else {
+                            i = 0;
+                            continue;
+                        }
                 }while (retry_count++ < 4);
 
-                if (retry_count == 4 && i != 128){
+                if (retry_count == 4 && i != READ_BUFFER_LENGTH){
                         printk("XXX %s, %d\n", __func__, __LINE__);
                         return false;
                 }
-                index += 128;
+                index += READ_BUFFER_LENGTH;
         }
         printk("\n");
         return true;

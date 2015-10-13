@@ -1210,6 +1210,7 @@ ssize_t xb_snd_dsp_read(struct file *file,
 				}
 				fixed_buff_cnt = node_buff_cnt;
 			}
+			dma_cache_sync(NULL, (void *)node->pBuf, node->size, dp->dma_config.direction);
 			if (copy_to_user((void *)buffer,
 					 (void *)(node->pBuf + node->start), fixed_buff_cnt)) {
 				put_use_dsp_node_head(dp,node,0);
@@ -1242,8 +1243,6 @@ ssize_t xb_snd_dsp_read(struct file *file,
 				atomic_inc(&dp->avialable_couter);
 			} else
 				put_free_dsp_node(dp,node);
-
-			dma_cache_sync(NULL, (void *)node->pBuf, node->size, dp->dma_config.direction);
 		}
 	} while (mcount > 0);
 
