@@ -208,10 +208,14 @@ static void tcu_pwm_input_disable(int id)
 int tcu_as_counter_config(struct tcu_device *tcu)
 {
 	mutex_lock(&tcu->tcu_lock);
-	if ((tcu->id < 0) || (tcu->id > (NR_TCU_CH - 1)))
+	if ((tcu->id < 0) || (tcu->id > (NR_TCU_CH - 1))) {
+		mutex_unlock(&tcu->tcu_lock);
 		return -EINVAL;
-	if (test_bit(tcu->id, tcu_map))
+	}
+	if (test_bit(tcu->id, tcu_map)) {
+		mutex_unlock(&tcu->tcu_lock);
 		return -EINVAL;
+	}
 	tcu_set_start_state(tcu);
 
 	set_tcu_counter_value(tcu->id, tcu->count_value);
@@ -253,10 +257,12 @@ int tcu_as_timer_config(struct tcu_device *tcu)
 	mutex_lock(&tcu->tcu_lock);
 	if ((tcu->id < 0) || (tcu->id > (NR_TCU_CH - 1))) {
 		pr_err("numbuer isn't in 0~7\n");
+		mutex_unlock(&tcu->tcu_lock);
 		return -EINVAL;
 	}
 	if (test_bit(tcu->id, tcu_map)) {
 		printk("already been used!\n");
+		mutex_unlock(&tcu->tcu_lock);
 		return -EINVAL;
 	}
 
@@ -317,12 +323,80 @@ struct tcu_device *tcu_request(int channel_num)
 	return tcu;
 }
 
+/*FIXME, The function is not standard, it is because
+ * the TCU controller designed shortage, only TCU1 mode can
+ * set default output level, but TCU2 doesn't. Only for M200*/
+static int tcu_set_fun_pin(struct tcu_device *tcu)
+{
+	int ret = -EIO;
+	switch (tcu->id) {
+	case 0:
+		ret = jzgpio_set_func(GPIO_PORT_E, GPIO_FUNC_0, BIT(0));
+		break;
+	case 1:
+		ret = jzgpio_set_func(GPIO_PORT_E, GPIO_FUNC_0, BIT(1));
+		break;
+	case 2:
+		ret = jzgpio_set_func(GPIO_PORT_E, GPIO_FUNC_0, BIT(2));
+		break;
+	case 3:
+		ret = jzgpio_set_func(GPIO_PORT_E, GPIO_FUNC_0, BIT(3));
+		break;
+	default:
+		pr_warn("TCU:%d, has not default pin,"
+				" Please check your code\n",
+				tcu->id);
+		break;
+	}
+
+	return ret;
+}
+
+/*FIXME, The function is not standard, it is because
+ * the TCU controller designed shortage, only TCU1 mode can
+ * set default output level, but TCU2 doesn't. Only for M200*/
+static int tcu_set_pin_to_default_level(struct tcu_device *tcu)
+{
+	int ret = -EIO;
+	switch (tcu->id) {
+	case 0:
+		ret = jzgpio_set_func(GPIO_PORT_E, (tcu->init_level ?
+				GPIO_OUTPUT1 : GPIO_OUTPUT0), BIT(0));
+		break;
+	case 1:
+		ret = jzgpio_set_func(GPIO_PORT_E, (tcu->init_level ?
+				GPIO_OUTPUT1 : GPIO_OUTPUT0), BIT(1));
+		break;
+	case 2:
+		ret = jzgpio_set_func(GPIO_PORT_E, (tcu->init_level ?
+				GPIO_OUTPUT1 : GPIO_OUTPUT0), BIT(2));
+		break;
+	case 3:
+		ret = jzgpio_set_func(GPIO_PORT_E, (tcu->init_level ?
+				GPIO_OUTPUT1 : GPIO_OUTPUT0), BIT(3));
+		break;
+	default:
+		pr_warn("TCU:%d, has not default pin,"
+				" Please check your code\n",
+				tcu->id);
+		break;
+	}
+	return ret;
+}
+
 int tcu_enable(struct tcu_device *tcu)
 {
 	int ret = 0;
 	mutex_lock(&tcu->tcu_lock);
 
+
 	if (!tcu->enable_cnt) {
+		ret = tcu_set_fun_pin(tcu);
+		if (ret) {
+			printk("Err:tcu set function pin error\n");
+			mutex_unlock(&tcu->tcu_lock);
+			return ret;
+		}
 		if (tcu->pwm_flag) {
 			ret = tcu_pwm_output_enable(tcu->id);
 		}
@@ -338,18 +412,30 @@ int tcu_enable(struct tcu_device *tcu)
 void tcu_disable(struct tcu_device *tcu)
 {
 	mutex_lock(&tcu->tcu_lock);
-	if (!tcu || test_bit(tcu->id, tcu_map))
+	if (!tcu || test_bit(tcu->id, tcu_map)) {
+		mutex_unlock(&tcu->tcu_lock);
 		return;
+	}
 	if (!tcu->enable_cnt) {
 		pr_warn("TCU enable and disable is not corresponding\n ");
 		dump_stack();
+		mutex_unlock(&tcu->tcu_lock);
 		return;
 	}
 	tcu->enable_cnt--;
 
 	if (!tcu->enable_cnt) {
+		int ret;
 		tcu_shutdown_counter(tcu);
+		ret = tcu_set_pin_to_default_level(tcu);
+		if (ret) {
+			printk("Err:tcu set pin to default level error\n");
+			WARN_ON(1);
+			dump_stack();
+		}
 	}
+
+
 	mutex_unlock(&tcu->tcu_lock);
 }
 
