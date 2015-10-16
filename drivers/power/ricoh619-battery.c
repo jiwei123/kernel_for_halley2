@@ -4515,9 +4515,6 @@ static int ricoh61x_battery_probe(struct platform_device *pdev)
 	int ret, temp;
 
 	pr_debug("PMU: %s : version is %s\n", __func__,RICOH61x_BATTERY_VERSION);
-#ifdef CONFIG_DEBUG_LOG_RECORDER
-	file_init();
-#endif
 
 #ifdef CONFIG_CHARGER_HOLD_WAKE_LOCK
     wake_lock_init(&suspend_lock, WAKE_LOCK_SUSPEND, "ricoh61x-charger");
@@ -5195,6 +5192,10 @@ static struct platform_driver ricoh61x_battery_driver = {
 
 static int __init ricoh61x_battery_init(void)
 {
+#ifdef CONFIG_DEBUG_LOG_RECORDER
+    file_init();
+#endif
+
 	pr_debug("PMU: %s\n", __func__);
 	return platform_driver_register(&ricoh61x_battery_driver);
 }
