@@ -359,7 +359,7 @@ static int file_init(void) {
 	return 0;
 }
 #else
-#define record_debug pr_debug
+#define record_debug(fmt,args...) printk(KERN_DEBUG fmt,##args)
 
 #endif
 
