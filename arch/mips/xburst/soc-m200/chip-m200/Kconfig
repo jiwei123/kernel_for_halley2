@@ -13,6 +13,9 @@ config PRODUCT_DEVELOP
 config BOARD_NEWTON
        bool "NEWTON"
 
+config BOARD_WATCH
+       bool "watch"
+
 endchoice
 
 config PRODUCT_NAME
@@ -20,6 +23,7 @@ config PRODUCT_NAME
 	default "fpga" if BOARD_4785_FPGA
 	default "dorado" if PRODUCT_DEVELOP
 	default "newton" if BOARD_NEWTON
+    default "watch" if BOARD_WATCH
 
 if PRODUCT_DEVELOP
 source "arch/mips/xburst/soc-m200/chip-m200/dorado/Kconfig"
@@ -27,4 +31,8 @@ endif
 
 if BOARD_NEWTON
 source "arch/mips/xburst/soc-m200/chip-m200/newton/Kconfig"
+endif
+
+if BOARD_WATCH
+source "arch/mips/xburst/soc-m200/chip-m200/watch/Kconfig"
 endif
