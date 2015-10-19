@@ -332,7 +332,7 @@ static int check_jeita_status(struct ricoh61x_battery_info *info, bool *is_jeita
 static void ricoh61x_scaling_OCV_table(struct ricoh61x_battery_info *info, int cutoff_vol, int full_vol, int *start_per, int *end_per);
 static int ricoh61x_Check_OCV_Offset(struct ricoh61x_battery_info *info);
 
-#ifdef CONFIG_DEBUG_LOG_RECORDER
+#ifdef CONFIG_RICOH619_FG_DEBUG_LOG
 
 #define LOG_PATH "/ricohfg"
 struct file *fp = 0;
@@ -5192,7 +5192,7 @@ static struct platform_driver ricoh61x_battery_driver = {
 
 static int __init ricoh61x_battery_init(void)
 {
-#ifdef CONFIG_DEBUG_LOG_RECORDER
+#ifdef CONFIG_RICOH619_FG_DEBUG_LOG
     file_init();
 #endif
 

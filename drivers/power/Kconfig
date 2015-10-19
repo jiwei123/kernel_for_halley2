@@ -461,7 +461,7 @@ config SMALL_CAPACITY_BATTERY
 	  help
 	  Say "Y" to enable small capacity battery.
 
-config DEBUG_LOG_RECORDER
+config RICOH619_FG_DEBUG_LOG
       bool "ricoh fuelgauge debug log recorder"
 	  default y
 	  help
