@@ -758,21 +758,11 @@ dsih_error_t mipi_dsih_hal_gen_packet_header(struct dsi_device * dsi, unsigned c
  */
 dsih_error_t mipi_dsih_hal_gen_packet_payload(struct dsi_device * dsi, unsigned int payload)
 {
-	//if (mipi_dsih_hal_gen_write_fifo_full(dsi))
-	//{
-		//printk("write fifo full error!!!\n");
-		//return ERR_DSI_OVERFLOW;
-	//}
-	int timeout = DSIH_FIFO_ACTIVE_WAIT;
-	while(mipi_dsih_hal_gen_write_fifo_full(dsi) && timeout) {
-		timeout--;
-		udelay(500);
-	}
-	mipi_dsih_write_word(dsi, R_DSI_HOST_GEN_PLD_DATA, payload);
-	if(timeout <= 0) {
-		printk("mipi gen pld data over flow.\n");
+	if (mipi_dsih_hal_gen_write_fifo_full(dsi))
+	{
 		return ERR_DSI_OVERFLOW;
 	}
+	mipi_dsih_write_word(dsi, R_DSI_HOST_GEN_PLD_DATA, payload);
 	return OK;
 
 }
@@ -1214,31 +1204,36 @@ dsih_error_t mipi_dsih_gen_wr_packet(struct dsi_device * dsi, unsigned char vc, 
 		}
 	}
 
-	timeout = DSIH_FIFO_ACTIVE_WAIT;
-	while(!mipi_dsih_hal_gen_cmd_fifo_empty(dsi) && timeout) {
-		udelay(500);
-		timeout--;
-	}
-
-	if (param_length == 0)
+	for (timeout = 0; timeout < DSIH_FIFO_ACTIVE_WAIT; timeout++)
 	{
-		err_code |= mipi_dsih_hal_gen_packet_header(dsi, vc, data_type, 0x0, 0x0);
+		/* check if payload Tx fifo is not full */
+		if (!mipi_dsih_hal_gen_cmd_fifo_full(dsi))
+		{
+			if (param_length == 0)
+			{
+				err_code |= mipi_dsih_hal_gen_packet_header(dsi, vc, data_type, 0x0, 0x0);
+			}
+			else if (param_length == 1)
+			{
+				err_code |= mipi_dsih_hal_gen_packet_header(dsi, vc, data_type, 0x0, params[0]);
+			}
+			else
+			{
+				/*make the header*/
+				err_code |= mipi_dsih_hal_gen_packet_header(dsi, vc, data_type, params[1], params[0]);
+			}
+			break;
+		}
+		else{
+			printk("cmd fifo full error\n");
+			err_code = ERR_DSI_OVERFLOW;
+			return err_code;
+		}
 	}
-	else if (param_length == 1)
+	if (!(timeout < DSIH_FIFO_ACTIVE_WAIT))
 	{
-		err_code |= mipi_dsih_hal_gen_packet_header(dsi, vc, data_type, 0x0, params[0]);
+		err_code = ERR_DSI_TIMEOUT;
 	}
-	else
-	{
-		/*make the header*/
-		err_code |= mipi_dsih_hal_gen_packet_header(dsi, vc, data_type, params[1], params[0]);
-	}
-
-	if(timeout <= 0) {
-		printk("mipi gen write command timeout.\n");
-		return ERR_DSI_TIMEOUT;
-	}
-
 	return err_code;
 }
 
@@ -1285,12 +1280,9 @@ int write_command(struct dsi_device * dsi, struct dsi_cmd_packet cmd_data)
 		printk("not support packet type, please checkout!,\n");
 	}
 	ret = mipi_dsih_gen_wr_packet(dsi, 0, packet_type, dsi_command_param, word_count + 2);
-#ifdef CONFIG_JZ_MIPI_DBI
-	udelay(3000);
-#endif
 	if(ret < 0) {
 		printk("gen_wr_packet failed. ret:%d\n", ret);
 	}
-
+	mdelay(1);
 	return 0;
 }

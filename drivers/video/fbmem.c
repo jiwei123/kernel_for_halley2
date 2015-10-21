@@ -1045,9 +1045,11 @@ fb_set_var(struct fb_info *info, struct fb_var_screeninfo *var)
 
 int
 fb_blank(struct fb_info *info, int blank)
-{	
+{
 	struct fb_event event;
 	int ret = -EINVAL, early_ret;
+
+	return 0;
 
  	if (blank > FB_BLANK_POWERDOWN)
  		blank = FB_BLANK_POWERDOWN;
@@ -1097,19 +1099,20 @@ static long do_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		ret = copy_to_user(argp, &var, sizeof(var)) ? -EFAULT : 0;
 		break;
 	case FBIOPUT_VSCREENINFO:
-		if (copy_from_user(&var, argp, sizeof(var)))
-			return -EFAULT;
-		if (!lock_fb_info(info))
-			return -ENODEV;
-		console_lock();
-		info->flags |= FBINFO_MISC_USEREVENT;
-		ret = fb_set_var(info, &var);
-		info->flags &= ~FBINFO_MISC_USEREVENT;
-		console_unlock();
-		unlock_fb_info(info);
-		if (!ret && copy_to_user(argp, &var, sizeof(var)))
-			ret = -EFAULT;
-		break;
+		return 0;
+		//		if (copy_from_user(&var, argp, sizeof(var)))
+//			return -EFAULT;
+//		if (!lock_fb_info(info))
+//			return -ENODEV;
+//		console_lock();
+//		info->flags |= FBINFO_MISC_USEREVENT;
+//		ret = fb_set_var(info, &var);
+//		info->flags &= ~FBINFO_MISC_USEREVENT;
+//		console_unlock();
+//		unlock_fb_info(info);
+//		if (!ret && copy_to_user(argp, &var, sizeof(var)))
+//			ret = -EFAULT;
+//		break;
 	case FBIOGET_FSCREENINFO:
 		if (!lock_fb_info(info))
 			return -ENODEV;

@@ -69,6 +69,77 @@ void jz_dsih_dphy_shutdown(struct dsi_device *dsi, int powerup)
 	mipi_dsih_write_part(dsi, R_DSI_HOST_PHY_RSTZ, powerup, 0, 1);
 }
 
+void jz_dsih_dphy_ulpm_enter(struct dsi_device *dsi)
+{
+	/* PHY_STATUS[6:1] == 6'h00 */
+	if (mipi_dsih_read_part(dsi, R_DSI_HOST_PHY_STATUS, 1, 6) == 0x0) {
+		printk("MIPI D-PHY is already in ULPM state now\n");
+		return;
+	}
+	/* PHY_RSTZ[3:0] = 4'hF */
+	mipi_dsih_write_part(dsi, R_DSI_HOST_PHY_RSTZ, 0xF, 0, 4);
+	/* PHY_ULPS_CTRL[3:0] = 4'h0 */
+	mipi_dsih_write_part(dsi, R_DSI_HOST_PHY_ULPS_CTRL, 0x0, 0, 4);
+	/* PHY_TX_TRIGGERS[3:0] = 4'h0 */
+	mipi_dsih_write_part(dsi, R_DSI_HOST_PHY_TX_TRIGGERS, 0x0, 0, 4);
+	/* PHY_STATUS[6:4] == 3'h3 */
+	while (mipi_dsih_read_part(dsi, R_DSI_HOST_PHY_STATUS, 4, 3) != 0x3 ||
+		   mipi_dsih_read_part(dsi, R_DSI_HOST_PHY_STATUS, 0, 2) != 0x1)
+		;
+	/* PHY_ULPS_CTRL [3:0] = 4'h5 */
+	mipi_dsih_write_part(dsi, R_DSI_HOST_PHY_ULPS_CTRL, 0x5, 0, 4);
+	/* LPCLK_CTRL[1:0] = 2'h2 */
+	mipi_dsih_write_part(dsi, R_DSI_HOST_LPCLK_CTRL, 0x2, 0, 2);
+	/* PHY_STATUS[6:0] == 7'h1 */
+	while (mipi_dsih_read_part(dsi, R_DSI_HOST_PHY_STATUS, 0, 7) != 0x1)
+		;
+	/* PHY_RSTZ[3] = 1'b0 */
+	mipi_dsih_write_part(dsi, R_DSI_HOST_PHY_RSTZ, 0x0, 3, 1);
+	/* PHY_STATUS [0] == 1'b0 */
+	while(mipi_dsih_read_part(dsi, R_DSI_HOST_PHY_STATUS, 0, 1) != 0x0)
+		;
+	printk("%s ...\n", __func__);
+}
+
+void jz_dsih_dphy_ulpm_exit(struct dsi_device *dsi)
+{
+	/* PHY_STATUS[6:1] == 6'h00 */
+	if (mipi_dsih_read_part(dsi, R_DSI_HOST_PHY_STATUS, 1, 6) != 0x0) {
+		printk("MIPI D-PHY is not in ULPM state now\n");
+		return;
+	}
+	/* PHY_STATUS[0] == 1'b1 */
+	if (mipi_dsih_read_part(dsi, R_DSI_HOST_PHY_STATUS, 0, 1) == 0x1)
+		goto step5;
+
+	/* PHY_RSTZ [3] = 1'b1 */
+	mipi_dsih_write_part(dsi, R_DSI_HOST_PHY_RSTZ, 0x1, 3, 1);
+	/* PHY_STATUS[0] == 1'b1 */
+	while (mipi_dsih_read_part(dsi, R_DSI_HOST_PHY_STATUS, 0, 1) != 0x1)
+		;
+
+step5:
+	/* PHY_ULPS_CTRL[3:0] = 4'hF */
+	mipi_dsih_write_part(dsi, R_DSI_HOST_PHY_ULPS_CTRL, 0xF, 0, 4);
+	/* PHY_STATUS [5] == 1'b1 && PHY_STATUS [3] == 1'b1 */
+	while(mipi_dsih_read_part(dsi, R_DSI_HOST_PHY_STATUS, 5, 1) != 0x1 ||
+	      mipi_dsih_read_part(dsi, R_DSI_HOST_PHY_STATUS, 3, 1) != 0x1)
+		;
+	/* Wait for 1 ms */
+	mdelay(1);
+	/* PHY_ULPS_CTRL [3:0] = 4'h0 */
+	mipi_dsih_write_part(dsi, R_DSI_HOST_PHY_ULPS_CTRL, 0x0, 0, 4);
+	/* LPCLK_CTRL[1:0] = 2'h1 */
+	mipi_dsih_write_part(dsi, R_DSI_HOST_LPCLK_CTRL, 0x1, 0, 2);
+	/* PHY_STATUS [6:4] == 3'h3 && PHY_STATUS [1:0] == 2'h1 */
+	while (mipi_dsih_read_part(dsi, R_DSI_HOST_PHY_STATUS, 4, 3) != 0x3 ||
+           mipi_dsih_read_part(dsi, R_DSI_HOST_PHY_STATUS, 0, 2) != 0x1)
+		;
+	/* PHY_RSTZ [3] = 1'b0 */
+	mipi_dsih_write_part(dsi, R_DSI_HOST_PHY_RSTZ, 0x0, 3, 1);
+	printk("%s ...\n", __func__);
+}
+
 void jz_dsih_hal_power(struct dsi_device *dsi, int on)
 {
 	mipi_dsih_write_part(dsi, R_DSI_HOST_PWR_UP, on, 0, 1);
@@ -233,6 +304,8 @@ void jz_dsi_dpi_cfg(struct dsi_device *dsi, unsigned int *ratio_clock_xPF,
 			       video_config->v_active_lines));
 	mipi_dsih_hal_dpi_vbp(dsi, video_config->v_back_porch_lines);
 	mipi_dsih_hal_dpi_vsync(dsi, video_config->v_sync_lines);
+
+#ifdef CONFIG_DSI_DPI_DEBUG
 	printk("hline:%d\n",
 	       (unsigned
 		short)((video_config->h_total_pixels * (*ratio_clock_xPF)) /
@@ -250,6 +323,7 @@ void jz_dsi_dpi_cfg(struct dsi_device *dsi, unsigned int *ratio_clock_xPF,
 					      video_config->v_active_lines));
 	printk("vbp:%d\n", video_config->v_back_porch_lines);
 	printk("vsync:%d\n", video_config->v_sync_lines);
+#endif
 
 	mipi_dsih_hal_dpi_hsync_pol(dsi, !video_config->h_polarity);	//active low
 	mipi_dsih_hal_dpi_vsync_pol(dsi, !video_config->v_polarity);	//active low
@@ -333,8 +407,8 @@ dsih_error_t jz_dsih_dphy_configure(struct dsi_device *dsi,
 		input_divider = phy->reference_freq / DPHY_DIV_LOWER_LIMIT;
 		//make sure M is not overflowed,M mask 9 bits
 		if(loop_divider > 511){
-		loop_divider = output_freq / (DPHY_DIV_LOWER_LIMIT * 2);
-		input_divider = phy->reference_freq / (DPHY_DIV_LOWER_LIMIT * 2);
+			loop_divider = output_freq / (DPHY_DIV_LOWER_LIMIT * 2);
+			input_divider = phy->reference_freq / (DPHY_DIV_LOWER_LIMIT * 2);
 		}
 	} else {		/* variable was incremented before exiting the loop */
 		/*
@@ -349,10 +423,6 @@ dsih_error_t jz_dsih_dphy_configure(struct dsi_device *dsi,
 	     && (loop_divider > loop_bandwidth[i].loop_div); i++) {
 		;
 	}
-	printk("dsi_phy output_freq set:input_divider = %d loop_divider = %d\n",input_divider,loop_divider);
-	if(loop_divider > 511)
-		printk("+++++++++++++++serious warning: loop_divider is overflowed!\n");
-
 	/* i = 0;
 	 * */
 	if (i >= (sizeof(loop_bandwidth) / sizeof(loop_bandwidth[0]))) {

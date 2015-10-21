@@ -16,6 +16,11 @@ __attribute__((weak)) struct jztsc_platform_data {
 	unsigned int		y_max;
 
 	char *power_name;
+        unsigned long irqflags;
+        unsigned int irq;
+        unsigned int reset;
+	char *vcc_name;
+        char *vccio_name;
 	int wakeup;
 
 	void		*private;

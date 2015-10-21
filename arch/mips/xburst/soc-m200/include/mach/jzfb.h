@@ -135,6 +135,7 @@ struct jzdsi_data {
  */
 
 struct jzfb_platform_data {
+	char *name;
 	size_t num_modes;
 	struct fb_videomode *modes;
 	struct jzdsi_data *dsi_pdata;

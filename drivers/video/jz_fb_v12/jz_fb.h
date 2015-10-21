@@ -1,5 +1,30 @@
+#ifndef __JZ_FB_DRV_H__
+#define __JZ_FB_DRV_H__
+
 #include <linux/fb.h>
-//#include <linux/earlysuspend.h>
+#include <linux/semaphore.h>
+
+#ifndef __exit
+#define __exit
+#endif
+#ifndef __devexit
+#define __devexit
+#endif
+#ifndef __devinit
+#define __devinit	__init
+#endif
+#ifndef __devinitdata
+#define __devinitdata
+#endif
+#ifndef __devexit_p
+#define __devexit_p(x)	x
+#endif
+
+//#include "slcd_te_vsync.h"
+//struct slcd_te;
+
+/* debug */
+//#define DEBUG_DDR_CLOCK_POWER_NOTIFY
 #define NUM_FRAME_BUFFERS 1
 
 #ifdef CONFIG_TWO_FRAME_BUFFERS
@@ -11,6 +36,7 @@
 #undef NUM_FRAME_BUFFERS
 #define NUM_FRAME_BUFFERS 3
 #endif
+
 #define PIXEL_ALIGN 4
 #define MAX_DESC_NUM 4
 
@@ -77,6 +103,14 @@ struct jzfb_osd_t {
 	struct jzfb_fg_t fg1;
 };
 
+
+struct slcd_te {
+	int te_gpio;
+	int te_gpio_level;
+	int te_irq_no;
+	int refresh_request;
+};
+
 struct jzfb {
 	int is_lcd_en;		/* 0, disable  1, enable */
 	int is_clk_en;		/* 0, disable  1, enable */
@@ -96,8 +130,6 @@ struct jzfb {
 	struct resource *mem;
 #ifdef CONFIG_JZ_MIPI_DSI
 	struct dsi_device *dsi;
-	struct platform_driver *jz_dsi_driver;
-	struct platform_device *jz_dsi_device;
 #endif
 
 
@@ -115,6 +147,7 @@ struct jzfb {
 	dma_addr_t framedesc_phys;
 
 	wait_queue_head_t vsync_wq;
+	ktime_t vsync_timestamp;
 	unsigned int vsync_skip_map;	/* 10 bits width */
 	int vsync_skip_ratio;
 
@@ -127,21 +160,27 @@ struct jzfb {
 
 	struct mutex lock;
 	struct mutex suspend_lock;
+	struct list_head link;
 
 	enum jzfb_format_order fmt_order;	/* frame buffer pixel format order */
 	struct jzfb_osd_t osd;	/* osd's config information */
 
+	struct clk *ddr_clk;
 	struct clk *clk;
 	struct clk *pclk;
 	struct clk *pwcl;
+
+#ifdef DEBUG_DDR_CLOCK_POWER_NOTIFY
+	struct clk *ddr_clk_notify;
+#endif
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend early_suspend;
 #endif
 	int is_suspend;
 	unsigned int pan_display_count;
-	int blank;
-	unsigned int pseudo_palette[16];
+unsigned int pseudo_palette[16];
+	struct slcd_te slcd_te;
 };
 
 void jzfb_clk_enable(struct jzfb *jzfb);
@@ -213,6 +252,7 @@ struct jzfb_mode_res {
 #define JZFB_SET_FG_POS			_IOW('F', 0x118, struct jzfb_fg_pos)
 #define JZFB_GET_FG_POS			_IOWR('F', 0x119, struct jzfb_fg_pos)
 #define JZFB_GET_BUFFER			_IOR('F', 0x120, int)
+#define JZFB_GET_LCDTYPE        _IOR('F', 0x122, int)
 /* Reserved for future extend */
 #define JZFB_SET_ALPHA			_IOW('F', 0x123, struct jzfb_fg_alpha)
 #define JZFB_SET_BACKGROUND		_IOW('F', 0x124, struct jzfb_bg)
@@ -222,7 +262,6 @@ struct jzfb_mode_res {
 /* Reserved for future extend */
 #define JZFB_ENABLE_FG0			_IOW('F', 0x139, int)
 #define JZFB_ENABLE_FG1			_IOW('F', 0x140, int)
-#define JZFB_GET_LCDTYPE		_IOR('F', 0x122, int)
 
 /* Reserved for future extend */
 #define JZFB_SET_VSYNCINT		_IOW('F', 0x210, int)
@@ -232,4 +271,9 @@ extern int jzfb_config_image_enh(struct fb_info *info);
 extern int jzfb_image_enh_ioctl(struct fb_info *info, unsigned int cmd,
 				unsigned long arg);
 extern int update_slcd_frame_buffer(void);
-extern int lcd_display_inited_by_uboot(void);
+extern int lcd_display_inited_by_uboot( void );
+
+
+extern int jzfb_slcd_restart(struct jzfb *jzfb);
+
+#endif /* __JZ_FB_DRV_H__ */

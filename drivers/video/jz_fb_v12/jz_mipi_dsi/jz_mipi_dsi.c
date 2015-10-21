@@ -33,6 +33,8 @@
 #include "jz_mipi_dsi_lowlevel.h"
 #include "jz_mipi_dsih_hal.h"
 #include "jz_mipi_dsi_regs.h"
+extern struct jzfb_platform_data jzfb_pdata;
+
 
 #define DSI_IOBASE      0x13014000
 struct mipi_dsim_ddi {
@@ -70,11 +72,13 @@ int jz_dsi_video_cfg(struct dsi_device *dsi)
 	if ((dsi == NULL) || (video_config == NULL)) {
 		return ERR_DSI_INVALID_INSTANCE;
 	}
+#if 1
 	if(dsi->state == UBOOT_INITIALIZED) {
 		/*no need to reconfig, just return*/
 		printk("dsi has already been initialized by uboot!!\n");
 		return OK;
 	}
+#endif
 	if (dsi->state != INITIALIZED) {
 		return ERR_DSI_INVALID_INSTANCE;
 	}
@@ -246,9 +250,7 @@ int jz_dsi_video_cfg(struct dsi_device *dsi)
 	jz_dsih_dphy_no_of_lanes(dsi, video_config->no_of_lanes);
 	/* enable high speed clock */
 	mipi_dsih_dphy_enable_hs_clk(dsi, 1);
-	pr_info("video configure is ok!\n");
-
-
+	pr_debug("video configure is ok!\n");
 	return err_code;
 
 }
@@ -459,15 +461,11 @@ static void jz_mipi_update_cfg(struct dsi_device *dsi)
 {
 	int ret;
 	int st_mask = 0;
-	int retry = 25;
-	dsi->state = NOT_INITIALIZED;
+	int retry = 5;
 	ret = jz_dsi_phy_open(dsi);
 	if (ret) {
 		pr_err("open the phy failed!\n");
 	}
-
-	mipi_dsih_write_word(dsi, R_DSI_HOST_CMD_MODE_CFG,
-				     0xffffff0);
 
 	/*set command mode */
 	mipi_dsih_write_word(dsi, R_DSI_HOST_MODE_CFG, 0x1);
@@ -483,100 +481,138 @@ static void jz_mipi_update_cfg(struct dsi_device *dsi)
 		pr_err("phy configigure failed!\n");
 	}
 
-#if 0
+	pr_debug("wait for phy config ready\n");
 	if (dsi->video_config->no_of_lanes == 2)
 		st_mask = 0x95;
 	else
 		st_mask = 0x15;
 
 	/*checkout phy clk lock and  clklane, datalane stopstate  */
+	udelay(10);
 	while ((mipi_dsih_read_word(dsi, R_DSI_HOST_PHY_STATUS) & st_mask) !=
-			st_mask && retry--) {
-		pr_info("phy status = %08x\n", mipi_dsih_read_word(dsi, R_DSI_HOST_PHY_STATUS));
+	       st_mask && retry--) {
+			pr_info("phy status = %08x\n", mipi_dsih_read_word(dsi, R_DSI_HOST_PHY_STATUS));
 	}
 
 	if (!retry){
 		pr_err("wait for phy config failed!\n");
 	}
-#endif
 
-	mipi_dsih_dphy_enable_hs_clk(dsi, 0);
 	dsi->state = INITIALIZED;
+
+	mipi_dsih_write_word(dsi, R_DSI_HOST_CMD_MODE_CFG,
+				     0xffffff0);
 
 }
 
-static int jz_mipi_dsi_set_blank(struct dsi_device *dsi, int blank_mode)
+/* for debug lcd power on/off */
+int jz_mipi_dsi_set_client(struct dsi_device *dsi, int power)
 {
 	struct mipi_dsim_lcd_driver *client_drv = dsi->dsim_lcd_drv;
 	struct mipi_dsim_lcd_device *client_dev = dsi->dsim_lcd_dev;
-	dev_dbg("%s, %d :blank_mode:%x, dsi->suspended:%x\n", __func__, __LINE__, blank_mode, dsi->suspended);
-	switch (blank_mode) {
-	case DSI_BLANK_UNBLANK:
-		if(!clk_is_enabled(dsi->clk)) {
-			clk_enable(dsi->clk);
-		}
-		break;
-	case DSI_BLANK_NORMAL:
-		if(clk_is_enabled(dsi->clk)) {
-			clk_disable(dsi->clk);
-		}
-		break;
-	case DSI_BLANK_POWERDOWN:
-		if (dsi->suspended)
-			return 0;
 
-		dsi->suspended = true;
+      switch (power) {
+	case FB_BLANK_POWERDOWN:
+        if (client_drv && client_drv->suspend)
+            client_drv->suspend(client_dev);
 
-		if (client_drv && client_drv->suspend)
-			client_drv->suspend(client_dev);
+        break;
+    case FB_BLANK_UNBLANK:
+        /* lcd panel power on. */
+        if (client_drv && client_drv->power_on)
+            client_drv->power_on(client_dev, POWER_ON_LCD);
 
+        /* set lcd panel sequence commands. */
+        if (client_drv && client_drv->set_sequence)
+            client_drv->set_sequence(client_dev);
 
-		jz_dsih_dphy_clock_en(dsi, 0);
-		jz_dsih_dphy_shutdown(dsi, 0);
-		mipi_dsih_hal_power(dsi, 0);
-		clk_disable(dsi->clk);
+        break;
+    case FB_BLANK_NORMAL:
+        /* TODO. */
+        break;
 
-
-		break;
-	case DSI_BLANK_POWERUP:
-		if (!dsi->suspended)
-			return 0;
-
-		dsi->suspended = false;
-		if(!clk_is_enabled(dsi->clk)) {
-			clk_enable(dsi->clk);
-		}
-
-		//dump_dsi_reg(dsi);
-		/* lcd panel power on. */
-		if (client_drv && client_drv->power_on)
-			client_drv->power_on(client_dev, 1);
-
-		jz_mipi_update_cfg(dsi);
-		/* set lcd panel sequence commands. */
-		if (client_drv && client_drv->set_sequence)
-			client_drv->set_sequence(client_dev);
-
-		mipi_dsih_dphy_enable_hs_clk(dsi, 1);
-		mipi_dsih_dphy_auto_clklane_ctrl(dsi, 1);
-
-		mipi_dsih_write_word(dsi, R_DSI_HOST_CMD_MODE_CFG, 1);
-		mipi_dsih_hal_power(dsi, 1);
-
-		break;
-	default:
-		break;
-	}
+    default:
+        break;
+    }
 
 }
+
+static int jz_mipi_dsi_blank_mode(struct dsi_device *dsi, int power)
+{
+	struct mipi_dsim_lcd_driver *client_drv = dsi->dsim_lcd_drv;
+	struct mipi_dsim_lcd_device *client_dev = dsi->dsim_lcd_dev;
+
+    switch (power) {
+	case FB_BLANK_POWERDOWN:
+        if (dsi->suspended)
+            return 0;
+
+        if (client_drv && client_drv->suspend)
+            client_drv->suspend(client_dev);
+
+        jz_dsih_dphy_clock_en(dsi, 0);
+        jz_dsih_dphy_shutdown(dsi, 0);
+        clk_disable(dsi->clk);
+        mipi_dsih_hal_power(dsi, 0);
+
+        dsi->state = NOT_INITIALIZED;
+        dsi->suspended = true;
+
+        break;
+    case FB_BLANK_UNBLANK:
+        if (!dsi->suspended)
+            return 0;
+
+        clk_enable(dsi->clk);
+        jz_mipi_update_cfg(dsi);
+
+        /* lcd panel power on. */
+        if (client_drv && client_drv->power_on)
+            client_drv->power_on(client_dev, POWER_ON_LCD);
+
+        mipi_dsih_dphy_enable_hs_clk(dsi, 1);
+        mipi_dsih_dphy_auto_clklane_ctrl(dsi, 1);
+
+        /* set lcd panel sequence commands. */
+        if (client_drv && client_drv->set_sequence)
+            client_drv->set_sequence(client_dev);
+
+        mipi_dsih_write_word(dsi, R_DSI_HOST_CMD_MODE_CFG, 1);
+        mipi_dsih_hal_power(dsi, 1);
+        dsi->suspended = false;
+
+        break;
+    case FB_BLANK_NORMAL:
+        /* TODO. */
+        break;
+
+
+    default:
+        break;
+    }
+
+    return 0;
+}
+
+static int jz_mipi_dsi_ioctl(struct dsi_device *dsi, int cmd)
+{
+    struct mipi_dsim_lcd_driver *client_drv = dsi->dsim_lcd_drv;
+    struct mipi_dsim_lcd_device *client_dev = dsi->dsim_lcd_dev;
+
+    if (client_drv && client_drv->ioctl)
+        client_drv->ioctl(client_dev, cmd);
+
+    return 0;
+}
+
+
 /* define MIPI-DSI Master operations. */
 static struct dsi_master_ops jz_master_ops = {
-	.video_cfg = jz_dsi_video_cfg,
-	.cmd_write = write_command,	/*jz_dsi_wr_data, */
-	.cmd_read = NULL,	/*jz_dsi_rd_data, */
-	.set_early_blank_mode   = NULL, /*jz_mipi_dsi_early_blank_mode,*/
-	.set_blank_mode         = NULL, /*jz_mipi_dsi_blank_mode,*/
-	.set_blank				= jz_mipi_dsi_set_blank,
+    .video_cfg      = jz_dsi_video_cfg,
+    .cmd_write      = write_command,	/*jz_dsi_wr_data, */
+    .cmd_read       = NULL,	/*jz_dsi_rd_data, */
+    .ioctl          = jz_mipi_dsi_ioctl,
+    .set_blank_mode = jz_mipi_dsi_blank_mode,
 };
 
 int mipi_dsi_register_lcd_device(struct mipi_dsim_lcd_device *lcd_dev)
@@ -745,27 +781,21 @@ struct dsi_device * jzdsi_init(struct jzdsi_data *pdata)
 	dsi->video_config->h_polarity = pdata->modes->sync & FB_SYNC_HOR_HIGH_ACT;
 	dsi->video_config->h_active_pixels = pdata->modes->xres;
 	dsi->video_config->h_sync_pixels = pdata->modes->hsync_len;
-	dsi->video_config->h_back_porch_pixels = pdata->modes->left_margin;
+	dsi->video_config->h_back_porch_pixels = pdata->modes->right_margin;
 	dsi->video_config->h_total_pixels = pdata->modes->xres + pdata->modes->hsync_len + pdata->modes->left_margin + pdata->modes->right_margin;
 	dsi->video_config->v_active_lines = pdata->modes->yres;
 	dsi->video_config->v_polarity =  pdata->modes->sync & FB_SYNC_VERT_HIGH_ACT;
 	dsi->video_config->v_sync_lines = pdata->modes->vsync_len;
-	dsi->video_config->v_back_porch_lines = pdata->modes->upper_margin;
+	dsi->video_config->v_back_porch_lines = pdata->modes->lower_margin;
 	dsi->video_config->v_total_lines = pdata->modes->yres + pdata->modes->upper_margin + pdata->modes->lower_margin + pdata->modes->vsync_len;
-	dsi->video_config->byte_clock = ((dsi->video_config->h_total_pixels * dsi->video_config->v_total_lines * pdata->modes->refresh) / 1000) * pdata->bpp_info / dsi->video_config->no_of_lanes / 8 ;
-	dsi->video_config->byte_clock = dsi->video_config->byte_clock + dsi->video_config->byte_clock / 2; //DATALANE_BPS is set 1.5 times than real needed in order to avoid lcd tearing
-	pr_debug("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
-	pr_debug("h_total_pixels  = %d\n",dsi->video_config->h_total_pixels);
-	pr_debug("v_total_lines  = %d\n",dsi->video_config->v_total_lines);
-	pr_debug("refresh  = %d\n",pdata->modes->refresh);
-	pr_debug("bpp_info  = %d\n",pdata->bpp_info);
-	pr_debug("pixel_clock = %d DATALANE_BPS = %d\n",dsi->video_config->pixel_clock,dsi->video_config->byte_clock * 8);
-	pr_debug("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
-	if(dsi->video_config->byte_clock * 8 > pdata->max_bps * 1000){
-		dsi->video_config->byte_clock = pdata->max_bps * 1000 / 8;
+	dsi->video_config->byte_clock = dsi->video_config->h_total_pixels * dsi->video_config->v_total_lines * jzfb_pdata.modes->refresh * jzfb_pdata.bpp / dsi->video_config->no_of_lanes / 8 / 1000 ;
+	dsi->video_config->byte_clock = (dsi->video_config->byte_clock * 3) >> 1; /* DATALANE_BPS is set 1.5 times than real needed in order to avoid lcd tearing */
+	dsi->master_ops = &jz_master_ops;
+
+	if (dsi->video_config->byte_clock * 8 > dsi->dsi_config->max_bps * 1000) {
+		dsi->video_config->byte_clock = dsi->dsi_config->max_bps * 1000 / 8;
 		pr_info("+++++++++++++warning: DATALANE_BPS is over lcd max_bps allowed ,auto set it lcd max_bps\n");
 	}
-	dsi->master_ops = &jz_master_ops;
 
 	dsi->clk = clk_get(NULL, "dsi");
 	if (IS_ERR(dsi->clk)) {
@@ -781,6 +811,7 @@ struct dsi_device * jzdsi_init(struct jzdsi_data *pdata)
 	}
 
 	mutex_init(&dsi->lock);
+
 	dsim_ddi = mipi_dsi_bind_lcd_ddi(dsi, pdata->modes->name);
 	if (!dsim_ddi) {
 		pr_err("dsi->dev: mipi_dsim_ddi object not found.\n");
@@ -790,6 +821,7 @@ struct dsi_device * jzdsi_init(struct jzdsi_data *pdata)
 
 	if (dsim_ddi->dsim_lcd_drv && dsim_ddi->dsim_lcd_drv->probe)
 		dsim_ddi->dsim_lcd_drv->probe(dsim_ddi->dsim_lcd_dev);
+#if 1
 	if (mipi_dsih_read_word(dsi, R_DSI_HOST_PWR_UP) & 0x1) {
 		dsi->state = UBOOT_INITIALIZED;
 	}
@@ -797,16 +829,9 @@ struct dsi_device * jzdsi_init(struct jzdsi_data *pdata)
 	if(dsi->state == UBOOT_INITIALIZED) {
 
 		dsi->dsi_phy->status = INITIALIZED;
-		/*
-		 * ######## BUG to be fix #######
-		 * Uboot and kernel parameters are different. if we place
-		 * dsi->state = INITIALIZED. the lcd display abnormal.
-		 *
-		 * */
-#ifdef CONFIG_JZ_MIPI_DBI
 		dsi->state = INITIALIZED; /*must be here for set_sequence function*/
-#endif
 	} else {
+#endif
 
 		if (dsim_ddi->dsim_lcd_drv && dsim_ddi->dsim_lcd_drv->power_on)
 			dsim_ddi->dsim_lcd_drv->power_on(dsim_ddi->dsim_lcd_dev, 1);
@@ -838,47 +863,42 @@ struct dsi_device * jzdsi_init(struct jzdsi_data *pdata)
 
 		/*checkout phy clk lock and  clklane, datalane stopstate  */
 		while ((mipi_dsih_read_word(dsi, R_DSI_HOST_PHY_STATUS) & st_mask) !=
-				st_mask && retry) {
-			retry--;
+				st_mask && retry--) {
 			pr_info("phy status = %08x\n", mipi_dsih_read_word(dsi, R_DSI_HOST_PHY_STATUS));
-		}
-
-		if (!retry)
-			goto err_phy_state;
-
-		dsi->state = INITIALIZED; /*must be here for set_sequence function*/
-
-		mipi_dsih_write_word(dsi, R_DSI_HOST_CMD_MODE_CFG,
-				0xffffff0);
-
-		if (dsim_ddi->dsim_lcd_drv && dsim_ddi->dsim_lcd_drv->set_sequence){
-			dsim_ddi->dsim_lcd_drv->set_sequence(dsim_ddi->dsim_lcd_dev);
-		}else{
-			pr_err("lcd mipi panel init failed!\n");
-			goto err_panel_init;
-		}
-
-		mipi_dsih_dphy_enable_hs_clk(dsi, 1);
-		mipi_dsih_dphy_auto_clklane_ctrl(dsi, 1);
-
-		mipi_dsih_write_word(dsi, R_DSI_HOST_CMD_MODE_CFG, 1);
 	}
 
+	if (!retry)
+		goto err_phy_state;
+
+	dsi->state = INITIALIZED;
+
+	mipi_dsih_write_word(dsi, R_DSI_HOST_CMD_MODE_CFG,
+				     0xffffff0);
+
+	if (dsim_ddi->dsim_lcd_drv && dsim_ddi->dsim_lcd_drv->set_sequence){
+		dsim_ddi->dsim_lcd_drv->set_sequence(dsim_ddi->dsim_lcd_dev);
+	}else{
+		pr_err("lcd mipi panel init failed!\n");
+		goto err_panel_init;
+	}
+
+	mipi_dsih_dphy_enable_hs_clk(dsi, 1);
+	mipi_dsih_dphy_auto_clklane_ctrl(dsi, 1);
+
+	mipi_dsih_write_word(dsi, R_DSI_HOST_CMD_MODE_CFG, 1);
+#if 1
+	}
+#endif
 	dsi->suspended = false;
 
 #ifdef CONFIG_DSI_DPI_DEBUG	/*test pattern */
-	/*
-	 * Wether the uboot dsi on or not. if kernel config test Pattern. we enable it
-	 * when LCDC driver call video config. the color bar will appear. if LCDC keep
-	 * transfering data. the suspend resume will display a different color bar.
-	 * */
 	unsigned int tmp = 0;
+	jz_dsi_video_cfg(dsi);
 
 	tmp = mipi_dsih_read_word(dsi, R_DSI_HOST_VID_MODE_CFG);
 	tmp |= 1 << 16 | 0 << 20 | 1 << 24;
 	mipi_dsih_write_word(dsi, R_DSI_HOST_VID_MODE_CFG, tmp);
 #endif
-
 
 	return dsi;
 err_panel_init:
