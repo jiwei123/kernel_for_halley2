@@ -61,6 +61,7 @@ struct root_desc root_tables[] = {
 
 struct attr_desc attr_tables[] = {
     {tTYPE, "type"},
+    {tVENDOR, "vendor"},
     {tCHIP, "chip"},
     {tNAME, "name"},
     {tVERSION, "version"},
@@ -243,6 +244,10 @@ static int __init init_rootlist(void)
     hwlist_create_attr(nSYSTEM, tTYPE, tSINGLE, "iwds");
     hwlist_create_attr(nSYSTEM, tNAME, tSINGLE, "ingenic");
 
+#ifdef CONFIG_DEVICE_VENDOR_NAME
+    hwlist_create_attr(nSYSTEM, tVENDOR, tSINGLE, CONFIG_DEVICE_VENDOR_NAME);
+#endif
+
 #ifdef CONFIG_BLUETOOTH_NAME
     hwlist_bluetooth_chip(CONFIG_BLUETOOTH_NAME);
 #endif
@@ -265,7 +270,7 @@ static int __init init_rootlist(void)
     //hwlist_mmi_item("magsensor");
     hwlist_mmi_item("stepcount");
     hwlist_mmi_item("pressuresensor");
-    hwlist_mmi_item("heartrate_adc");
+    hwlist_mmi_item("heartrate");
     hwlist_mmi_item("bluetooth");
 #if defined(CONFIG_BCMDHD_1_141_66)
     hwlist_mmi_item("wifi");

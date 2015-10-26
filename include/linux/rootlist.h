@@ -14,6 +14,7 @@ enum root_e {
 
 enum attr_e {
     tTYPE = _IO('A', 0),
+    tVENDOR,
     tCHIP,
     tNAME,
     tVERSION,
