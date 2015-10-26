@@ -4,6 +4,12 @@
 
 #include <linux/slpt.h>
 
+#ifdef CONFIG_BATTERY_RICOH619
+#define SAMPLE_ADC_FOR_KERNEL 1
+#else
+#define SAMPLE_ADC_FOR_KERNEL 0
+#endif
+
 #undef KEY
 #define KEY(index, n, v) [index] = {.id = index, .name = n, .val = (unsigned long)(v)}
 
@@ -28,6 +34,8 @@ struct slpt_key slpt_key_list[SLPT_K_NUMS] = {
 	KEY(SLPT_K_SLEEP_MOTION, "sleep_motion", 0),
 	KEY(SLPT_K_SLEEP_MOTION_ENABLE, "sleep_motion_enable", 0),
 	KEY(SLPT_K_IOCTL, "ioctl", NULL),
+	KEY(SLPT_K_FB_ON, "fb_on", 0),
+	KEY(SLPT_K_SAMPLE_ADC_FOR_KERNEL, "sample_adc_for_kernel", SAMPLE_ADC_FOR_KERNEL),
 };
 
 static inline int slpt_find_key_id_internal(const char *name) {

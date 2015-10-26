@@ -318,6 +318,8 @@ struct ricoh619_platform_data {
 	struct ricoh619_gpio_init_data *gpio_init_data;
 	int num_gpioinit_data;
 	bool enable_shutdown_pin;
+	int eco_slp_mode;
+	int dcdc_mode[5];
 };
 
 /* ==================================== */

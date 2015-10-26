@@ -2,8 +2,6 @@ menu "Slpt Drivers"
 
 config SLPT
 	bool "slpt driver"
-	select FB_DISPLAY_ALWAYS_ON
-	select LCD_BRIGHTNESS_ALWAYS_ON
 	help
 
 config FB_DISPLAY_ALWAYS_ON
@@ -28,6 +26,7 @@ config LCD_BRIGHTNESS_ALWAYS_ON_LEVEL
 
 config SLPT_MAP_TO_KSEG2
 	bool "slpt will map to kseg2 address"
+	depends on SLPT
 	default y
 
 config SLPT_SHUTDOWN

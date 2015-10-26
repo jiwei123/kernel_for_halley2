@@ -416,10 +416,10 @@ menuconfig BATTERY_RICOH619
 	help
 	  Say Y to enable support for the battery control of the Ricoh R5T619
 	  Power Management device.
-
 if BATTERY_RICOH619
 config RICOH61X_BAT
 	  bool "Ricoh R5T619 coulometer driver"
+	  select SLPT
 	  help
 	    Say Y to enable ricoh619 coulometer
 
@@ -427,8 +427,9 @@ config CHARGER_HOLD_WAKE_LOCK
       bool "hold a wake lock when charging."
       default y
 
+
 config RICOH61X_CHARGE_DONE_LIMIT
-	  int "Level for pmu charge done limit"
+	  int "Level for pmu current charge done limit"
 	  range 0 3
 	  default 3
 	  help
@@ -440,21 +441,20 @@ config LARGE_CAPACITY_BATTERY
 	  help
 	  Say "Y" to enable large capacity battery.
 
-config 320MAH_CAPACITY_BATTERY
-	  bool "Used 320mAh capacity battery"
-	  help
-	  Say "Y" to enable 320mAh capacity battery.
-
 config 300MAH_CAPACITY_BATTERY
 	  bool "Used 300mAh capacity battery"
 	  help
 	  Say "Y" to enable 300mAh capacity battery.
 
+config 320MAH_CAPACITY_BATTERY
+	  bool "Used 320mAh capacity battery"
+	  help
+	  Say "Y" to enable 320mAh capacity battery.
+
 config 200MAH_CAPACITY_BATTERY
 	  bool "Used 200mAh capacity battery"
 	  help
-	  Say "Y" to enable 200mAh capacity battery
-
+	  Say "Y" to enable 200mAh capacity battery.
 
 config SMALL_CAPACITY_BATTERY
 	  bool "Small capacity battery for 260mA 500mA"
@@ -469,15 +469,15 @@ config RICOH619_FG_DEBUG_LOG
 	  after debug state, disable it for release.
 
 menuconfig BATTERY_TYPE_LIST
-        tristate "The list of supported battery"
-        help
+	tristate "The list of supported battery"
+	help
           Say Y to select one battery from the supported list.
 
 if BATTERY_TYPE_LIST
 config BATTERY_WAKEUP_320MAH_4200MV
-        bool "Wake up 320MAH 4.2V battery"
-        help
-          Say Y to enable support for Wake up 320mah 4.2v battery.
+	bool "Wake up 320MAH 4.2V battery"
+	help
+	  Say Y to enable support for Wake up 320mah 4.2v battery.
 
 config BATTERY_AW808_320MAH_4200MV
         bool "AW808 320MAH 4.2V battery"
@@ -485,14 +485,19 @@ config BATTERY_AW808_320MAH_4200MV
           Say Y to enable support for AW808 320mah 4.2v battery.
 
 config BATTERY_OBAND_300MAH_4350MV
-        bool "Oband 300MAH 4.35V battery"
-        help
-          Say Y to enable support for Oband 300mah 4.35v battery.
+	bool "Oband 300MAH 4.35V battery"
+	help
+	  Say Y to enable support for Oband 300mah 4.35v battery.
 
 config BATTERY_OBAND_310MAH_4350MV
         bool "Oband 310MAH 4.35V battery"
         help
           Say Y to enable support for Oband 310mah 4.35v battery.
+
+config BATTERY_INWATCH_310MAH_4350MV
+        bool "Inwatch 310MAH 4.35V battery"
+        help
+          Say Y to enable support for Inwatch 310mah 4.35v battery.
 endif
 endif
 

@@ -2,6 +2,7 @@
 #include <linux/time.h>
 #include <linux/rtc.h>
 #include <linux/alarmtimer.h>
+#include <linux/moduleparam.h>
 
 struct intc_regs {
 	volatile unsigned int ICSR0;
@@ -100,9 +101,18 @@ static const char *intc1_src_name[32] = {
 void show_gpio_wakeup_sources(int port);
 
 struct rtc_time tm_suspend;
+unsigned long total_suspend_time = 0;
+
+unsigned int mask_rtc_wakeup = 0;
+core_param(mask_rtc_wakeup, mask_rtc_wakeup, int, 0644);
 
 void record_suspend_time(void) {
 	struct rtc_device *rtc_dev = alarmtimer_get_rtcdev();
+	struct intc_regs *intc = (void *)0xB0001000;
+
+	if (mask_rtc_wakeup) {
+		intc->ICMSR1 = (1 << 0);
+	}
 
 	if (rtc_dev == NULL)
 		return;
@@ -129,7 +139,10 @@ void show_suspend_time(void) {
 	minutes = delta / 60 % 60;
 	seconds = delta % 60;
 
+	total_suspend_time += delta;
+
 	pr_err("Total suspend: %ddays %dhours %dmintues %dseconds\n", days, hours, minutes, seconds);
+	pr_err("Total suspend: all : %lu seconds\n", total_suspend_time);
 }
 
 void show_wakeup_sources(void) {
@@ -157,4 +170,8 @@ void show_wakeup_sources(void) {
 		}
 	}
 	pr_err("-----------------\n");
+
+	if (mask_rtc_wakeup) {
+		intc->ICMCR1 = (1 << 0);
+	}
 }

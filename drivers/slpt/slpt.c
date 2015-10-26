@@ -1290,12 +1290,23 @@ extern void pm_p0_setup_tlb(unsigned int addr_fr0, unsigned int addr_fr1, unsign
 
 int slpt_pm_enter(suspend_state_t state) {
 	int error = 0;
+	int task_enable = 0;
+
+	/* notfiy slpt fb's state */
+	slpt_set_fb_on(fb_is_always_on());
 
 	pr_info("SLPT: slect task: %s\n", slpt_select ? slpt_select->name : "null");
 	pr_info("SLPT: enable: %d\n", slpt_select_enable);
 	pr_info("SLPT: fb %s\n", fb_is_always_on() ? "on" : "off");
+	pr_info("SLPT: sample adc %s\n", slpt_get_sample_adc_for_kernel() ? "yes" : "no");
 
-	if ((slpt_select_enable && slpt_select) && fb_is_always_on()) {
+	if (slpt_select && slpt_get_sample_adc_for_kernel())
+		task_enable = 1;
+
+	if (slpt_select && slpt_select_enable)
+		task_enable = 1;
+
+	if (task_enable) {
 		slpt_task_is_enabled = 1;
 #ifdef CONFIG_SLPT_MAP_TO_KSEG2
 		error = slpt_suspend_in_kernel(state);

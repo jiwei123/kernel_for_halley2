@@ -406,10 +406,22 @@ static noinline void cpu_sleep(void)
 	register unsigned int val;
 	register unsigned int pmu_slp_gpio_info = -1;
 	unsigned int save_slp = -1, func;
+	int pmu_can_enter_slp = 0;
 
 	local_flush_tlb_all();
 
-	pmu_slp_gpio_info = get_pmu_slp_gpio_info();
+	/* 如果休眠时是进入slpt，并且是亮屏的状态，那么此时的pmu不要进入sleep模式，
+	   为了保险起见，只要slpt在运行都不进入sleep模式
+	   否则就会因为刷屏时瞬态电流过高随机性死机 */
+#ifdef CONFIG_SLPT
+	if (fb_is_always_on()) {
+		printk(KERN_ERR "pmu now not goto sleep mode\n");
+		pmu_can_enter_slp = 0;
+	}
+#endif
+
+	if (pmu_can_enter_slp)
+		pmu_slp_gpio_info = get_pmu_slp_gpio_info();
 	if(pmu_slp_gpio_info != -1) {
 		save_slp = pmu_slp_gpio_info & 0xffff;
 		func = pmu_slp_gpio_info >> 16;
@@ -560,6 +572,12 @@ static inline void powerdown_wait(void)
 	opcr |= (cpu_no + 1) << 25; /* both big and small core power down*/
 	opcr |= 1 << 30;
 	REG32(0xb0000000 + CPM_OPCR) = opcr;
+
+	/* read the register to flush it to cpm controller */
+	/* opcr = REG32(0xb0000000 + CPM_OPCR); */
+	/* opcr = REG32(0xb0000000 + CPM_OPCR); */
+	/* opcr = REG32(0xb0000000 + CPM_OPCR); */
+
 	//serial_put_hex(opcr);
 	TCSM_PCHAR('e');
 	__asm__ volatile(".set mips32\n\t"

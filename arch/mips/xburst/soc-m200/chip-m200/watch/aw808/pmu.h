@@ -4,6 +4,12 @@
 
 #define PMU_I2C_BUSNUM  0
 
+/* ****************************PMU DCDC MODE at POWER_ON STATE*************** */
+#define DCDC_AUTO_MODE  0
+#define DCDC_PWM_MODE   1
+#define DCDC_PSM_MODE   2
+/* ****************************PMU DCDC MODE at POWER_ON STATE END*********** */
+
 /* ****************************PMU DC/LDO NAME******************************* */
 #define DC1_NAME       "cpu_core"
 #define DC2_NAME       "cpu_vmema"
@@ -118,5 +124,26 @@
 #define LDORTC1_INIT_ENABLE LDORTC1_BOOT_ON
 #define LDORTC2_INIT_ENABLE LDORTC2_BOOT_ON
 /* ****************************PMU DC/LDO INIT ENABLE END******************** */
+
+/* ****************************PMU LDO1~6 ECO SLEEP MODE********************* */
+#define LDO1_ECO_SLEEP  1
+#define LDO2_ECO_SLEEP  1
+#if defined(CONFIG_AW808_HW_F1)
+#define LDO3_ECO_SLEEP  0
+#else
+#define LDO3_ECO_SLEEP  1
+#endif
+#define LDO4_ECO_SLEEP  1
+#define LDO5_ECO_SLEEP  1
+#define LDO6_ECO_SLEEP  1
+/* ****************************PMU LDO1~6 ECO SLEEP MODE END***************** */
+
+/* ****************************PMU DCDC POWER_ON MODE************************ */
+#define DCDC1_MODE      DCDC_PSM_MODE
+#define DCDC2_MODE      DCDC_PSM_MODE
+#define DCDC3_MODE      DCDC_PSM_MODE
+#define DCDC4_MODE      DCDC_PSM_MODE
+#define DCDC5_MODE      DCDC_PSM_MODE
+/* ****************************PMU DCDC POWER_ON MODE END******************** */
 #endif	/* CONFIG_REGULATOR_RICOH619 */
 #endif

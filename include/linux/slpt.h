@@ -153,6 +153,8 @@ enum slpt_key_id {
 	SLPT_K_SLEEP_MOTION,
 	SLPT_K_SLEEP_MOTION_ENABLE,
 	SLPT_K_IOCTL,
+	SLPT_K_FB_ON,
+	SLPT_K_SAMPLE_ADC_FOR_KERNEL,
 
 	/* keep last */
 	SLPT_K_NUMS,
@@ -318,6 +320,34 @@ static inline void *slpt_get_ioctl(void) {
 
 	SLPT_GET_KEY(SLPT_K_IOCTL, &address);
 	return address;
+}
+
+/*
+ * fb on state: to notify slpt fb's state
+ */
+static inline int slpt_get_fb_on(void) {
+	int fb_on;
+
+	SLPT_GET_KEY(SLPT_K_FB_ON, &fb_on);
+	return fb_on;
+}
+
+static inline void slpt_set_fb_on(int fb_on) {
+	SLPT_SET_KEY(SLPT_K_FB_ON, fb_on);
+}
+
+/*
+ * sample adc for kernel
+ */
+static inline int slpt_get_sample_adc_for_kernel(void) {
+	int yes_or_no;
+
+	SLPT_GET_KEY(SLPT_K_SAMPLE_ADC_FOR_KERNEL, &yes_or_no);
+	return yes_or_no;
+}
+
+static inline void slpt_set_sample_adc_for_kernel(int yes_or_no) {
+	SLPT_SET_KEY(SLPT_K_SAMPLE_ADC_FOR_KERNEL, yes_or_no);
 }
 
 #define SLPT_LIMIT_SIZE (6 * 1024 * 1024)
