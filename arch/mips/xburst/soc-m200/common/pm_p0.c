@@ -406,7 +406,7 @@ static noinline void cpu_sleep(void)
 	register unsigned int val;
 	register unsigned int pmu_slp_gpio_info = -1;
 	unsigned int save_slp = -1, func;
-	int pmu_can_enter_slp = 0;
+	int pmu_can_enter_slp = 1;
 
 	local_flush_tlb_all();
 
