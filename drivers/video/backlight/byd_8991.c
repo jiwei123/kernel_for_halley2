@@ -39,11 +39,11 @@ struct byd_8991_data {
 
 static void byd_8991_on(struct byd_8991_data *dev) {
 	dev->lcd_power = 1;
-#ifdef CONFIG_NEED_REGULATOR
-	if(!regulator_is_enabled(dev->lcd_vcc_reg)) {
-		regulator_enable(dev->lcd_vcc_reg);
+	if (!IS_ERR(dev->lcd_vcc_reg)) {
+		if(!regulator_is_enabled(dev->lcd_vcc_reg)) {
+			regulator_enable(dev->lcd_vcc_reg);
+		}
 	}
-#endif
 	if (dev->pdata->gpio_lcd_disp)
 		gpio_direction_output(dev->pdata->gpio_lcd_disp, 1);
 
@@ -71,11 +71,11 @@ static void byd_8991_off(struct byd_8991_data *dev)
 	if (dev->pdata->gpio_lcd_disp)
 		gpio_direction_output(dev->pdata->gpio_lcd_disp, 0);
 	mdelay(2);
-#ifdef CONFIG_NEED_REGULATOR
-	if(regulator_is_enabled(dev->lcd_vcc_reg)) {
-		regulator_disable(dev->lcd_vcc_reg);
+	if (!IS_ERR(dev->lcd_vcc_reg)) {
+		if(regulator_is_enabled(dev->lcd_vcc_reg)) {
+			regulator_disable(dev->lcd_vcc_reg);
+		}
 	}
-#endif
 	mdelay(10);
 }
 
@@ -121,13 +121,10 @@ static int byd_8991_probe(struct platform_device *pdev)
 	dev->pdata = pdev->dev.platform_data;
 
 	dev_set_drvdata(&pdev->dev, dev);
-#ifdef CONFIG_NEED_REGULATOR
 	dev->lcd_vcc_reg = regulator_get(NULL, "lcd_1v8");
 	if (IS_ERR(dev->lcd_vcc_reg)) {
-		dev_err(&pdev->dev, "failed to get regulator vlcd\n");
-		return PTR_ERR(dev->lcd_vcc_reg);
+		dev_warn(&pdev->dev, "failed to get regulator vlcd\n");
 	}
-#endif
 	if (dev->pdata->gpio_lcd_disp)
 		gpio_request(dev->pdata->gpio_lcd_disp, "display on");
 
@@ -168,9 +165,9 @@ static int byd_8991_remove(struct platform_device *pdev)
 
 	lcd_device_unregister(dev->lcd);
 	byd_8991_off(dev);
-#ifdef CONFIG_NEED_REGULATOR
-	regulator_put(dev->lcd_vcc_reg);
-#endif
+	if (!IS_ERR(dev->lcd_vcc_reg)) {
+		regulator_put(dev->lcd_vcc_reg);
+	}
 	if (dev->pdata->gpio_lcd_disp)
 		gpio_free(dev->pdata->gpio_lcd_disp);
 	if (dev->pdata->gpio_lcd_cs)
