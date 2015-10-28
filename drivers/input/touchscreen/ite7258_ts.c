@@ -63,6 +63,14 @@ unsigned char *algorithm_raw_data = NULL;
 unsigned char *configurate_raw_data = NULL;
 #endif
 #endif
+enum ite_ts_type {
+	TP_ITE7258_SQUARE,    /* IT7258 , 4X4方形TP，固件FW版本号5.13.x.x */
+	TP_ITE7258_FLAT,      /* IT7258, 圆形缺角TP，固件FW版本号5.17.x.x */
+	TP_ITE7258_CIRCLE,    /* IT7258, 全圆TP，固件FW版本号5.16.x.x */
+	TP_ITE7262_CIRCLE,    /* IT7262, 全圆TP，固件FW版本号5.15.x.x */
+	TP_ITE7252_SQUARE,    /* IT7252, 4X4方形TP， 固件FW版本号3.13.x.x */
+	TP_ITE_UNSUPPORT,
+};
 
 #define		CONFIG_ITE7258_MULTITOUCH
 struct ite7258_ts_data {
@@ -77,6 +85,7 @@ struct ite7258_ts_data {
         unsigned int is_suspend;
         unsigned int tp_firmware_algo_ver;
         unsigned int tp_firmware_cfg_ver;
+        enum ite_ts_type type;
         struct i2c_client *client;
         struct input_dev *input_dev;
         struct jztsc_platform_data *pdata;
@@ -203,10 +212,29 @@ static void ite7258_exit_sleep_mode(struct ite7258_ts_data *ts)
 		int ret = 0;
 		struct i2c_client *client = ts->client;
 
-		wbuf[0] = QUERY_BUF_ADDR;
-		ret = ite7258_i2c_Read(client, wbuf, 1, wbuf, 1);
-		if (ret < 0)
-			printk("ite7258_exit_sleep_mode failed\n");
+		switch (ts->type) {
+		case TP_ITE7252_SQUARE:
+			wbuf[0] = CMD_BUF_ADDR;
+			wbuf[1] = 0x6f;
+			ret = ite7258_i2c_Write(client, wbuf, 2); //softwave  reset
+			if (ret < 0)
+				printk("softwave  reset failed\n");
+			mdelay(20);
+			break;
+		case TP_ITE7258_SQUARE:
+		case TP_ITE7262_CIRCLE:
+			wbuf[0] = QUERY_BUF_ADDR;
+			ret = ite7258_i2c_Read(client, wbuf, 1, wbuf, 1);
+			if (ret < 0)
+				printk("ite7258_exit_sleep_mode failed\n");
+			break;
+		case TP_ITE_UNSUPPORT:
+			printk("driver not support this TP\n");
+			break;
+		default:
+			printk("unkonw ITE TP type\n");
+			break;
+		}
 }
 
 static bool ite7258_enter_update_mode(struct i2c_client *client)
@@ -339,7 +367,7 @@ static bool ite7258_setupdate_offset(struct i2c_client *client,
 static bool ite7258_really_update(struct i2c_client *client, 
                 unsigned int length, char *date, unsigned short offset)
 {
-#define READ_BUFFER_LENGTH       64
+#define READ_BUFFER_LENGTH       128
         unsigned int index = 0;
         unsigned char buffer[READ_BUFFER_LENGTH+3] = {0};
         unsigned char buf_write[READ_BUFFER_LENGTH+3] = {0};
@@ -636,6 +664,41 @@ static ssize_t ite7258_upgrade_firmware_store(struct device *dev,
     return count;
 }
 
+static ssize_t ite7258_tp_info_show(struct device *dev,
+                    struct device_attribute *attr,
+                    char *buf)
+{
+    struct i2c_client *client = container_of(dev, struct i2c_client, dev);
+    struct ite7258_ts_data *ts = (struct ite7258_ts_data *)i2c_get_clientdata(client);
+	int n;
+
+	switch (ts->type) {
+	case TP_ITE7258_SQUARE:
+		n = sprintf(buf, "IC: IT7258, Shape: 4X4 Square, ROW Version: 5.13.x.x\n");
+		break;
+	case TP_ITE7258_FLAT:
+		n = sprintf(buf, "IC: IT7258, Shape: Circle Missing Angle, ROW Version: 5.17.x.x\n");
+		break;
+	case TP_ITE7258_CIRCLE:
+		n = sprintf(buf, "IC: IT7258, Shape: Circle, ROW Version: 5.16.x.x\n");
+		break;
+	case TP_ITE7262_CIRCLE:
+		n = sprintf(buf, "IC: IT7262, Shape: Circle, ROW Version: 5.15.x.x\n");
+		break;
+	case TP_ITE7252_SQUARE:
+		n = sprintf(buf, "IC: ITE7252, Shape: 4X4 Square, ROW Version: 3.13.x.x\n");
+		break;
+	case TP_ITE_UNSUPPORT:
+		n = sprintf(buf, "IC: Unsupport, Shape: Unsupport, ROW Version: Unsupport\n");
+		break;
+	default:
+		n = sprintf(buf, "IC: Unknow, Shape: Unknow, ROW Version: Unknow\n");
+		break;
+	}
+
+	return n + 1;
+}
+
 /* show the firmware version
  *  example:cat ite7258_firmware_verion
  */
@@ -651,11 +714,18 @@ static DEVICE_ATTR(ite7258_upgrade_firmware, S_IRUGO | S_IWUSR,
             NULL,
             ite7258_upgrade_firmware_store);
 
+/* show the TP infomation
+ *  example:cat ite7258_tp_info
+ */
+static DEVICE_ATTR(ite7258_tp_info, S_IRUGO | S_IWUSR,
+            ite7258_tp_info_show,
+            NULL);
 
 /*add your attr in here*/
 static struct attribute *ite7258_attributes[] = {
     &dev_attr_ite7258_firmware_verion.attr,
     &dev_attr_ite7258_upgrade_firmware.attr,
+    &dev_attr_ite7258_tp_info.attr,
     NULL
 };
 
@@ -1144,6 +1214,30 @@ static int ite7258_get_version(struct ite7258_ts_data *ite7258_ts)
         ret = ite7258_i2c_Read(client, wbuffer, 1, rbuffer, 9);
         if (ret < 0)
             return -1;
+
+		switch (rbuffer[6]) {
+		case 17:
+			if (rbuffer[5] == 5)
+				ite7258_ts->type = TP_ITE7258_FLAT;
+			break;
+		case 16:
+			if (rbuffer[5] == 5)
+				ite7258_ts->type = TP_ITE7258_CIRCLE;
+			break;
+		case 15:
+			if (rbuffer[5] == 5)
+				ite7258_ts->type = TP_ITE7262_CIRCLE;
+			break;
+		case 13:
+			if (rbuffer[5] == 5) {
+				ite7258_ts->type = TP_ITE7258_SQUARE;
+			} else if (rbuffer[5] == 3) {
+				ite7258_ts->type = TP_ITE7252_SQUARE;
+			}
+			break;
+		default:
+			break;
+		}
 
         ite7258_ts->tp_firmware_algo_ver = (rbuffer[5] << 24) |
                 (rbuffer[6] << 16) | (rbuffer[7] << 8) | rbuffer[8];
