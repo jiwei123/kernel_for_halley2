@@ -44,6 +44,8 @@
 #define WDT_TDR			(0x00)  /* rw, 32, 0x???????? */
 #define WDT_TCNT		(0x08)  /* rw, 32, 0x???????? */
 
+#define CPM_OPCR_ERCS		(0x02)  /* rw, 32, 0x00801500 */
+
 #define RTCCR_WRDY		BIT(7)
 #define WENR_WEN                BIT(31)
 
@@ -57,6 +59,7 @@ static void wdt_start_count(int msecs)
 	if(time > 65535)
 		time = 65535;
 
+	cpm_set_bit(CPM_OPCR_ERCS, CPM_OPCR); // select RTCCLK clock
 	outl(1 << 16,TCU_IOBASE + TCU_TSCR);
 
 	outl(0,WDT_IOBASE + WDT_TCNT);		//counter
@@ -291,7 +294,8 @@ static int wdt_control_proc_open(struct inode *inode, struct file *file)
 
 static int wdt_control_write_proc(struct file *file, const char __user *buffer,
 			    size_t count, loff_t *data) {
-	struct wdt_reset *wdt =file->private_data ;
+	struct wdt_reset *wdt = ((struct seq_file *)file->private_data)->private;
+
 	if(!strncmp(buffer,"on",2) && (wdt->stop == 1)) {
 		wdt->task = kthread_run(reset_task, wdt, "reset_task%d",wdt->count++);
 		wdt->stop = 0;
@@ -317,7 +321,7 @@ static int wdt_time_proc_open(struct inode *inode, struct file *file)
 static int wdt_time_write_proc(struct file *file, const char __user *buffer,
 			    size_t count, loff_t *data) {
 	unsigned msecs= 0;
-	struct wdt_reset *wdt = file->private_data;
+	struct wdt_reset *wdt = ((struct seq_file *)file->private_data)->private;
 
 	if(!wdt->stop)
 		return -EBUSY;
