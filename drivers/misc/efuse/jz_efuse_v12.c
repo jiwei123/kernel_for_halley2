@@ -536,7 +536,7 @@ static int jz_efuse_probe(struct platform_device *pdev)
 		return -EBUSY;
 
 	spin_lock_init(&efuse->lock);
-#if 0
+
 	pdata = pdev->dev.platform_data;
 	if (pdata) {
 		efuse->gpio_vddq_en = pdata->gpio_vddq_en;
@@ -560,7 +560,7 @@ static int jz_efuse_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 #endif
-#endif
+
 	efuse->mdev.minor = MISC_DYNAMIC_MINOR;
 	efuse->mdev.name =  DRV_NAME;
 	efuse->mdev.fops = &efuse_misc_fops;
