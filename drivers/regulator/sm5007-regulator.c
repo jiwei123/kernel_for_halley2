@@ -339,9 +339,9 @@ static int SM5007_get_voltage(struct regulator_dev *rdev)
 {
 	struct SM5007_regulator *ri = rdev_get_drvdata(rdev);
 	struct device *parent = to_SM5007_dev(rdev);
-	uint8_t vout_val = 0, read_val;
+	uint8_t read_val;
 	uint8_t vsel;
-	int ret = 0;
+	int ret = 0, vout_val = 0;
 
     switch (ri->id)
     {
