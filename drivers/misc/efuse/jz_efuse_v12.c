@@ -538,7 +538,7 @@ static int jz_efuse_probe(struct platform_device *pdev)
 	spin_lock_init(&efuse->lock);
 
 	pdata = pdev->dev.platform_data;
-	if (pdata) {
+	if (pdata && pdata->gpio_vddq_en >= 0) {
 		efuse->gpio_vddq_en = pdata->gpio_vddq_en;
 		efuse->gpio_vddq_en_level = (int)(!!pdata->gpio_vddq_en_level);
 
