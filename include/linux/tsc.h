@@ -59,11 +59,15 @@ static inline void tsc_swap_xy(u16 * x,u16 * y)
 
 static inline void tsc_swap_x(u16 * x,u16  max_x)
 {
+	if (*x > max_x)
+		*x = max_x;
 	*x =  max_x - *x;
 }
 
 static inline void tsc_swap_y(u16 * y,u16 max_y)
 {
+	if (*y > max_y)
+		*y = max_y;
 	*y = max_y - *y;
 }
 #endif

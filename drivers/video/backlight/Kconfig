@@ -153,6 +153,13 @@ config LCD_BYD_8991FTGF
 	depends on BACKLIGHT_CLASS_DEVICE
 	default n
 
+
+config LCD_EDO_E1392AM1
+	tristate "EDO 1.39 inch AMOLED mipi-dsi panel(400x4000)"
+	depends on FB && JZ_MIPI_DSI
+	help
+	   jz mipi dsi.dpi AMOLED display panel support
+
 config LCD_KFM701A21_1A
 	tristate "KFM701A21_1A TFT Smart LCD panel(400x240)"
 	depends on BACKLIGHT_CLASS_DEVICE

@@ -21,6 +21,7 @@ obj-$(CONFIG_LCD_BYD_8991FTGF)	+= byd_8991.o byd_8991_init.o
 obj-$(CONFIG_LCD_KFM701A21_1A)	+= kfm701a21_1a.o
 obj-$(CONFIG_LCD_BYD_9177AA)	+= byd_9177aa.o
 obj-$(CONFIG_LCD_X163)             += auo_x163.o
+obj-$(CONFIG_LCD_EDO_E1392AM1) += edo_e1392am1.o
 obj-$(CONFIG_LCD_TRULY_TFT240240_2_E)	+= truly_tft240240_2_e.o
 
 obj-$(CONFIG_BACKLIGHT_88PM860X)	+= 88pm860x_bl.o

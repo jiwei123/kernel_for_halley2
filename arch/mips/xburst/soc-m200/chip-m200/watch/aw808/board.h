@@ -103,6 +103,13 @@
 #define GPIO_EPD_EN             -1
 #define GPIO_EPD_ENOP           -1
 #endif
+#ifdef CONFIG_LCD_EDO_E1392AM1
+#define GPIO_MIPI_RST_N        GPIO_PD(3)
+#define DSI_TE_GPIO            GPIO_PD(4)
+#define GPIO_LCD_BLK_EN        GPIO_PD(0)
+#define VCC_LCD_1V8_NAME       LDO2_NAME
+#define VCC_LCD_2V8_NAME       LDO4_NAME
+#endif
 /* ****************************GPIO LCD END********************************** */
 
 /* ****************************GPIO I2C START******************************** */

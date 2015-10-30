@@ -157,6 +157,8 @@ config TOUCHSCREEN_AD7879
 	  To compile this driver as a module, choose M here: the
 	  module will be called ad7879.
 
+source "drivers/input/touchscreen/focaltech/Kconfig"
+
 config TOUCHSCREEN_ITE7258
 	tristate "Touchscreen ite7258"
 	depends on I2C && M200_SUPPORT_TSC
