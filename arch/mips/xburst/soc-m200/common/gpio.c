@@ -53,6 +53,7 @@
 #define PXDSC		0x88   /* Port Drive Strength clear Register */
 #define PZGID2LD	0xB0   /* GPIOZ Group ID to load */
 
+extern struct file_operations gpios_sleep_mode_fops;
 extern int gpio_ss_table[][2];
 #ifdef CONFIG_RECONFIG_SLEEP_GPIO
 extern int gpio_ss_table2[][2];
@@ -707,7 +708,6 @@ void gpio_suspend_set(struct jzgpio_chip *jz)
 	jz->save[4] = readl(jz->reg + PXPEN);
 
 	// gpio ignore will read func init state
-
 	pxint = jz->save[0] & d;
 	pxmsk = jz->save[1] & d;
 	pxpat1 = jz->save[2] & d;
@@ -807,44 +807,15 @@ struct syscore_ops gpio_pm_ops = {
 	.resume = gpio_resume,
 };
 
-int __init gpio_ss_check(void)
+void gpio_sleep_state(unsigned int group, unsigned int index,unsigned int state)
 {
-	unsigned int i,state,group,index;
-	unsigned int panic_flags[GPIO_NR_PORTS] = {0};
-	const unsigned int default_type = GPIO_INPUT_PULL;
-	enum gpio_function gpio_type = default_type;
-	for (i = 0; i < GPIO_NR_PORTS; i++) {
-		jz_gpio_chips[i].sleep_state.pxpen = default_type & 0x10 ? 0xffffffff : 0;
-		jz_gpio_chips[i].sleep_state.pxint = default_type & 0x8 ? 0xffffffff : 0;
-		jz_gpio_chips[i].sleep_state.pxmsk = default_type & 0x4 ? 0xffffffff : 0;
-		jz_gpio_chips[i].sleep_state.pxpat1 = default_type & 0x2 ? 0xffffffff : 0;
-		jz_gpio_chips[i].sleep_state.pxpat0 = default_type & 0x1 ? 0xffffffff : 0;
-		jz_gpio_chips[i].sleep_state.pxignore = 0;
-		//jz_gpio_chips[i].sleep_state.pxignore = 0xffffffff;
+	enum gpio_function gpio_type = GPIO_INPUT_PULL;
+
+	if (group >= GPIO_NR_PORTS) {
+		printk("ERROR: gpio_ss_table is invalid!\n");
+		return;
 	}
-	for(i = 0; gpio_ss_table[i][1] != GSS_TABLET_END;i++) {
-		group = gpio_ss_table[i][0] / 32;
-		index = gpio_ss_table[i][0] % 32;
-		state = gpio_ss_table[i][1];
-		if(group >= GPIO_NR_PORTS)
-		{
-			printk("ERROR: gpio_ss_table[%d] is invalid!\n",i);
-			continue;
-		}
-		if(panic_flags[group] & (1 << index)) {
-			printk("\nwarning : (%d line) same gpio already set before this line!\n",i);
-			printk("\nwarning : (%d line) same gpio already set before this line!\n",i);
-			printk("\nwarning : (%d line) same gpio already set before this line!\n",i);
-			printk("\nwarning : (%d line) same gpio already set before this line!\n",i);
-			printk("\nwarning : (%d line) same gpio already set before this line!\n",i);
-			printk("\nwarning : (%d line) same gpio already set before this line!\n",i);
-			printk("\nwarning : (%d line) same gpio already set before this line!\n",i);
-			panic("gpio_ss_table has iterant gpio set , system halt\n");
-			while(1);
-		} else {
-			panic_flags[group] |= 1 << index;
-		}
-		switch(state) {
+	switch (state) {
 		case GSS_OUTPUT_HIGH:
 			gpio_type = GPIO_OUTPUT1;
 			break;
@@ -860,28 +831,68 @@ int __init gpio_ss_check(void)
 		case GSS_IGNORE:
 			gpio_type = -1;
 			break;
-		}
+		default:
+			return;
 
-		if(gpio_type == -1)
-			jz_gpio_chips[group].sleep_state.pxignore |= 1 << index;
-		else{
-
-#define SLEEP_SET_STATE(st,t)	do{					\
-				if((gpio_type) & (t))			\
-					jz_gpio_chips[group].sleep_state.px##st |= 1 << (index); \
-				else					\
-					jz_gpio_chips[group].sleep_state.px##st &= ~(1 << (index)); \
-			}while(0)
-
-			SLEEP_SET_STATE(pen,0x10);
-			SLEEP_SET_STATE(int,0x8);
-			SLEEP_SET_STATE(msk,0x4);
-			SLEEP_SET_STATE(pat1,0x2);
-			SLEEP_SET_STATE(pat0,0x1);
-#undef SLEEP_SET_STATE
-
-		}
 	}
+
+	if (gpio_type == -1) {
+		jz_gpio_chips[group].sleep_state.pxignore |= 1 << index;
+		return;
+	}
+
+	jz_gpio_chips[group].sleep_state.pxignore &= ~(1 << index);
+#define SET_SLEEP_STATE(st, t)	\
+		do{					\
+			if((gpio_type) & (t))			\
+				jz_gpio_chips[group].sleep_state.px##st |= 1 << (index); \
+			else					\
+				jz_gpio_chips[group].sleep_state.px##st &= ~(1 << (index)); \
+		}while(0)
+	SET_SLEEP_STATE(pen,0x10);
+	SET_SLEEP_STATE(int,0x8);
+	SET_SLEEP_STATE(msk,0x4);
+	SET_SLEEP_STATE(pat1,0x2);
+	SET_SLEEP_STATE(pat0,0x1);
+#undef RESET_SLEEP_STATE
+}
+
+int __init gpio_ss_check(void)
+{
+	unsigned int i,state,group,index;
+	const unsigned int default_type = GPIO_INPUT_PULL;
+	unsigned int panic_flags[GPIO_NR_PORTS] = {0};
+
+	for (i = 0; i < GPIO_NR_PORTS; i++) {
+		jz_gpio_chips[i].sleep_state.pxpen = default_type & 0x10 ? 0xffffffff : 0;
+		jz_gpio_chips[i].sleep_state.pxint = default_type & 0x8 ? 0xffffffff : 0;
+		jz_gpio_chips[i].sleep_state.pxmsk = default_type & 0x4 ? 0xffffffff : 0;
+		jz_gpio_chips[i].sleep_state.pxpat1 = default_type & 0x2 ? 0xffffffff : 0;
+		jz_gpio_chips[i].sleep_state.pxpat0 = default_type & 0x1 ? 0xffffffff : 0;
+		jz_gpio_chips[i].sleep_state.pxignore = 0;
+		//jz_gpio_chips[i].sleep_state.pxignore = 0xffffffff;
+	}
+	for(i = 0; gpio_ss_table[i][1] != GSS_TABLET_END;i++) {
+		group = gpio_ss_table[i][0] / 32;
+		index = gpio_ss_table[i][0] % 32;
+		state = gpio_ss_table[i][1];
+
+		if(panic_flags[group] & (1 << index)) {
+			printk("\nwarning : (%d line) same gpio already set before this line!\n",i);
+			printk("\nwarning : (%d line) same gpio already set before this line!\n",i);
+			printk("\nwarning : (%d line) same gpio already set before this line!\n",i);
+			printk("\nwarning : (%d line) same gpio already set before this line!\n",i);
+			printk("\nwarning : (%d line) same gpio already set before this line!\n",i);
+			printk("\nwarning : (%d line) same gpio already set before this line!\n",i);
+			printk("\nwarning : (%d line) same gpio already set before this line!\n",i);
+			panic("gpio_ss_table has iterant gpio set , system halt\n");
+			while(1);
+		} else {
+			panic_flags[group] |= 1 << index;
+		}
+		gpio_sleep_state(group, index, state);
+	}
+
 	return 0;
 }
 
@@ -935,6 +946,59 @@ int __init setup_gpio_pins(void)
 }
 
 arch_initcall(setup_gpio_pins);
+
+int jzgpio_str2gpio(char *str)
+{
+	int l = 0, ret_val;
+	int port, idx;
+	char *gpio_port = str;
+
+	if (!str) {
+		pr_err("%s: str is null.\n", __func__);
+		return -EINVAL;
+	}
+	l = strlen(str);
+	if (l > 4) {
+		pr_err("%s: length of %s is %d, bigger then 4.\n", __func__, str, l);
+		return -EINVAL;
+	}
+	if (l < 3) {
+		pr_err("%s: length of %s is %d, shorter then 3.\n", __func__, str, l);
+		return -EINVAL;
+	}
+
+	if (*gpio_port != 'P' && *gpio_port != 'p'){
+		pr_err("%s: first char != P or p, str: %s\n", __FUNCTION__, str);
+		return -EINVAL;
+	}
+
+	gpio_port++;
+	if (*gpio_port >='A' && *gpio_port <= 'F') {
+		port = *gpio_port - 'A';
+	} else if (*gpio_port >='a' && *gpio_port <= 'f') {
+		port = *gpio_port - 'a';
+	} else {
+		pr_err("%s: only allowed PAn to PFn, str: %s\n", __FUNCTION__, str);
+		return -EINVAL;
+	}
+
+	if(!(str[2] >= '0' && str[2] <= '9')){
+		pr_err("%s: Third char is not a digit char, str: %s\n", __func__, str);
+		return -EINVAL;
+	}
+	if (strlen(str) == 4 && !(str[3] >= '0' && str[3] <= '9')) {
+		pr_err("%s: Fourth char is not a digit char, gpio_port: %s\n", __func__, str);
+		return -EINVAL;
+	}
+
+	gpio_port++;
+	ret_val = kstrtoint(gpio_port, 10, &idx);
+	if (ret_val != 0 || idx < 0 || idx > 31) {
+		pr_err("%s: only allowed PX0 to PX31, gpio_port: %s\n", __FUNCTION__, str);
+		return -ERANGE;
+	}
+	return 32*port + idx;
+}
 
 void dump_gpio_pin(int port, int pin) {
 	int i = port;
@@ -1065,8 +1129,8 @@ static int __init init_gpio_proc(void)
 		pr_warning("create_proc_entry for common gpio failed.\n");
 		return -ENODEV;
 	}
-	proc_create("gpios", 0600,p,&gpios_proc_fops);
-
+	proc_create("gpios", 0600, p, &gpios_proc_fops);
+	proc_create("gpio_sleep_state", 0600, p, &gpios_sleep_mode_fops);
 	return 0;
 }
 

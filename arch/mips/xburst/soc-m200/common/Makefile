@@ -32,3 +32,5 @@ obj-$(SW-DEBUG) +=  cpu_switch_debug.o
 obj-$(CONFIG_DWC_LM_INTERFACE)  += lm.o lm-device.o
 
 obj-y += wakeup_src_printer.o
+
+obj-y += set_gpio_slp_state.o
