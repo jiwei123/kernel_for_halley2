@@ -108,6 +108,15 @@ struct i2c_board_info jz_i2c0_devs[] __initdata = {
 		.platform_data = &mpu9250_platform_data,
 	},
 #endif /*CONFIG_INV_MPU_IIO*/
+
+#ifdef CONFIG_INPUT_MPU6500
+	{
+		I2C_BOARD_INFO("mpu6500_input", 0x68),
+		.irq = (IRQ_GPIO_BASE + GPIO_GSENSOR_INT),
+		.platform_data = &mpu6500_pdata,
+	},
+#endif /*CONFIG_INV_MPU_IIO*/
+
 #if defined(CONFIG_BCM2079X_NFC)
 	{
 		I2C_BOARD_INFO("bcm2079x-i2c", 0x77),

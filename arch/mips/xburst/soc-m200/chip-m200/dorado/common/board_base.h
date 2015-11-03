@@ -15,6 +15,9 @@ extern struct ovisp_camera_platform_data ovisp_camera_info;
 #ifdef CONFIG_INV_MPU_IIO
 extern struct mpu_platform_data mpu9250_platform_data;
 #endif
+#ifdef CONFIG_INPUT_MPU6500
+extern struct mpu6500_platform_data mpu6500_pdata;
+#endif
 #if (defined(CONFIG_I2C_GPIO) || defined(CONFIG_I2C0_V12_JZ))
 extern struct i2c_board_info jz_i2c0_devs[];
 extern int jz_i2c0_devs_size;

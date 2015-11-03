@@ -6,6 +6,7 @@ obj-y		+= lcd/
 
 obj-$(CONFIG_KEYBOARD_GPIO)	+= keyboard_gpio.o
 obj-$(CONFIG_INV_MPU_IIO)	+= inv_mpu_iio.o
+obj-$(CONFIG_INPUT_MPU6500)	+= inv_mpu_sensor.o
 obj-$(CONFIG_VIDEO_OVISP)	+= camera.o
 obj-$(CONFIG_REGULATOR_DA9024) 	+= regulator.o
 obj-$(CONFIG_BCM_PM_CORE) 	+= bcm_power_control.o
