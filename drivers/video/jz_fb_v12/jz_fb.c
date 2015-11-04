@@ -1004,10 +1004,12 @@ static int jzfb_set_par(struct fb_info *info)
 
 	rate = PICOS2KHZ(mode->pixclock) * 1000;
 
+#ifndef CONFIG_JZ_MIPI_DSI
 	/* smart lcd WR freq = (lcd pixel clock)/2 */
 	if (pdata->lcd_type == LCD_TYPE_SLCD) {
 		rate *= 2;
 	}
+#endif
 
 	/*set reg,and enable lcd after set all reg*/
 	is_lcd_en = jzfb->is_lcd_en;
@@ -1227,10 +1229,6 @@ static int jzfb_blank(int blank_mode, struct fb_info *info) {
 	return 0;
 }
 
-static int jzfb_blank_1(int blank_mode, struct fb_info *info) {
-
-	return 0;
-}
 static int jzfb_alloc_devmem(struct jzfb *jzfb)
 {
 	int i;
@@ -1945,7 +1943,7 @@ static struct fb_ops jzfb_ops = {
 	.fb_check_var = jzfb_check_var,
 	.fb_set_par = jzfb_set_par,
 	.fb_setcolreg = jzfb_setcolreg,
-	.fb_blank = jzfb_blank_1,
+	.fb_blank = jzfb_blank,
 	.fb_pan_display = jzfb_pan_display,
 	.fb_fillrect = cfb_fillrect,
 	.fb_copyarea = cfb_copyarea,
