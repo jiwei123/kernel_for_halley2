@@ -38,8 +38,8 @@
 
 
 /* After report early 10 points, skip report point(1/3). */
-#define DEBUG_SKIP_REPORT_POINT
-#define DEBUG_SKIP_POINT_DIVIDE_RATIO (3) /* only report 1/3 */
+//#define DEBUG_SKIP_REPORT_POINT
+//#define DEBUG_SKIP_POINT_DIVIDE_RATIO (3) /* only report 1/3 */
 
 
 //#define FTS_CTL_IIC
@@ -61,8 +61,10 @@ struct ts_event {
 	u8 au8_touch_wight[CFG_MAX_TOUCH_POINTS];	/*touch Wight */
 	u16 pressure;
 	u8 touch_point;
+	u8 touch_state[CFG_MAX_TOUCH_POINTS];
 };
-
+#define TOUCH_BIT_OPEN 1
+#define KEYBOARD_BIT_OPEN 2
 struct ft6x06_ts_data {
 	unsigned int irq;
 	unsigned int irq_pin;
@@ -71,13 +73,17 @@ struct ft6x06_ts_data {
 	unsigned int va_x_max;
 	unsigned int va_y_max;
 	struct i2c_client *client;
-	struct input_dev *input_dev;
+	struct input_dev *touch_dev;
+	struct input_dev *keyboard_dev;
 	struct ts_event event;
 	struct ft6x06_platform_data *pdata;
 	struct work_struct  work;
 	struct workqueue_struct *workqueue;
 	struct regulator *vcc_reg;
-
+	unsigned char key_home_status;
+	unsigned char key_back_status;
+	unsigned char key_menu_status;
+	int mux_dev_open_state;
 #ifdef DEBUG_SKIP_REPORT_POINT
 	unsigned int report_count;
 #endif
@@ -86,10 +92,7 @@ struct ft6x06_ts_data {
 #define FTS_POINT_UP		0x01
 #define FTS_POINT_DOWN		0x00
 #define FTS_POINT_CONTACT	0x02
-
-unsigned char key_home_status = 0;
-unsigned char key_back_status = 0;
-unsigned char key_menu_status = 0;
+#define FTS_POINT_NOUSED	-1
 
 /*
 *ft6x06_i2c_Read-read data and write data by i2c
@@ -160,30 +163,62 @@ int ft6x06_i2c_Write(struct i2c_client *client, char *writebuf, int writelen)
 
 	return ret;
 }
-
+static void release_all_finger(struct ft6x06_ts_data *data)
+{
+	int i;
+	int up_flinger = 0;
+	struct ts_event *event = &data->event;
+	for(i = 0;i < CFG_MAX_TOUCH_POINTS;i++)
+	{
+		if(event->touch_state[i] == FTS_POINT_DOWN)
+		{
+			input_mt_slot(data->touch_dev, event->au8_finger_id[i]);
+			input_mt_report_slot_state(data->touch_dev,
+						   MT_TOOL_FINGER, false);
+			event->au8_touch_event[i] = FTS_POINT_UP;
+			input_mt_sync(data->touch_dev);
+			event->touch_state[i] = FTS_POINT_UP;
+			up_flinger = 1;
+		}
+	}
+	if(up_flinger)
+		input_sync(data->touch_dev);
+}
+static void release_all_key(struct ft6x06_ts_data *data)
+{
+	int up_key = 0;
+	if(1 == data->key_menu_status){
+		input_event(data->keyboard_dev,EV_KEY,KEY_MENU,0);
+		data->key_menu_status = 0;
+		up_key = 1;
+	}
+	if(1 == data->key_home_status){
+		input_event(data->keyboard_dev,EV_KEY,KEY_HOMEPAGE,0);
+		data->key_home_status = 0;
+		up_key = 1;
+	}
+	if(1 == data->key_back_status){
+		input_event(data->keyboard_dev,EV_KEY,KEY_BACK,0);
+		data->key_back_status = 0;
+		up_key = 1;
+	}
+	if(up_key)
+		input_sync(data->keyboard_dev);
+}
 /*release the point*/
 static void ft6x06_ts_release(struct ft6x06_ts_data *data)
 {
 #ifdef DEBUG_SKIP_REPORT_POINT
 	data->report_count = 0;
 #endif
-
-	input_report_key(data->input_dev, BTN_TOUCH, 0);
-	if(1 == key_menu_status){
-		input_event(data->input_dev,EV_KEY,KEY_MENU,0);
-		key_menu_status = 0;
-	}
-	if(1 == key_home_status){
-		input_event(data->input_dev,EV_KEY,KEY_HOMEPAGE,0);
-		key_home_status = 0;
-	}
-	if(1 == key_back_status){
-		input_event(data->input_dev,EV_KEY,KEY_BACK,0);
-		key_back_status = 0;
-	}
-	input_mt_sync(data->input_dev);
-	input_sync(data->input_dev);
+	release_all_finger(data);
+	release_all_key(data);
 }
+
+#define trans_to_virtsize(x,phy_max,virt_max) ({ \
+	unsigned int v = x;			 \
+	v = v * virt_max / phy_max;		 \
+	(unsigned short) v;})
 
 static int ft6x06_read_Touchdata(struct ft6x06_ts_data *data)
 {
@@ -194,13 +229,12 @@ static int ft6x06_read_Touchdata(struct ft6x06_ts_data *data)
 	u8 pointid = FT_MAX_ID;
 
 	ret = ft6x06_i2c_Read(data->client, buf, 1, buf, POINT_READ_BUF);
-
 	if (ret < 0) {
 		dev_err(&data->client->dev, "%s read touchdata failed.\n",
 			__func__);
 		return ret;
 	}
-	memset(event, 0, sizeof(struct ts_event));
+	//memset(event, 0, sizeof(struct ts_event));
 
 	event->touch_point = buf[2] & 0x0F;
 	if (event->touch_point == 0) {
@@ -218,11 +252,14 @@ static int ft6x06_read_Touchdata(struct ft6x06_ts_data *data)
 		event->au16_x[i] =
 		    (s16) (buf[FT_TOUCH_X_H_POS + FT_TOUCH_STEP * i] & 0x0F) <<
 		    8 | (s16) buf[FT_TOUCH_X_L_POS + FT_TOUCH_STEP * i];
+		event->au16_x[i] = trans_to_virtsize(event->au16_x[i],data->x_max,data->va_x_max);
 		event->au16_y[i] =
 		    (s16) (buf[FT_TOUCH_Y_H_POS + FT_TOUCH_STEP * i] & 0x0F) <<
 		    8 | (s16) buf[FT_TOUCH_Y_L_POS + FT_TOUCH_STEP * i];
+		event->au16_y[i] = trans_to_virtsize(event->au16_y[i],data->y_max,data->va_y_max);
 		event->au8_touch_event[i] =
 		    buf[FT_TOUCH_EVENT_POS + FT_TOUCH_STEP * i] >> 6;
+
 		event->au8_finger_id[i] =
 		    (buf[FT_TOUCH_ID_POS + FT_TOUCH_STEP * i]) >> 4;
 		event->au8_touch_wight[i] =
@@ -233,16 +270,13 @@ static int ft6x06_read_Touchdata(struct ft6x06_ts_data *data)
 
 	return 0;
 }
-
-static void ft6x06_report_value(struct ft6x06_ts_data *data)
+static void ft6x06_touch_area_report_value(struct ft6x06_ts_data *data,int index)
 {
 	struct ts_event *event = &data->event;
-
-	int i = 0;
-	for (i = 0; i < event->touch_point; i++) {
-		/* LCD view area */
-		if (event->au16_x[i] < data->va_x_max
-		    && event->au16_y[i] < data->va_y_max) {
+	switch(event->au8_touch_event[index]){
+		case FTS_POINT_DOWN:
+		case FTS_POINT_CONTACT:
+		{
 #ifdef DEBUG_SKIP_REPORT_POINT
 			int report_count;
 			report_count = data->report_count;
@@ -252,90 +286,135 @@ static void ft6x06_report_value(struct ft6x06_ts_data *data)
 #endif	/* DEBUG_SKIP_REPORT_POINT */
 
 #ifdef CONFIG_FT6X06_MULTITOUCH
-			input_report_abs(data->input_dev, ABS_MT_POSITION_X,
-					event->au16_x[i]);
-			input_report_abs(data->input_dev, ABS_MT_POSITION_Y,
-					event->au16_y[i]);
-			input_report_abs(data->input_dev,ABS_MT_TOUCH_MAJOR,
-					event->au8_touch_wight[i]);
-			input_report_abs(data->input_dev,ABS_MT_WIDTH_MAJOR,
-					event->au8_touch_wight[i]);
-			input_mt_sync(data->input_dev);
+				input_mt_slot(data->touch_dev,event->au8_finger_id[index]);
+				input_mt_report_slot_state(data->touch_dev,MT_TOOL_FINGER, true);
+				input_report_abs(data->touch_dev, ABS_MT_POSITION_X,
+						 event->au16_x[index]);
+				input_report_abs(data->touch_dev, ABS_MT_POSITION_Y,
+						 event->au16_y[index]);
+				input_report_abs(data->touch_dev,ABS_MT_TOUCH_MAJOR,
+						 event->au8_touch_wight[index]);
+				input_report_abs(data->touch_dev,ABS_MT_WIDTH_MAJOR,
+						 event->pressure);
+				input_mt_sync(data->touch_dev);
+				if(event->touch_state[index] != FTS_POINT_DOWN)
+					input_report_key(data->touch_dev, BTN_TOUCH, 0);
 
+
+				/* input_report_abs(info->touch_dev, */
+				/* 			ABS_MT_PRESSURE, event->pressure); */
 #else
-			if(0 == i){
-				s16 convert_x = 0;
-				s16 convert_y = 0;
-				convert_x = event->au16_x[0];
-				convert_y = event->au16_y[0];
-#ifndef  CONFIG_ANDROID
-				convert_x = (event->au16_x[0] * 8 / 5);
-				convert_y = (event->au16_y[0] * 5 / 3);
-#endif
-				if (event->touch_point == 1) {
-					input_report_abs(data->input_dev, ABS_X, (u16)convert_x);
-					input_report_abs(data->input_dev, ABS_Y, (u16)convert_y);
-					input_report_abs(data->input_dev, ABS_PRESSURE, event->pressure);
+				if(0 == index){
+					if (event->touch_point == 1) {
+						input_report_abs(data->touch_dev, ABS_X, event->au16_x[index]);
+						input_report_abs(data->touch_dev, ABS_Y, event->au16_y[index]);
+						input_report_abs(data->touch_dev, ABS_PRESSURE, event->pressure);
+					}
+					input_report_key(data->touch_dev, BTN_TOUCH, 1);
 				}
-				input_report_key(data->input_dev, BTN_TOUCH, 1);
-			}
 #endif
 #ifdef DEBUG_SKIP_REPORT_POINT
 			}
 #endif /* DEBUG_SKIP_REPORT_POINT */
+			event->touch_state[index] = FTS_POINT_DOWN;
+			break;
 		}
-		/*Virtual key*/
-		else{
-			if ((event->au8_touch_event[i] == FTS_POINT_DOWN)
-					|| (event->au8_touch_event[i] == FTS_POINT_CONTACT)) {
-				if(event->au16_y[i] >= data->va_y_max
-						&& event->au16_y[i] <= data->y_max) {
-					/*menu key*/
-					if (event->au16_x[i] >= 0 && event->au16_x[i] < 100){
-						if(0 == key_menu_status){
-							input_event(data->input_dev,EV_KEY,KEY_MENU,1);
-							key_menu_status = 1;
-						}
-					}
-					/*home key*/
-					if (event->au16_x[i] >= 100 && event->au16_x[i] < 200){
-						if(0 == key_home_status){
-							input_event(data->input_dev,EV_KEY,KEY_HOMEPAGE,1);
-							key_home_status = 1;
-						}
-					}
-					/*back key*/
-					if (event->au16_x[i] >= 200 && event->au16_x[i] < 300){
-						if(0 == key_back_status){
-							input_event(data->input_dev,EV_KEY,KEY_BACK,1);
-							key_back_status = 1;
-						}
-					}
-				}
-			}else{
-				if(1 == key_menu_status){
-					input_event(data->input_dev,EV_KEY,KEY_MENU,0);
-					key_menu_status = 0;
-				}
-				if(1 == key_home_status){
-					input_event(data->input_dev,EV_KEY,KEY_HOMEPAGE,0);
-					key_home_status = 0;
-				}
-				if(1 == key_back_status){
-					input_event(data->input_dev,EV_KEY,KEY_BACK,0);
-					key_back_status = 0;
-				}
+		case FTS_POINT_UP:
+			input_mt_slot(data->touch_dev, event->au8_finger_id[index]);
+			input_mt_report_slot_state(data->touch_dev,
+						   MT_TOOL_FINGER, false);
+			event->touch_state[index] = FTS_POINT_UP;
+			break;
+	}
+	input_sync(data->touch_dev);
+}
+static void ft6x06_key_area_report_value(struct ft6x06_ts_data *data,int index)
+{
+	int x_unit;
+	struct ts_event *event = &data->event;
+	x_unit = data->va_x_max / 3;
+	switch(event->au8_touch_event[index]){
+	case FTS_POINT_DOWN:
+	case FTS_POINT_CONTACT:
+		if (event->au16_x[index] >= 0 && event->au16_x[index] < x_unit){
+			if(0 == data->key_menu_status){
+				input_event(data->keyboard_dev,EV_KEY,KEY_MENU,1);
+				data->key_menu_status = 1;
 			}
 		}
+		/*home key*/
+		if (event->au16_x[index] >= x_unit && event->au16_x[index] < 2 * x_unit){
+			if(0 == data->key_home_status){
+				input_event(data->keyboard_dev,EV_KEY,KEY_HOMEPAGE,1);
+				data->key_home_status = 1;
+			}
+		}
+		/*back key*/
+		if (event->au16_x[index] >= 2 * x_unit && event->au16_x[index] < data->va_x_max){
+			if(0 == data->key_back_status){
+				input_event(data->keyboard_dev,EV_KEY,KEY_BACK,1);
+				data->key_back_status = 1;
+			}
+		}
+		break;
+	case FTS_POINT_UP:
+		if(1 == data->key_menu_status){
+			input_event(data->keyboard_dev,EV_KEY,KEY_MENU,0);
+			data->key_menu_status = 0;
+		}
+		if(1 == data->key_home_status){
+			input_event(data->keyboard_dev,EV_KEY,KEY_HOMEPAGE,0);
+			data->key_home_status = 0;
+		}
+		if(1 == data->key_back_status){
+			input_event(data->keyboard_dev,EV_KEY,KEY_BACK,0);
+			data->key_back_status = 0;
+		}
+		break;
 	}
+	input_sync(data->keyboard_dev);
 
+}
+
+static void ft6x06_report_value(struct ft6x06_ts_data *data)
+{
+	struct ts_event *event = &data->event;
+	int virt_touch_area;
+	int virt_key_area;
+	int i = 0;
+	for (i = 0; i < event->touch_point; i++) {
+		dev_dbg(&data->client->dev,"e:%d,p:%d,x:%d,y:%d,w:%d\n",
+			event->au8_touch_event[i],
+			event->au8_finger_id[i],
+			event->au16_x[i],
+			event->au16_y[i],
+			event->au8_touch_wight[i]);
+
+		virt_touch_area = event->au16_x[i] < data->va_x_max &&
+			event->au16_y[i] < data->va_y_max &&
+			(data->mux_dev_open_state & TOUCH_BIT_OPEN);
+		virt_key_area = event->au16_y[i] >= data->va_y_max;/*  && */
+			/* (data->mux_dev_open_state & KEYBOARD_BIT_OPEN); */
+		if(virt_touch_area)
+			ft6x06_touch_area_report_value(data,i);
+		else if(virt_key_area)
+			ft6x06_key_area_report_value(data,i);
+		else
+		{
+			if(event->touch_state[i] == FTS_POINT_DOWN)
+			{
+				event->au8_touch_event[i] = FTS_POINT_UP;
+				ft6x06_touch_area_report_value(data,i);
+			}
+			release_all_key(data);
+		}
+	}
 	dev_dbg(&data->client->dev, "$ly-test----%s: x1:%d y1:%d |<*_*>| \
 			x2:%d y2:%d \n", __func__,
 			event->au16_x[0], event->au16_y[0],
 			event->au16_x[1], event->au16_y[1]);
-	input_sync(data->input_dev);
-}
 
+}
 static void ft6x06_work_handler(struct work_struct *work)
 {
 	struct ft6x06_ts_data *ft6x06_ts = container_of(work, struct ft6x06_ts_data, work);
@@ -382,36 +461,163 @@ static void ft6x06_ts_reset(struct ft6x06_ts_data *ts)
 	gpio_set_value(ts->pdata->reset, 1);
 	msleep(15);
 }
-
-static void ft6x06_close(struct input_dev *dev)
+static void ft6x06_touch_close(struct input_dev *dev)
 {
 	struct ft6x06_ts_data *ts = input_get_drvdata(dev);
-
-	dev_dbg(&ts->client->dev, "[FTS]ft6x06 suspend\n");
-	disable_irq(ts->pdata->irq);
+	ts->mux_dev_open_state &= ~(TOUCH_BIT_OPEN);
+	if(ts->mux_dev_open_state == 0)
+	{
+		dev_dbg(&ts->client->dev, "[FTS]ft6x06 suspend\n");
+		disable_irq(ts->pdata->irq);
+	}
 }
 
-static int ft6x06_open(struct input_dev *dev)
+static int ft6x06_touch_open(struct input_dev *dev)
 {
 	struct ft6x06_ts_data *ts = input_get_drvdata(dev);
-
-	dev_dbg(&ts->client->dev, "[FTS]ft6x06 resume.\n");
-	ft6x06_ts_reset(ts);
-	enable_irq(ts->pdata->irq);
+	if(ts->mux_dev_open_state == 0)
+	{
+		dev_dbg(&ts->client->dev, "[FTS]ft6x06 resume.\n");
+		ft6x06_ts_reset(ts);
+		enable_irq(ts->pdata->irq);
+	}
+	ts->mux_dev_open_state |= (TOUCH_BIT_OPEN);
 	return 0;
 }
 
+
+static void ft6x06_keyborad_close(struct input_dev *dev)
+{
+	/* struct ft6x06_ts_data *ts = input_get_drvdata(dev); */
+	/* ts->mux_dev_open_state &= ~(KEYBOARD_BIT_OPEN); */
+	/* if(ts->mux_dev_open_state == 0) */
+	/* { */
+	/* 	dev_dbg(&ts->client->dev, "[FTS]ft6x06 suspend\n"); */
+	/* 	disable_irq(ts->pdata->irq); */
+	/* } */
+}
+
+static int ft6x06_keyborad_open(struct input_dev *dev)
+{
+	/* struct ft6x06_ts_data *ts = input_get_drvdata(dev); */
+	/* if(ts->mux_dev_open_state == 0) */
+	/* { */
+	/* 	dev_dbg(&ts->client->dev, "[FTS]ft6x06 resume.\n"); */
+	/* 	ft6x06_ts_reset(ts); */
+	/* 	enable_irq(ts->pdata->irq); */
+	/* } */
+	/* ts->mux_dev_open_state |= (KEYBOARD_BIT_OPEN); */
+	return 0;
+}
+
+
+static int touch_dev_create(struct ft6x06_ts_data *ts_data)
+{
+	struct input_dev *input_dev;
+	int err = 0;
+	input_dev = input_allocate_device();
+	if(!input_dev)
+		return -1;
+#ifdef CONFIG_FT6X06_MULTITOUCH
+	set_bit(ABS_MT_TOUCH_MAJOR, input_dev->absbit);
+	set_bit(ABS_MT_POSITION_X, input_dev->absbit);
+	set_bit(ABS_MT_POSITION_Y, input_dev->absbit);
+	set_bit(ABS_MT_WIDTH_MAJOR, input_dev->absbit);
+	input_mt_init_slots(input_dev, CFG_MAX_TOUCH_POINTS,0);
+
+	input_set_abs_params(input_dev, ABS_MT_POSITION_X, 0, ts_data->va_x_max, 0, 0);
+	input_set_abs_params(input_dev, ABS_MT_POSITION_Y, 0, ts_data->va_y_max, 0, 0);
+	input_set_abs_params(input_dev, ABS_MT_WIDTH_MAJOR, 0, PRESS_MAX, 0, 0);
+	input_set_abs_params(input_dev, ABS_MT_TOUCH_MAJOR, 0, PRESS_MAX, 0, 0);
+	input_set_abs_params(input_dev, ABS_X, 0, ts_data->va_x_max, 0, 0);
+	input_set_abs_params(input_dev, ABS_Y, 0, ts_data->va_y_max, 0, 0);
+	set_bit(BTN_TOUCH, input_dev->keybit);
+#else
+	set_bit(ABS_X, input_dev->absbit);
+	set_bit(ABS_Y, input_dev->absbit);
+	set_bit(ABS_PRESSURE, input_dev->absbit);
+	set_bit(EV_SYN, input_dev->evbit);
+	set_bit(BTN_TOUCH, input_dev->keybit);
+	input_set_abs_params(input_dev, ABS_X, 0, ts_data->va_x_max, 0, 0);
+	input_set_abs_params(input_dev, ABS_Y, 0, ts_data->va_y_max, 0, 0);
+	input_set_abs_params(input_dev, ABS_PRESSURE, 0, PRESS_MAX, 0 , 0);
+#endif
+	set_bit(EV_KEY, input_dev->evbit);
+	set_bit(EV_ABS, input_dev->evbit);
+	set_bit(EV_SYN, input_dev->evbit);
+
+	/* set_bit(KEY_HOMEPAGE, input_dev->keybit); */
+	/* set_bit(KEY_BACK, input_dev->keybit); */
+	/* set_bit(KEY_MENU, input_dev->keybit); */
+	set_bit(INPUT_PROP_DIRECT, input_dev->propbit);
+
+	input_dev->name = FT6X06_NAME;
+	input_dev->id.bustype = BUS_I2C;
+	input_dev->id.vendor = 0xDEAD;
+	input_dev->id.product = 0xBEEF;
+	input_dev->id.version = 10427;
+
+	err = input_register_device(input_dev);
+	if (err) {
+		dev_err(&ts_data->client->dev,
+			"ft6x06_ts_probe: failed to register input device: %s\n",
+			dev_name(&ts_data->client->dev));
+		input_free_device(input_dev);
+		return -1;
+	}
+
+	input_dev->open = ft6x06_touch_open;
+	input_dev->close = ft6x06_touch_close;
+	input_set_drvdata(input_dev, ts_data);
+	ts_data->touch_dev = input_dev;
+	return 0;
+}
+static int keyboard_dev_create(struct ft6x06_ts_data *ts_data)
+{
+	struct input_dev *input_dev;
+	int err = 0;
+	input_dev = input_allocate_device();
+	if(!input_dev)
+		return -1;
+	set_bit(EV_KEY, input_dev->evbit);
+	set_bit(EV_ABS, input_dev->evbit);
+	set_bit(EV_SYN, input_dev->evbit);
+
+	set_bit(KEY_HOMEPAGE, input_dev->keybit);
+	set_bit(KEY_BACK, input_dev->keybit);
+	set_bit(KEY_MENU, input_dev->keybit);
+	set_bit(INPUT_PROP_DIRECT, input_dev->propbit);
+
+	input_dev->name = FT6X06_NAME;
+	input_dev->id.bustype = BUS_I2C;
+	input_dev->id.vendor = 0xDEAD;
+	input_dev->id.product = 0xBEEF;
+	input_dev->id.version = 10427;
+
+	err = input_register_device(input_dev);
+	if (err) {
+		dev_err(&ts_data->client->dev,
+			"ft6x06_ts_probe: failed to register input device: %s\n",
+			dev_name(&ts_data->client->dev));
+		input_free_device(input_dev);
+		return -1;
+	}
+	input_dev->open = ft6x06_keyborad_open;
+	input_dev->close = ft6x06_keyborad_close;
+	input_set_drvdata(input_dev, ts_data);
+	ts_data->keyboard_dev = input_dev;
+	return 0;
+}
 static int ft6x06_ts_probe(struct i2c_client *client,
 			   const struct i2c_device_id *id)
 {
 	struct ft6x06_platform_data *pdata =
 	    (struct ft6x06_platform_data *)client->dev.platform_data;
 	struct ft6x06_ts_data *ft6x06_ts;
-	struct input_dev *input_dev;
 	int err = 0;
 	unsigned char uc_reg_value;
 	unsigned char uc_reg_addr;
-
+	int i;
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		err = -ENODEV;
 		goto exit_check_functionality_failed;
@@ -423,7 +629,9 @@ static int ft6x06_ts_probe(struct i2c_client *client,
 		err = -ENOMEM;
 		goto exit_alloc_data_failed;
 	}
-
+	for(i = 0;i < CFG_MAX_TOUCH_POINTS;i++){
+		ft6x06_ts->event.touch_state[i] = FTS_POINT_NOUSED;
+	}
 	i2c_set_clientdata(client, ft6x06_ts);
 	ft6x06_ts->irq_pin = pdata->irq;
 	ft6x06_ts->irq = gpio_to_irq(pdata->irq);
@@ -461,67 +669,18 @@ static int ft6x06_ts_probe(struct i2c_client *client,
 	}
 	regulator_enable(ft6x06_ts->vcc_reg);
 #endif
-	input_dev = input_allocate_device();
-	if (!input_dev) {
+	if(touch_dev_create(ft6x06_ts) != 0)
+	{
 		err = -ENOMEM;
-		dev_err(&client->dev, "failed to allocate input device\n");
-		goto exit_input_dev_alloc_failed;
+		goto exit_request_fail;
+	}
+	if(keyboard_dev_create(ft6x06_ts) != 0)
+	{
+		err = -ENOMEM;
+		goto exit_request_fail;
 	}
 
-	ft6x06_ts->input_dev = input_dev;
-
-#ifdef CONFIG_FT6X06_MULTITOUCH
-	set_bit(ABS_MT_TOUCH_MAJOR, input_dev->absbit);
-	set_bit(ABS_MT_POSITION_X, input_dev->absbit);
-	set_bit(ABS_MT_POSITION_Y, input_dev->absbit);
-	set_bit(ABS_MT_WIDTH_MAJOR, input_dev->absbit);
-
-	input_set_abs_params(input_dev, ABS_MT_POSITION_X, 0, ft6x06_ts->va_x_max, 0, 0);
-	input_set_abs_params(input_dev, ABS_MT_POSITION_Y, 0, ft6x06_ts->va_y_max, 0, 0);
-	input_set_abs_params(input_dev, ABS_MT_WIDTH_MAJOR, 0, PRESS_MAX, 0, 0);
-	input_set_abs_params(input_dev, ABS_MT_TOUCH_MAJOR, 0, PRESS_MAX, 0, 0);
-#else
-	set_bit(ABS_X, input_dev->absbit);
-	set_bit(ABS_Y, input_dev->absbit);
-	set_bit(ABS_PRESSURE, input_dev->absbit);
-	set_bit(EV_SYN, input_dev->evbit);
-	set_bit(BTN_TOUCH, input_dev->keybit);
-#ifndef CONFIG_ANDROID
-	input_set_abs_params(input_dev, ABS_X, 0, ft6x06_ts->va_x_max * 8 / 5, 0, 0);
-	input_set_abs_params(input_dev, ABS_Y, 0, ft6x06_ts->va_y_max * 5 / 3, 0, 0);
-#else
-	input_set_abs_params(input_dev, ABS_X, 0, ft6x06_ts->va_x_max, 0, 0);
-	input_set_abs_params(input_dev, ABS_Y, 0, ft6x06_ts->va_y_max, 0, 0);
-#endif  /*CONFIG_ANDROID*/
-	input_set_abs_params(input_dev, ABS_PRESSURE, 0, PRESS_MAX, 0 , 0);
-#endif
-	set_bit(EV_KEY, input_dev->evbit);
-	set_bit(EV_ABS, input_dev->evbit);
-	set_bit(EV_SYN, input_dev->evbit);
-
-	set_bit(KEY_HOMEPAGE, input_dev->keybit);
-	set_bit(KEY_BACK, input_dev->keybit);
-	set_bit(KEY_MENU, input_dev->keybit);
-	set_bit(INPUT_PROP_DIRECT, input_dev->propbit);
-
-	input_dev->name = FT6X06_NAME;
-	input_dev->id.bustype = BUS_I2C;
-	input_dev->id.vendor = 0xDEAD;
-	input_dev->id.product = 0xBEEF;
-	input_dev->id.version = 10427;
-
-	err = input_register_device(input_dev);
-	if (err) {
-		dev_err(&client->dev,
-			"ft6x06_ts_probe: failed to register input device: %s\n",
-			dev_name(&client->dev));
-		goto exit_input_register_device_failed;
-	}
-
-	input_dev->open = ft6x06_open;
-	input_dev->close = ft6x06_close;
-	input_set_drvdata(input_dev, ft6x06_ts);
-	/*make sure CTP already finish startup process */
+/*make sure CTP already finish startup process */
 	ft6x06_ts_reset(ft6x06_ts);
 	msleep(150);
 
@@ -618,9 +777,6 @@ static int ft6x06_ts_probe(struct i2c_client *client,
 
 exit_irq_request_failed:
 
-exit_input_register_device_failed:
-	input_free_device(input_dev);
-
 #ifndef DEBUG_LCD_VCC_ALWAYS_ON
 exit_request_reset:
 #endif
@@ -628,14 +784,24 @@ exit_request_reset:
 	gpio_free(ft6x06_ts->pdata->reset);
 #endif
 exit_request_fail:
-exit_input_dev_alloc_failed:
 #ifndef DEBUG_LCD_VCC_ALWAYS_ON
 	if (!IS_ERR(ft6x06_ts->vcc_reg)) {
 		regulator_disable(ft6x06_ts->vcc_reg);
 		regulator_put(ft6x06_ts->vcc_reg);
 	}
 #endif
+
 	i2c_set_clientdata(client, NULL);
+	if(ft6x06_ts->touch_dev)
+	{
+		input_free_device(ft6x06_ts->touch_dev);
+		ft6x06_ts->touch_dev = NULL;
+	}
+	if(ft6x06_ts->keyboard_dev)
+	{
+		input_free_device(ft6x06_ts->keyboard_dev);
+		ft6x06_ts->keyboard_dev = NULL;
+	}
 	kfree(ft6x06_ts);
 
 exit_alloc_data_failed:
@@ -647,7 +813,11 @@ static int ft6x06_ts_remove(struct i2c_client *client)
 {
 	struct ft6x06_ts_data *ft6x06_ts;
 	ft6x06_ts = i2c_get_clientdata(client);
-	input_unregister_device(ft6x06_ts->input_dev);
+	input_unregister_device(ft6x06_ts->touch_dev);
+	ft6x06_ts->touch_dev = NULL;
+	input_unregister_device(ft6x06_ts->keyboard_dev);
+	ft6x06_ts->keyboard_dev = NULL;
+
 #ifdef CONFIG_PM
 	gpio_free(ft6x06_ts->pdata->reset);
 #endif

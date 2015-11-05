@@ -48,10 +48,10 @@ static struct ft6x0x_platform_data ft6x0x_tsc_pdata = {
 #if defined(CONFIG_TOUCHSCREEN_FT6X06) || defined(CONFIG_TOUCHSCREEN_FT6X06_MODULE)
 #include <linux/input/ft6x06_ts.h>
 static struct ft6x06_platform_data ft6x06_tsc_pdata = {
-	.x_max          = 300,
-	.y_max          = 540,
-	.va_x_max	= 300,
-	.va_y_max	= 480,
+	.x_max          = 320,
+	.y_max          = 480,
+	.va_x_max	= 480,
+	.va_y_max	= 800,
 	.irqflags = IRQF_TRIGGER_FALLING|IRQF_DISABLED,
 	.irq = GPIO_TP_INT,
 	.reset = GPIO_TP_RESET,
