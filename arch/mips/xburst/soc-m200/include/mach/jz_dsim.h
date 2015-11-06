@@ -245,7 +245,7 @@ struct loop_band {
  */
 
 struct dsi_master_ops {
-	int (*cmd_write) (struct dsi_device * dsi, struct dsi_cmd_packet cmd_data);
+	int (*cmd_write)(struct dsi_device * dsi, unsigned char *cmd_array, int array_size);
 	int (*cmd_read) (struct dsi_device * dsi, u8 * rx_buf);
 	int (*video_cfg) (struct dsi_device * dsi);
 	int (*ioctl)(struct dsi_device *dsi, int cmd);

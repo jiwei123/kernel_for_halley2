@@ -103,43 +103,48 @@ out:
 
 static void samsung_sleep_in(struct samsung *lcd)
 {
+	unsigned char data_to_send[] = {0x05, 0x10, 0x00};
+	int array_size = ARRAY_SIZE(data_to_send);
 	struct dsi_master_ops *ops = lcd_to_master_ops(lcd);
-	struct dsi_cmd_packet data_to_send = {0x05, 0x10, 0x00};
-
-	ops->cmd_write(lcd_to_master(lcd), data_to_send);
+	struct dsi_device *dsi = lcd_to_master(lcd);
+	ops->cmd_write(dsi, data_to_send, array_size);
 }
 
 static void samsung_sleep_out(struct samsung *lcd)
 {
+	unsigned char data_to_send[] = {0x05, 0x11, 0x00};
+	int array_size = ARRAY_SIZE(data_to_send);
 	struct dsi_master_ops *ops = lcd_to_master_ops(lcd);
-	struct dsi_cmd_packet data_to_send = {0x05, 0x11, 0x00};
-
-	ops->cmd_write(lcd_to_master(lcd), data_to_send);
+	struct dsi_device *dsi = lcd_to_master(lcd);
+	ops->cmd_write(dsi, data_to_send, array_size);
 }
 
 static void samsung_memory_access(struct samsung *lcd)
 {
+	unsigned char data_to_send[] = {0x39, 0x01, 0x00, 0x2c};
+	int array_size = ARRAY_SIZE(data_to_send);
 	struct dsi_master_ops *ops = lcd_to_master_ops(lcd);
-	struct dsi_cmd_packet data_to_send = {0x39, 0x01, 0x00, {0x2c}};
-
-	ops->cmd_write(lcd_to_master(lcd), data_to_send);
+	struct dsi_device *dsi = lcd_to_master(lcd);
+	ops->cmd_write(dsi, data_to_send, array_size);
 }
 
 
 static void samsung_display_on(struct samsung *lcd)
 {
+	unsigned char data_to_send[] = {0x05, 0x29, 0x00};
+	int array_size = ARRAY_SIZE(data_to_send);
 	struct dsi_master_ops *ops = lcd_to_master_ops(lcd);
-	struct dsi_cmd_packet data_to_send = {0x05, 0x29, 0x00};
-
-	ops->cmd_write(lcd_to_master(lcd), data_to_send);
+	struct dsi_device *dsi = lcd_to_master(lcd);
+	ops->cmd_write(dsi, data_to_send, array_size);
 }
 
 static void samsung_display_off(struct samsung *lcd)
 {
+	unsigned char data_to_send[] = {0x05, 0x28, 0x00};
+	int array_size = ARRAY_SIZE(data_to_send);
 	struct dsi_master_ops *ops = lcd_to_master_ops(lcd);
-	struct dsi_cmd_packet data_to_send = {0x05, 0x28, 0x00};
-
-	ops->cmd_write(lcd_to_master(lcd), data_to_send);
+	struct dsi_device *dsi = lcd_to_master(lcd);
+	ops->cmd_write(dsi, data_to_send, array_size);
 }
 
 
@@ -157,17 +162,16 @@ static int samsung_get_power(struct lcd_device *ld)
 
 static void samsung_brightness_setting(struct samsung *lcd, unsigned long value)
 {
-    int  i;
+    int array_size;
     struct dsi_master_ops *ops = lcd_to_master_ops(lcd);
     struct dsi_device *dsi = lcd_to_master(lcd);
-    struct dsi_cmd_packet samsung_cmd_bl[] = { 
-	    {0x39, 0x02, 0x00, {0x51, value}},
-	    {0x39, 0x02, 0x00, {0x53, 0x20}}
+    unsigned char samsung_cmd_bl[] = { 
+		0x39, 0x02, 0x00, 0x51, value,
+	    0x39, 0x02, 0x00, 0x53, 0x20
     };  
-   
-    for(i = 0; i < ARRAY_SIZE(samsung_cmd_bl); i++) {
-	    ops->cmd_write(dsi,  samsung_cmd_bl[i]);
-    }
+
+	array_size = ARRAY_SIZE(samsung_cmd_bl);
+	ops->cmd_write(dsi, samsung_cmd_bl, array_size);
 }
 
 static void samsung_backlight_update_status(struct backlight_device *bd)
@@ -203,66 +207,61 @@ static void samsung_power_on(struct mipi_dsim_lcd_device *dsim_dev, int power)
 	if (lcd->ddi_pd->reset)
 		lcd->ddi_pd->reset(lcd->ld);
 }
-struct dsi_cmd_packet samsung_cmd_list1[] = {
-    {0x39, 0x03, 0x00, {0xF2, 0x1C, 0x28}},
-    {0x39, 0x04, 0x00, {0xB5, 0x0A, 0x01, 0x00}},/* Frame Freq = 60Hz, ALPM CTL Boosting */
-    {0x39, 0x05, 0x00, {0x2A, 0x00,0x14,0x01,0x53}},/* column address */
-    {0x39, 0x05, 0x00, {0x2B, 0x01,0x40,0x00,0x01}},/* Page address */
-    {0x39, 0x0E, 0x00, {0xF8, 0x08, 0x08, 0x08, 0x17, 0x00, 0x2A, 0x02, 0x26, 0x00, 0x00, 0x02, 0x00, 0x00}},
-    {0x39, 0x02, 0x00, {0xF7, 0x02}},/* Normal2 + BICTL0*/
-    {0x39, 0x02, 0x00, {0x35, 0x01}},/* TE */
+unsigned char samsung_cmd_list1[] = {
+    0x39, 0x03, 0x00, 0xF2, 0x1C, 0x28,
+    0x39, 0x04, 0x00, 0xB5, 0x0A, 0x01, 0x00,/* Frame Freq = 60Hz, ALPM CTL Boosting */
+    0x39, 0x05, 0x00, 0x2A, 0x00,0x14,0x01,0x53,/* column address */
+    0x39, 0x05, 0x00, 0x2B, 0x01,0x40,0x00,0x01,/* Page address */
+    0x39, 0x0E, 0x00, 0xF8, 0x08, 0x08, 0x08, 0x17, 0x00, 0x2A, 0x02, 0x26, 0x00, 0x00, 0x02, 0x00, 0x00,
+    0x39, 0x02, 0x00, 0xF7, 0x02,/* Normal2 + BICTL0*/
+    0x39, 0x02, 0x00, 0x35, 0x01,/* TE */
 };
-struct dsi_cmd_packet samsung_cmd_list2[] = {
-    {0x39, 0x02, 0x00, {0x51, 0xEA}},/* Write Display Brightness */
-    {0x39, 0x02, 0x00, {0x53, 0x20}},/* Write ControlDisplay */
+unsigned char samsung_cmd_list2[] = {
+    0x39, 0x02, 0x00, 0x51, 0xEA,/* Write Display Brightness */
+    0x39, 0x02, 0x00, 0x53, 0x20,/* Write ControlDisplay */
 };
-struct dsi_cmd_packet samsung_cmd_list3[] = {
-    {0x39, 0x03, 0x00, {0xB1, 0x00, 0x09}},/* ELVSS Condition SET */
-    {0x39, 0x02, 0x00, {0x36, 0x80}},/* reversal left and right */
+unsigned char samsung_cmd_list3[] = {
+    0x39, 0x03, 0x00, 0xB1, 0x00, 0x09,/* ELVSS Condition SET */
+    0x39, 0x02, 0x00, 0x36, 0x80,/* reversal left and right */
 };
 
 static void samsung_panel_test_key_enable(struct samsung *lcd)
 {
-    int  i;
+    int array_size;
 	struct dsi_master_ops *ops = lcd_to_master_ops(lcd);
-	struct dsi_cmd_packet data_to_send0 = {0x39, 0x03, 0x00, {0xf0, 0x5a, 0x5a}};
-	struct dsi_cmd_packet data_to_send1 = {0x39, 0x03, 0x00, {0xf1, 0x5a, 0x5a}};
+	unsigned char data_to_send0[] = {0x39, 0x03, 0x00, 0xf0, 0x5a, 0x5a};
+	unsigned char data_to_send1[] = {0x39, 0x03, 0x00, 0xf1, 0x5a, 0x5a};
 
-	ops->cmd_write(lcd_to_master(lcd), data_to_send0);
-	ops->cmd_write(lcd_to_master(lcd), data_to_send1);
+	array_size = ARRAY_SIZE(data_to_send0);
+	ops->cmd_write(dsi, data_to_send0, array_size);
+	array_size = ARRAY_SIZE(data_to_send1);
+	ops->cmd_write(dsi, data_to_send1, array_size);
 }
 
 
 static void samsung_panel_test_key_disable(struct samsung *lcd)
 {
-    int  i;
+	unsigned char data_to_send[] = {0x39, 0x03, 0x00, 0xf1, 0xa5, 0xa5};
+	int array_size = ARRAY_SIZE(data_to_send);
 	struct dsi_master_ops *ops = lcd_to_master_ops(lcd);
-	struct dsi_cmd_packet data_to_send = {0x39, 0x03, 0x00, {0xf1, 0xa5, 0xa5}};
-
-	ops->cmd_write(lcd_to_master(lcd), data_to_send);
-
+	struct dsi_device *dsi = lcd_to_master(lcd);
+	ops->cmd_write(dsi, data_to_send, array_size);
 }
 
 static void samsung_panel_condition_setting(struct samsung *lcd)
 {
-    int  i;
+    int array_size = ARRAY_SIZE(samsung_cmd_list1);
 	struct dsi_master_ops *ops = lcd_to_master_ops(lcd);
 	struct dsi_device *dsi = lcd_to_master(lcd);
-	for(i = 0; i < ARRAY_SIZE(samsung_cmd_list1); i++) {
-		ops->cmd_write(dsi,  samsung_cmd_list1[i]);
-	}
-
+	ops->cmd_write(dsi, samsung_cmd_list1, array_size);
 }
 
 static void samsung_etc_setting(struct samsung *lcd)
 {
-    int  i;
+    int array_size = ARRAY_SIZE(samsung_cmd_list3);
 	struct dsi_master_ops *ops = lcd_to_master_ops(lcd);
 	struct dsi_device *dsi = lcd_to_master(lcd);
-	for(i = 0; i < ARRAY_SIZE(samsung_cmd_list3); i++) {
-		ops->cmd_write(dsi,  samsung_cmd_list3[i]);
-	}
-
+	ops->cmd_write(dsi, samsung_cmd_list3, array_size);
 }
 
 static void samsung_set_sequence(struct mipi_dsim_lcd_device *dsim_dev)

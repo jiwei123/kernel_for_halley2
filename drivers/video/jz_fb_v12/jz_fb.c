@@ -2603,10 +2603,10 @@ static ssize_t
 mipi_command_w(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct jzfb *jzfb = dev_get_drvdata(dev);
+	unsigned char data_to_send[MAX_WORD_COUNT + 3] = {0};
 	char *token, *cur;
-	struct dsi_cmd_packet data_to_send;
 	struct dsi_device *dsi = jzfb->dsi;
-	int number = 0;
+	int number = 3;
 
 	mutex_lock(&jzfb->lock);
 	current_mipi_command = (char *)buf;
@@ -2619,15 +2619,15 @@ mipi_command_w(struct device *dev, struct device_attribute *attr, const char *bu
 		if (isspace(*token))
 			continue;
 
-		data_to_send.cmd_data[number] = simple_strtol(token, '\0', 16);
+		data_to_send[number] = simple_strtol(token, '\0', 16);
 		number++;
 	}
 
-	data_to_send.packet_type = 0x39;
-	data_to_send.cmd0_or_wc_lsb = number % 256;
-	data_to_send.cmd1_or_wc_msb = number / 256;
+	data_to_send[0] = 0x39;
+	data_to_send[1] = (number - 3) % 256;
+	data_to_send[2] = (number - 3) / 256;
 
-	dsi->master_ops->cmd_write(dsi, data_to_send);
+	dsi->master_ops->cmd_write(dsi, data_to_send, number);
 	mutex_unlock(&jzfb->lock);
 
 	return count;

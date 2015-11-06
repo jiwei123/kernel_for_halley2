@@ -65,16 +65,14 @@ static void auo_h139bln01_power_on(struct mipi_dsim_lcd_device *dsim_dev, int po
 
 static void auo_h139bln01_brightness_setting(struct auo_h139bln01_dev *lcd, int brightness)
 {
-	int i;
-	struct dsi_master_ops *ops = lcd_to_master_ops(lcd);
-	struct dsi_cmd_packet brightness_cmd_table[] = {
-			{0x15, 0x51, (unsigned char)brightness},
-			{0x15, 0x53, 0x20},
+	unsigned char brightness_cmd_table[] = {
+			0x15, 0x51, (unsigned char)brightness,
+			0x15, 0x53, 0x20,
 	};
-
-	for (i = 0; i < ARRAY_SIZE(brightness_cmd_table); i++) {
-		ops->cmd_write(lcd_to_master(lcd), brightness_cmd_table[i]);
-	}
+	int array_size = ARRAY_SIZE(brightness_cmd_table);
+	struct dsi_master_ops *ops = lcd_to_master_ops(lcd);
+	struct dsi_device *dsi = lcd_to_master(lcd);
+	ops->cmd_write(dsi, brightness_cmd_table, array_size);
 }
 
 static int auo_h139bln01_update_status(struct backlight_device *bd)
@@ -92,66 +90,70 @@ static struct backlight_ops auo_h139bln01_backlight_ops = {
 
 void auo_h139bln01_nop(struct auo_h139bln01_dev *lcd)
 {
+	unsigned char data_to_send[] = {0x15, 0x00, 0x00};
+	int array_size = ARRAY_SIZE(data_to_send);
 	struct dsi_master_ops *ops = lcd_to_master_ops(lcd);
-	struct dsi_cmd_packet data_to_send = {0x15, 0x00, 0x00};
-
-	ops->cmd_write(lcd_to_master(lcd), data_to_send);
+	struct dsi_device *dsi = lcd_to_master(lcd);
+	ops->cmd_write(dsi, data_to_send, array_size);
 }
 
 static void auo_h139bln01_sleep_in(struct auo_h139bln01_dev *lcd)
 {
+	unsigned char data_to_send[] = {0x15, 0x10, 0x00};
+	int array_size = ARRAY_SIZE(data_to_send);
 	struct dsi_master_ops *ops = lcd_to_master_ops(lcd);
-	struct dsi_cmd_packet data_to_send = {0x15, 0x10, 0x00};
-
-	ops->cmd_write(lcd_to_master(lcd), data_to_send);
+	struct dsi_device *dsi = lcd_to_master(lcd);
+	ops->cmd_write(dsi, data_to_send, array_size);
 }
 
 static void auo_h139bln01_sleep_out(struct auo_h139bln01_dev *lcd)
 {
+	unsigned char data_to_send[] = {0x15, 0x11, 0x00};
+	int array_size = ARRAY_SIZE(data_to_send);
 	struct dsi_master_ops *ops = lcd_to_master_ops(lcd);
-	struct dsi_cmd_packet data_to_send = {0x15, 0x11, 0x00};
-
-	ops->cmd_write(lcd_to_master(lcd), data_to_send);
+	struct dsi_device *dsi = lcd_to_master(lcd);
+	ops->cmd_write(dsi, data_to_send, array_size);
 }
 
 static void auo_h139bln01_display_on(struct auo_h139bln01_dev *lcd)
 {
+	unsigned char data_to_send[] = {0x15, 0x29, 0x00};
+	int array_size = ARRAY_SIZE(data_to_send);
 	struct dsi_master_ops *ops = lcd_to_master_ops(lcd);
-	struct dsi_cmd_packet data_to_send = {0x15, 0x29, 0x00};
-
-	ops->cmd_write(lcd_to_master(lcd), data_to_send);
+	struct dsi_device *dsi = lcd_to_master(lcd);
+	ops->cmd_write(dsi, data_to_send, array_size);
 }
 
 static void auo_h139bln01_display_off(struct auo_h139bln01_dev *lcd)
 {
+	unsigned char data_to_send[] = {0x15, 0x28, 0x00};
+	int array_size = ARRAY_SIZE(data_to_send);
 	struct dsi_master_ops *ops = lcd_to_master_ops(lcd);
-	struct dsi_cmd_packet data_to_send = {0x15, 0x28, 0x00};
-
-	ops->cmd_write(lcd_to_master(lcd), data_to_send);
+	struct dsi_device *dsi = lcd_to_master(lcd);
+	ops->cmd_write(dsi, data_to_send, array_size);
 }
 
 static void auo_h139bln01_panel_condition_setting(struct auo_h139bln01_dev *lcd)
 {
-	int  i;
+	int array_size;
 	struct dsi_master_ops *ops = lcd_to_master_ops(lcd);
 	struct dsi_device *dsi = lcd_to_master(lcd);
-	struct dsi_cmd_packet auo_h139bln01_cmd_list[] = {
-			{0x15, 0xFE, 0x05},
-			{0x15, 0x05, 0x00},
-			{0x15, 0xFE, 0x07},
-			{0x15, 0x07, 0x4F},
-			{0x15, 0xFE, 0x0A},
-			{0x15, 0x1C, 0x1B},
-			{0x15, 0xFE, 0x00},
-			{0x15, 0x35, 0x00},
+	unsigned char auo_h139bln01_cmd_list[] = {
+			0x15, 0xFE, 0x05,
+			0x15, 0x05, 0x00,
+			0x15, 0xFE, 0x07,
+			0x15, 0x07, 0x4F,
+			0x15, 0xFE, 0x0A,
+			0x15, 0x1C, 0x1B,
+			0x15, 0xFE, 0x00,
+			0x15, 0x35, 0x00,
 	};
+	array_size = ARRAY_SIZE(auo_h139bln01_cmd_list);
 
 	auo_h139bln01_nop(lcd); // do nothing, just for logic integrity
 	mdelay(4); // used to avoid screen corrosion/pitting
 
-	for(i = 0; i < ARRAY_SIZE(auo_h139bln01_cmd_list); i++) {
-		ops->cmd_write(dsi,  auo_h139bln01_cmd_list[i]);
-	}
+	ops->cmd_write(dsi, auo_h139bln01_cmd_list, array_size);
 
 	auo_h139bln01_sleep_out(lcd);
 //	mdelay(2);

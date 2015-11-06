@@ -63,60 +63,62 @@ static void h160_tft320320_power_on(struct mipi_dsim_lcd_device *dsim_dev, int p
 
 static void h160_tft320320_sleep_in(struct h160_tft320320_dev *lcd)
 {
+	unsigned char data_to_send[] = {0x05, 0x10, 0x00};
+	int array_size = ARRAY_SIZE(data_to_send);
 	struct dsi_master_ops *ops = lcd_to_master_ops(lcd);
-	struct dsi_cmd_packet data_to_send = {0x05, 0x10, 0x00};
-
-	ops->cmd_write(lcd_to_master(lcd), data_to_send);
+	struct dsi_device *dsi = lcd_to_master(lcd);
+	ops->cmd_write(dsi, data_to_send, array_size);
 }
 
 static void h160_tft320320_sleep_out(struct h160_tft320320_dev *lcd)
 {
+	unsigned char data_to_send[] = {0x05, 0x11, 0x00};
+	int array_size = ARRAY_SIZE(data_to_send);
 	struct dsi_master_ops *ops = lcd_to_master_ops(lcd);
-	struct dsi_cmd_packet data_to_send = {0x05, 0x11, 0x00};
-
-	ops->cmd_write(lcd_to_master(lcd), data_to_send);
+	struct dsi_device *dsi = lcd_to_master(lcd);
+	ops->cmd_write(dsi, data_to_send, array_size);
 }
 
 static void h160_tft320320_display_on(struct h160_tft320320_dev *lcd)
 {
+	unsigned char data_to_send[] = {0x05, 0x29, 0x00};
+	int array_size = ARRAY_SIZE(data_to_send);
 	struct dsi_master_ops *ops = lcd_to_master_ops(lcd);
-	struct dsi_cmd_packet data_to_send = {0x05, 0x29, 0x00};
-
-	ops->cmd_write(lcd_to_master(lcd), data_to_send);
+	struct dsi_device *dsi = lcd_to_master(lcd);
+	ops->cmd_write(dsi, data_to_send, array_size);
 }
 
 static void h160_tft320320_display_off(struct h160_tft320320_dev *lcd)
 {
+	unsigned char data_to_send[] = {0x05, 0x28, 0x00};
+	int array_size = ARRAY_SIZE(data_to_send);
 	struct dsi_master_ops *ops = lcd_to_master_ops(lcd);
-	struct dsi_cmd_packet data_to_send = {0x05, 0x28, 0x00};
-
-	ops->cmd_write(lcd_to_master(lcd), data_to_send);
+	struct dsi_device *dsi = lcd_to_master(lcd);
+	ops->cmd_write(dsi, data_to_send, array_size);
 }
 
 static void h160_tft320320_panel_condition_setting(struct h160_tft320320_dev *lcd)
 {
-	int  i;
+	int array_size;
 	struct dsi_master_ops *ops = lcd_to_master_ops(lcd);
 	struct dsi_device *dsi = lcd_to_master(lcd);
 
-	struct dsi_cmd_packet h160_tft320320_cmd_list[] = {
-		{0x39, 0x02, 0x00, {0x36, 0xc0}},
-		{0x39, 0x05, 0x00, {0x2a, 0x00,     0x00,       319 >> 8, 319 & 0xff}},
-		{0x39, 0x05, 0x00, {0x2b, 160 >> 8, 160 & 0xff, 479 >> 8, 479 & 0xff}},
-		{0x39, 0x03, 0x00, {0x44, 320 >> 8, 320 & 0xff}},
-		{0x05, 0x20, 0x00},
-		{0x39, 0x02, 0x00, {0xe1, 0x02}},
-		{0x05, 0x35, 0x00},
-		{0x39, 0x02, 0x00, {0x3a, 0x77}},
+	unsigned char h160_tft320320_cmd_list[] = {
+		0x39, 0x02, 0x00, 0x36, 0xc0,
+		0x39, 0x05, 0x00, 0x2a, 0x00, 0x00, 319 >> 8, 319 & 0xff,
+		0x39, 0x05, 0x00, 0x2b, 160 >> 8, 160 & 0xff, 479 >> 8, 479 & 0xff,
+		0x39, 0x03, 0x00, 0x44, 320 >> 8, 320 & 0xff,
+		0x05, 0x20, 0x00,
+		0x39, 0x02, 0x00, 0xe1, 0x02,
+		0x05, 0x35, 0x00,
+		0x39, 0x02, 0x00, 0x3a, 0x77,
 		/* {0x05, 0x29, 0x00}, */
 	};
 
 	h160_tft320320_sleep_out(lcd);
 	mdelay(10);
-	for(i = 0; i < ARRAY_SIZE(h160_tft320320_cmd_list); i++) {
-		ops->cmd_write(dsi,  h160_tft320320_cmd_list[i]);
-	}
-
+	array_size = ARRAY_SIZE(h160_tft320320_cmd_list);
+	ops->cmd_write(dsi, h160_tft320320_cmd_list, array_size);
 	return;
 }
 

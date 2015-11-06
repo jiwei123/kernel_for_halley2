@@ -9,6 +9,9 @@
 #include "jz_mipi_dsih_hal.h"
 #include "jz_mipi_dsi_regs.h"
 #include <linux/delay.h>
+
+#define kprint(fmt,args...) printk("\033[1;31m" fmt "\033[0m \n", ##args);
+
 /**
  * Write a 32-bit word to the DSI Host core
  * @param dsi pointer to structure holding the DSI Host core information
@@ -1251,17 +1254,20 @@ unsigned int  mipi_dsih_write_register_configuration(struct dsi_device * dsi, re
 	return count;
 }
 
-int write_command(struct dsi_device * dsi, struct dsi_cmd_packet cmd_data)
+int _write_command(struct dsi_device * dsi, struct dsi_cmd_packet * cmd_data)
 {
 	unsigned int i, j;
 	unsigned int packet_type;
 	unsigned char dsi_command_param[MAX_WORD_COUNT] = {0};
 	unsigned short word_count = 0;
 	unsigned int ret;
+	//struct dsi_cmd_packet *a_cmd_data;
+	//a_cmd_data = kmalloc(sizeof(struct dsi_cmd_packet), GFP_KERNEL);
+	//a_cmd_data = cmd_data;
 	/*word count*/
-	packet_type = cmd_data.packet_type;
-	dsi_command_param[0] = cmd_data.cmd0_or_wc_lsb;
-	dsi_command_param[1] = cmd_data.cmd1_or_wc_msb;
+	packet_type = cmd_data->packet_type;
+	dsi_command_param[0] = cmd_data->cmd0_or_wc_lsb;
+	dsi_command_param[1] = cmd_data->cmd1_or_wc_msb;
 	//printk("packet_type  = %x\n",  packet_type);
 	if(packet_type == 0x39){ //dcs long packet
 		word_count = ((dsi_command_param[1] << 8 ) | dsi_command_param[0]);
@@ -1269,7 +1275,7 @@ int write_command(struct dsi_device * dsi, struct dsi_cmd_packet cmd_data)
 		j = 2;
 		/*payload: */
 		for(i = 0; i < word_count; i++) {
-			dsi_command_param[j++] = cmd_data.cmd_data[i];
+			dsi_command_param[j++] = cmd_data->cmd_data[i];
 		//	printk("dsi_command_param[%d] = %x\n", j-1, dsi_command_param[j-1]);
 		}
 
@@ -1284,5 +1290,83 @@ int write_command(struct dsi_device * dsi, struct dsi_cmd_packet cmd_data)
 		printk("gen_wr_packet failed. ret:%d\n", ret);
 	}
 	mdelay(1);
+	return 0;
+}
+
+int print_mipi_cmd_list(unsigned char * cmd_array, int array_size)
+{
+	int i = 0;
+	int j = 0;
+	int cmd_len = 0;
+	unsigned char *p = cmd_array;
+	while(i < array_size)
+	{
+		switch (*p)
+		{
+		case 0x05:
+		case 0x15:
+			cmd_len = 3;
+			if((i+cmd_len) > array_size) {
+				kprint("0x%02x: This line you get the command make the array overflow!\n please checkout the packet_type and cmd_length!", *p);
+				return -1;
+			}
+			break;
+		case 0x39:
+			cmd_len = 3 + (*(p + 1) + (*(p + 2) << 8));
+			if((i+cmd_len) > array_size) {
+				kprint("0x%02x: This line you get the command make the array overflow!\n please checkout the packet_type and cmd_length!", *p);
+				return -1;
+			}
+			break;
+		default:
+			kprint("0x%02x: This packet_type is error, please checkout previous line packet_type and cmd_length!", *p);
+			return -1;
+			break;
+		}
+		for (j = 0; j < cmd_len; j++, i++)
+			printk("0x%02x,", *(p++));
+		printk("\n");
+	}
+	return 0;
+}
+
+int write_command(struct dsi_device * dsi, unsigned char * cmd_array, int array_size)
+{
+	int i = 0;
+	struct dsi_cmd_packet *cmd_packet;
+	unsigned char *p = cmd_array;
+	while(i < array_size)
+	{
+		switch (*p)
+		{
+		case 0x05:
+		case 0x15:
+			cmd_packet = (struct dsi_cmd_packet *)p;
+			i += 3;
+			if (i > array_size) {
+				print_mipi_cmd_list(cmd_array, array_size);
+				BUG_ON(1);
+				return -1;
+			}
+			p += 3;
+			break;
+		case 0x39:
+			cmd_packet = (struct dsi_cmd_packet *)p;
+			i += (3 + *(p + 1) + (*(p + 2) << 8));
+			if (i > array_size) {
+				print_mipi_cmd_list(cmd_array, array_size);
+				BUG_ON(1);
+				return -1;
+			}
+			p += (3 + *(p + 1) + (*(p + 2) << 8));
+			break;
+		default:
+			print_mipi_cmd_list(cmd_array, array_size);
+			dump_stack();
+			return -1;
+			break;
+		}
+		_write_command(dsi, cmd_packet);
+	}
 	return 0;
 }
