@@ -27,6 +27,7 @@
 #include <linux/usb/ch9.h>
 #include <linux/usb/composite.h>
 #include <linux/usb/gadget.h>
+#include <linux/crc32.h> /* For counting font checksums */
 
 #if defined (CONFIG_JZ4780_EFUSE) || defined (CONFIG_JZ4775_EFUSE)
 #include <mach/jz4780_efuse.h>
@@ -1318,6 +1319,65 @@ out:
 	return sprintf(buf, "%s\n", state);
 }
 
+static ssize_t serial_show(struct device *pdev, struct device_attribute *attr,
+			   char *buf)
+{
+	return sprintf(buf, "%s\n", serial_string);
+}
+
+static ssize_t serial_store(struct device *pdev, struct device_attribute *attr,
+			    const char *buff, size_t size)
+{
+	struct android_dev *dev = dev_get_drvdata(pdev);
+	int ret = 0;
+	char *string = NULL;
+	int buf_len = strlen(buff);
+	int i;
+
+	mutex_lock(&dev->mutex);
+	if ((string = kzalloc(buf_len, GFP_KERNEL)) < 0) {
+		ret = -ENOMEM;
+		goto kzalloc_tmp_buf_err;
+	}
+	strncpy(string, buff, buf_len);
+
+#if defined (CONFIG_JZ4780_EFUSE) || defined (CONFIG_JZ4775_EFUSE)
+    {
+        unsigned int chip_id[4];
+        jz_efuse_id_read(1, chip_id);
+        snprintf(serial_string, sizeof(serial_string) - 1,
+                "%s-%08x-%08x-%08x-%08x", string,
+                chip_id[0], chip_id[1], chip_id[2], chip_id[3]);
+    }
+#elif defined (CONFIG_JZ_EFUSE_V12)
+    {
+	uint32_t efuse_value[4];
+	unsigned long mac = 0;
+	read_jz_efuse_chip_num(efuse_value);
+	for(i=0; i<sizeof(efuse_value)/sizeof(efuse_value[0]); i++) {
+		mac = crc32(mac, &efuse_value[i], sizeof(uint32_t));
+	}
+        snprintf(serial_string, sizeof(serial_string) - 1,
+                "%s-%08x", string, mac);
+    }
+#else
+    {
+        unsigned char random_out[4];
+        get_random_bytes(random_out, 4);
+        snprintf(serial_string, sizeof(serial_string) - 1,
+                "%s-%02x%02x%02x%02x", string,
+                random_out[0], random_out[1], random_out[2], random_out[3]);
+    }
+#endif
+
+kzalloc_tmp_buf_err:
+	kfree(string);
+
+    mutex_unlock(&dev->mutex);
+    return size;
+}
+
+
 #define DESCRIPTOR_ATTR(field, format_string)				\
 static ssize_t								\
 field ## _show(struct device *dev, struct device_attribute *attr,	\
@@ -1364,12 +1424,12 @@ DESCRIPTOR_ATTR(bDeviceSubClass, "%d\n")
 DESCRIPTOR_ATTR(bDeviceProtocol, "%d\n")
 DESCRIPTOR_STRING_ATTR(iManufacturer, manufacturer_string)
 DESCRIPTOR_STRING_ATTR(iProduct, product_string)
-DESCRIPTOR_STRING_ATTR(iSerial, serial_string)
 
 static DEVICE_ATTR(functions, S_IRUGO | S_IWUSR, functions_show,
 						 functions_store);
 static DEVICE_ATTR(enable, S_IRUGO | S_IWUSR, enable_show, enable_store);
 static DEVICE_ATTR(state, S_IRUGO, state_show, NULL);
+static DEVICE_ATTR(serial, S_IRUGO | S_IWUSR, serial_show, serial_store);
 
 static struct device_attribute *android_usb_attributes[] = {
 	&dev_attr_idVendor,
@@ -1380,7 +1440,7 @@ static struct device_attribute *android_usb_attributes[] = {
 	&dev_attr_bDeviceProtocol,
 	&dev_attr_iManufacturer,
 	&dev_attr_iProduct,
-	&dev_attr_iSerial,
+	&dev_attr_serial,
 	&dev_attr_functions,
 	&dev_attr_enable,
 	&dev_attr_state,
@@ -1413,7 +1473,8 @@ static int android_bind(struct usb_composite_dev *cdev)
 {
 	struct android_dev *dev = _android_dev;
 	struct usb_gadget	*gadget = cdev->gadget;
-	int			id, ret;
+	int id, ret;
+	int i;
 
 	/*
 	 * Start disconnected. Userspace will connect the gadget once
@@ -1452,11 +1513,14 @@ static int android_bind(struct usb_composite_dev *cdev)
     }
 #elif defined (CONFIG_JZ_EFUSE_V12)
     {
-        unsigned int chip_id[4];
-        read_jz_efuse(0x200,16, chip_id); //seg_addr[CHIP_ID]=0x200
+	uint32_t efuse_value[4];
+	unsigned long mac = 0;
+	read_jz_efuse_chip_num(efuse_value);
+	for(i=0; i<sizeof(efuse_value)/sizeof(efuse_value[0]); i++) {
+		mac = crc32(mac, &efuse_value[i], sizeof(uint32_t));
+	}
         snprintf(serial_string, sizeof(serial_string) - 1,
-                "%s-%08x", CONFIG_USB_SERIAL_NUM,
-                chip_id[0]);
+                "%s-%08x", CONFIG_USB_SERIAL_NUM, mac);
     }
 #else
     {
