@@ -275,6 +275,25 @@ int read_jz_efuse(uint32_t xaddr, uint32_t xlen, void *xbuf)
 }
 EXPORT_SYMBOL_GPL(read_jz_efuse);
 
+
+int read_jz_efuse_chip_id(void *xbuf)
+{
+	int ret = -ENODEV;
+	ret = read_jz_efuse(seg_addr[CHIP_ID],16, xbuf);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(read_jz_efuse_chip_id);
+
+int read_jz_efuse_chip_num(void *xbuf)
+{
+	int ret = -ENODEV;
+	ret = read_jz_efuse(seg_addr[CHIP_NUM],16, xbuf);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(read_jz_efuse_chip_num);
+
 #if IS_ENABLED(CONFIG_JZ_EFUSE_WRITE)
 static int __jz_efuse_write(uint32_t xaddr, uint32_t xlen, uint32_t* buf)
 {
