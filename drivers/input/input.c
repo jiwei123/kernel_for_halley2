@@ -242,8 +242,11 @@ static int input_handle_abs_event(struct input_dev *dev,
 	if (pold) {
 		*pval = input_defuzz_abs_event(*pval, *pold,
 						dev->absinfo[code].fuzz);
-		/* Workaround for m200-tizen-2.3 touch input: do not ignore point event if same to last point */
-#if 0
+		/* Workaround for m200-tizen-2.3 touch input:
+		   single touch point: do not ignore point event if same to last point.
+		   muilt-touch: do not change kernel original code, should 'return INPUT_IGNORE_EVENT;'.
+		 */
+#if 1
 		if (*pold == *pval)
 			return INPUT_IGNORE_EVENT;
 #endif
