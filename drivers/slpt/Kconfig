@@ -29,6 +29,11 @@ config SLPT_MAP_TO_KSEG2
 	depends on SLPT
 	default y
 
+config SLPT_BUILT_IN_FIRMWARE
+	bool "slpt app will built-in kernel"
+	depends on SLPT
+	default y
+
 config SLPT_SHUTDOWN
     bool "entry slpt mode when system low-power shutdown"
     default n
