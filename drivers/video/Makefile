@@ -1,4 +1,4 @@
-# Makefile for the Linux video drivers.
+# for the Linux video drivers.
 # 5 Aug 1999, James Simmons, <mailto:jsimmons@users.sf.net>
 # Rewritten to use lists instead of if-statements.
 
@@ -182,3 +182,6 @@ obj-$(CONFIG_VIDEOMODE_HELPERS) += display_timing.o videomode.o
 ifeq ($(CONFIG_OF),y)
 obj-$(CONFIG_VIDEOMODE_HELPERS) += of_display_timing.o of_videomode.o
 endif
+
+# the default fb ctrl driver
+obj-$(CONFIG_DEFAULT_FB)           += default_fb.o

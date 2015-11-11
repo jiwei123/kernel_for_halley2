@@ -21,6 +21,10 @@
 #include <asm/backlight.h>
 #endif
 
+#ifdef CONFIG_DEFAULT_BACKLIGHT
+#include <linux/default_backlight.h>
+#endif
+
 static const char *const backlight_types[] = {
 	[BACKLIGHT_RAW] = "raw",
 	[BACKLIGHT_PLATFORM] = "platform",
@@ -340,6 +344,10 @@ struct backlight_device *backlight_device_register(const char *name,
 	mutex_unlock(&pmac_backlight_mutex);
 #endif
 
+#ifdef CONFIG_DEFAULT_BACKLIGHT
+	register_default_backlight(new_bd);
+#endif
+
 	return new_bd;
 }
 EXPORT_SYMBOL(backlight_device_register);
@@ -354,6 +362,10 @@ void backlight_device_unregister(struct backlight_device *bd)
 {
 	if (!bd)
 		return;
+
+#ifdef CONFIG_DEFAULT_BACKLIGHT
+	unregister_default_backlight(bd);
+#endif
 
 #ifdef CONFIG_PMAC_BACKLIGHT
 	mutex_lock(&pmac_backlight_mutex);

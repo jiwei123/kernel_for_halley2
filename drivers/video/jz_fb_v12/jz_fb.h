@@ -3,6 +3,8 @@
 
 #include <linux/fb.h>
 #include <linux/semaphore.h>
+#include <linux/default_fb.h>
+#include <linux/atomic.h>
 
 #ifndef __exit
 #define __exit
@@ -174,8 +176,13 @@ struct jzfb {
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend early_suspend;
 #endif
+	struct fb_ctrl fb_ctrl;
 	int is_suspend;
+	int is_shutdown;
 	unsigned int pan_display_count;
+
+	atomic_t is_pan_display_locked;
+	int save_next_frm;
 
 	struct slcd_te slcd_te;
 };

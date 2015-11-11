@@ -274,6 +274,10 @@ config BACKLIGHT_CLASS_DEVICE
 	  To have support for your specific LCD panel you will have to
 	  select the proper drivers which depend on this option.
 
+config DEFAULT_BACKLIGHT
+	tristate "Default Backlight device ctrl driver"
+	default y
+
 if BACKLIGHT_CLASS_DEVICE
 
 config BACKLIGHT_ATMEL_LCDC
