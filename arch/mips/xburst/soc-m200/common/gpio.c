@@ -997,7 +997,7 @@ int jzgpio_str2gpio(char *str)
 		pr_err("%s: only allowed PX0 to PX31, gpio_port: %s\n", __FUNCTION__, str);
 		return -ERANGE;
 	}
-	return 32*port + idx;
+	return jz_gpio_chips[port].gpio_chip.base + idx;
 }
 
 void dump_gpio_pin(int port, int pin) {
