@@ -244,6 +244,7 @@ void reconfig_thr_value()
 int dmic_set_samplerate(unsigned long rate)
 {
 	int ret;
+	printk("rate = %ld\n",rate);
 	if(rate == 8000) {
 		REG_DMIC_CR0 &= ~(3<<6);
 		ret = 0;
@@ -255,7 +256,7 @@ int dmic_set_samplerate(unsigned long rate)
 		printk("dmic does not support samplerate:%d\n", rate);
 		ret = -1;
 	}
-
+	dump_dmic_regs();
 	return ret;
 
 }

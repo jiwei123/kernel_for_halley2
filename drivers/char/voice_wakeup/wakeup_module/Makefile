@@ -1,5 +1,5 @@
 TOPDIR = .
-CROSS_COMPILE ?= mips-linux-gnu-
+CROSS_COMPILE ?= mipsel-linux-android-
 CC = $(CROSS_COMPILE)gcc
 LD = $(CROSS_COMPILE)ld
 OBJCOPY = $(CROSS_COMPILE)objcopy

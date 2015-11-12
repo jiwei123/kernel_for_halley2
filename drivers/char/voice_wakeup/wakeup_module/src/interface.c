@@ -100,7 +100,7 @@ int open(int mode)
 #endif
 			/* UNMASK INTC we used */
 			REG32(0xB000100C) = 1<<0; /*dmic int en*/
-			REG32(0xB000100C) = 1<<26; /*tcu1 int en*/
+			/* REG32(0xB000100C) = 1<<26; */ /*tcu1 int en*/
 			REG32(0xB000102C) = 1<<0; /*rtc int en*/
 			dump_voice_wakeup();
 			break;
@@ -154,10 +154,6 @@ static inline void powerdown_wait(void)
 
 	opcr |= 1 << 30;
 	REG32(CPM_IOBASE + CPM_OPCR) = opcr;
-
-	/*DDR clk on*/
-	REG32(0xb0000020) &= ~(1 << 31);
-
 	temp = REG32(CPM_IOBASE + CPM_OPCR);
 	__asm__ volatile(".set mips32\n\t"
 			"nop\n\t"
@@ -228,7 +224,7 @@ static inline void idle_wait(void)
  *	RTC	 INTS: used to sum wakeup failed times. and adjust thr value.
  *	TCU	 INTS: used for cpu to process data.
  * */
-#define INTC0_MASK	0xfBfffffe
+#define INTC0_MASK	0xfffffffe
 #define INTC1_MASK	0xfffffffe
 
 /* desc: this function is only called when cpu is in deep sleep
@@ -237,25 +233,21 @@ static inline void idle_wait(void)
  * */
 int handler(int par)
 {
-	volatile int ret;
-	volatile unsigned int int0;
-	__attribute__ ((unused)) unsigned int int1;
-
-	/* DDR clock off*/
-	REG32(0xb0000020) |= 1 << 31;
+	volatile int ret = SYS_WAKEUP_INTC;
+	__attribute__ ((unused)) unsigned int int0;
+	unsigned int int1;
 
 	while(1) {
 
 		int0 = REG32(0xb0001010);
 		int1 = REG32(0xb0001030);
 		if((REG32(0xb0001010) & INTC0_MASK) || (REG32(0xb0001030) & INTC1_MASK)) {
-			serial_put_hex(REG32(0xb0001010));
-			serial_put_hex(REG32(0xb0001030));
 			cpu_wakeup_by = WAKEUP_BY_OTHERS;
-			ret = SYS_WAKEUP_OK;
+			/* TCSM_PCHAR('t'); */
+			ret = SYS_WAKEUP_INTC;
 			break;
 		}
-
+		/* TCSM_PCHAR('D'); */
 		/* RTC interrupt pending */
 		if(REG32(0xb0001030) & (1<<0)) {
 			TCSM_PCHAR('R');
@@ -410,7 +402,6 @@ int is_cpu_wakeup_by_dmic(void)
 /* used by wakeup driver when earyl sleep. */
 int set_sleep_buffer(struct sleep_buffer *sleep_buffer)
 {
-	//int i;
 	g_sleep_buffer = sleep_buffer;
 
 	dma_stop(_dma_channel);

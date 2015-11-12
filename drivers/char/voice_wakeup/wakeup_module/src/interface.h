@@ -3,13 +3,13 @@
 
 
 extern int (*h_handler)(const char *fmt, ...);
-/*#define CONFIG_SLEEP_DEBUG*/
+/* #define CONFIG_SLEEP_DEBUG */
 
 #ifdef CONFIG_SLEEP_DEBUG
 #define printk	h_handler
 #define printf printk
 #else
-#define debug_print(fmt, args...) do{} while(0)
+#define debug_print(fmt, args...)
 #define printk debug_print
 #define printf printk
 #endif
@@ -35,11 +35,12 @@ struct sleep_buffer {
 	unsigned long total_len;
 };
 
-#define TCSM_DATA_BUFFER_ADDR	(0xb3425000) /* bank3 */
+#define TCSM_DATA_BUFFER_ADDR	(0xb3422000) /* bank0 */
 #define TCSM_DATA_BUFFER_SIZE	(4096)
+//#define TCSM_DATA_BUFFER_SIZE	(8192)
+#define TCSM_DESC_ADDR			(0xb3424000) /* bank2 start */
 
-#define TCSM_DESC_ADDR			(0xb3423000 + 4096 + 2048) /* bank2 start */
-
+#define TCSM_SP_ADDR			(0xb3425fff) /* bank3 end */
 
 #define LOAD_ADDR	0x8ff00000
 #define LOAD_SIZE	(256 * 1024)
@@ -51,7 +52,7 @@ struct sleep_buffer {
 #define LSR_TDRQ        (1 << 5)
 #define LSR_TEMT        (1 << 6)
 
-#define UART1_IOBASE    0x10031000
+#define UART1_IOBASE    0x10033000 /* this is uart3*/
 #define U1_IOBASE (UART1_IOBASE + 0xa0000000)
 #ifdef CONFIG_SLEEP_DEBUG
 #define TCSM_PCHAR(x)                           \
