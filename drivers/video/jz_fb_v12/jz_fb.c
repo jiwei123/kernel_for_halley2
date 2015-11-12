@@ -3156,22 +3156,24 @@ static void jzfb_shutdown(struct platform_device *pdev)
 #ifdef CONFIG_PM
 static int jzfb_suspend(struct device *dev)
 {
-	/* struct platform_device *pdev = to_platform_device(dev); */
-	/* struct jzfb *jzfb = platform_get_drvdata(pdev); */
+	struct platform_device *pdev = to_platform_device(dev);
+	struct jzfb *jzfb = platform_get_drvdata(pdev);
 	/* clk_disable(jzfb->clk); */
 	/* clk_disable(jzfb->pclk); */
 	printk("++++++%s\n",__func__);
+	jzfb_do_suspend(jzfb);
 
 	return 0;
 }
 
 static int jzfb_resume(struct device *dev)
 {
-	/* struct platform_device *pdev = to_platform_device(dev); */
-	/* struct jzfb *jzfb = platform_get_drvdata(pdev); */
+	struct platform_device *pdev = to_platform_device(dev);
+	struct jzfb *jzfb = platform_get_drvdata(pdev);
 	/* clk_enable(jzfb->pclk); */
 	/* jzfb_clk_enable(jzfb); */
 	printk("++++++%s\n",__func__);
+	jzfb_do_resume(jzfb);
 
 	return 0;
 }
