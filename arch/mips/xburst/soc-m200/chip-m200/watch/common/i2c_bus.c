@@ -106,6 +106,24 @@ static struct jztsc_platform_data ite7258_tsc_pdata = {
 };
 #endif  /* CONFIG_TOUCHSCREEN_ITE7258 */
 
+#ifdef CONFIG_TOUCHSCREEN_MSG22S
+#include <linux/i2c/mstar_drv_common.h>
+struct msg22s_platform_data msg22s_tsc_pdata = {
+       .vdd_name = VCC_TOUCHSCREEN/*acrab:LDO3 aw808: LDO10*/,
+       .reset = GPIO_TOUCH_RESET,
+       .irq = GPIO_TOUCH_INT,
+       .touch_screen_x_min = 0,
+       .touch_screen_y_min = 0,
+#ifdef CONFIG_AW808_HW_X3
+       .touch_screen_x_max = 320, /*LCD_WIDTH*/
+       .touch_screen_y_max = 320, /*LCD_HEIGHT*/
+#else
+       .touch_screen_x_max = 400, /*LCD_WIDTH*/
+       .touch_screen_y_max = 400, /*LCD_HEIGHT*/
+#endif
+};
+#endif
+
 /* *****************************haptics drv2605 start********************* */
 #if defined(CONFIG_HAPTICS_DRV2605)
 #include <linux/haptics/drv2605.h>
@@ -539,6 +557,12 @@ struct i2c_board_info jz_i2c1_devs[] __initdata = {
 	{
 		I2C_BOARD_INFO("ite7258_ts", 0x46),
 		.platform_data = &ite7258_tsc_pdata,
+	},
+#endif
+#ifdef CONFIG_TOUCHSCREEN_MSG22S
+	{
+		I2C_BOARD_INFO("msg2xxx", 0x4c), /* i2c speed should change be 100Kbit/s*/
+		.platform_data = &msg22s_tsc_pdata,
 	},
 #endif
 };

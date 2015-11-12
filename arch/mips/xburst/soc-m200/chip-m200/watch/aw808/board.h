@@ -166,6 +166,11 @@
 #define VCC_TOUCHSCREEN LDO10_NAME
 #define VIO_TOUCHSCREEN LDO9_NAME
 #endif  /* CONFIG_TOUCHSCREEN_ITE7258 */
+#ifdef CONFIG_TOUCHSCREEN_MSG22S
+#define VCC_TOUCHSCREEN		LDO10_NAME
+#define GPIO_TOUCH_RESET	GPIO_PA(14)
+#define GPIO_TOUCH_INT		GPIO_PA(12)
+#endif
 
 /* ****************************GPIO TOUCHSCREEN END************************** */
 
