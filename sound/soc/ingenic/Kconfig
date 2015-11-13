@@ -89,6 +89,7 @@ menu "jz board type select"
 choice
 	prompt "soc m200 codec type select"
 	depends on SOC_M200
+
 	config SND_ASOC_INGENIC_DORADO_ICDC
 	tristate "Audio support for dorado with internal codec"
 	select SND_ASOC_DMA_V12
@@ -98,6 +99,17 @@ choice
 	select SND_ASOC_JZ_PCM_V12
 	help
 	  Say Y if you want to add audio support for M200 Dorado
+	  reference board with internal codec
+
+	config SND_ASOC_INGENIC_WATCH_ICDC
+	tristate "Audio support for watch with internal codec"
+	select SND_ASOC_DMA_V12
+	select SND_ASOC_JZ_AIC_I2S_V12
+	select SND_ASOC_JZ_INCODEC
+	select SND_ASOC_JZ_ICDC_D1
+	select SND_ASOC_JZ_PCM_V12
+	help
+	  Say Y if you want to add audio support for M200 Watch
 	  reference board with internal codec
 endchoice
 
