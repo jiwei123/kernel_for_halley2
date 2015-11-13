@@ -64,20 +64,30 @@ unsigned char *configurate_raw_data = NULL;
 #endif
 #endif
 
+struct ts_event {
+	u16 au16_x[CFG_MAX_TOUCH_POINTS];	//x coordinate
+	u16 au16_y[CFG_MAX_TOUCH_POINTS];	//y coordinate
+	u8 au8_touch_event[CFG_MAX_TOUCH_POINTS];	//touch event:
+					//0 -- down; 1-- contact; 2 -- contact
+	u8 au8_finger_id[CFG_MAX_TOUCH_POINTS];	//touch ID
+	u8 au8_touch_wight[CFG_MAX_TOUCH_POINTS];	//touch Wight
+	u16 pressure[CFG_MAX_TOUCH_POINTS];
+	u8 touch_point;
+	u8 touch_state[CFG_MAX_TOUCH_POINTS];
+};
+
 struct ite7258_ts_data {
         unsigned int irq;
         unsigned int rst;
         unsigned int rst_level;
         unsigned int x_max;
         unsigned int y_max;
-        unsigned int x_pos;
-        unsigned int y_pos;
-        unsigned int pressure;
         unsigned int is_suspend;
         unsigned int tp_firmware_algo_ver;
         unsigned int tp_firmware_cfg_ver;
         struct i2c_client *client;
         struct input_dev *input_dev;
+		struct ts_event event;
         struct jztsc_platform_data *pdata;
         struct mutex lock;
         struct work_struct  work;
@@ -91,6 +101,12 @@ struct ite7258_ts_data {
 
 static struct ite7258_update_data *update;
 static const struct attribute_group it7258_attr_group;
+
+#define FTS_POINT_UP		0x01
+#define FTS_POINT_DOWN		0x00
+#define FTS_POINT_CONTACT	0x02
+#define FTS_POINT_NOUSED	-1
+/*#define KEYBOARD_BIT_OPEN 2*/
 
 /*
  *ite7258_i2c_Read-read data and write data by i2c
@@ -849,49 +865,50 @@ static int IT7258_auto_upgrade_fw(struct ite7258_ts_data *ite7258_ts)
     }
 }
 #endif
-static void ite7258_report_value(struct ite7258_ts_data *data)
+
+static void ite7258_ts_release(struct ite7258_ts_data *data)
 {
-	/* if you swap xy, your x_max and y_max should better be the same value */
-#ifdef CONFIG_TSC_SWAP_XY
-	tsc_swap_xy(&data->x_pos, &data->y_pos);
-#endif
-
-#ifdef CONFIG_TSC_SWAP_X
-	tsc_swap_x(&data->x_pos, data->x_max);
-#endif
-
-#ifdef CONFIG_TSC_SWAP_Y
-	tsc_swap_y(&data->y_pos, data->y_max);
-#endif
-
-#ifdef  CONFIG_ITE7258_MULTITOUCH
-	input_report_abs(data->input_dev, ABS_MT_POSITION_X, data->x_pos);
-	input_report_abs(data->input_dev, ABS_MT_POSITION_Y, data->y_pos);
-	input_report_abs(data->input_dev, ABS_MT_PRESSURE,   data->pressure);
-	input_report_abs(data->input_dev, ABS_MT_TOUCH_MAJOR, 128);
-	input_report_abs(data->input_dev, ABS_MT_WIDTH_MAJOR, 128);
+	int i;
+	int up_flinger = 0;
+	struct ts_event *event = &data->event;
+	for(i = 0;i < CFG_MAX_TOUCH_POINTS;i++)
+	{
+		if(event->touch_state[i] == FTS_POINT_DOWN)
+		{
+#ifdef CONFIG_ITE7258_MULTITOUCH
+			input_mt_slot(data->input_dev, event->au8_finger_id[i]);
+			input_mt_report_slot_state(data->input_dev,
+						   MT_TOOL_FINGER, false);
+			input_mt_sync(data->input_dev);
 #else
-	input_report_abs(data->input_dev, ABS_X, data->x_pos);
-	input_report_abs(data->input_dev, ABS_Y, data->y_pos);
-	input_report_abs(data->input_dev, ABS_PRESSURE, 0xF);
+			input_report_key(data->input_dev, BTN_TOUCH, 0);
 #endif
+			event->au8_touch_event[i] = FTS_POINT_UP;
+			event->touch_state[i] = FTS_POINT_UP;
+			up_flinger = 1;
+		}
+	}
+	if(up_flinger)
+		input_sync(data->input_dev);
 }
 
 static int ite7258_read_Touchdata(struct ite7258_ts_data *data)
 {
+	struct ts_event *event = &data->event;
+	u8 pointid = 3;
+	int i = 0;
 	int ret = -1;
-	int xraw, yraw,pressure;
 	unsigned char pucPoint[14];
 
 	if (data->is_suspend) {
-		input_mt_sync(data->input_dev);
-		input_sync(data->input_dev);
+		ite7258_ts_release(data);
 		return 0;
 	}
 	pucPoint[0] = QUERY_BUF_ADDR; //reg addr
 	ret = ite7258_i2c_Read(data->client, pucPoint, 1, pucPoint, 1);
 
 	if((pucPoint[0] & 0x01)) { // is busy
+		ite7258_ts_release(data);
 		return 0;
 	}
 	if((pucPoint[0] & 0x80)) {
@@ -900,50 +917,97 @@ static int ite7258_read_Touchdata(struct ite7258_ts_data *data)
 		if(pucPoint[1] & 0x01) { //Palm
 			return 0;
 		}
-
-#ifdef  CONFIG_ITE7258_MULTITOUCH
-		if (pucPoint[0] & 0x01) {
-			xraw = ((pucPoint[3] & 0x0F) << 8) + pucPoint[2];
-			yraw = ((pucPoint[3]  0xF0) << 4) + pucPoint[4];
-			pressure = (pucPoint[5] & 0x0F);
-			data->x_pos = xraw;
-			data->y_pos = yraw;
-			data->pressure = pressure;
-			ite7258_report_value(data);
-			input_mt_sync(data->input_dev);
-			//input_sync(data->input_dev);
-		}
-		if (pucPoint[0] & 0x02) {
-			xraw = ((pucPoint[7] & 0x0F) << 8) + pucPoint[6];
-			yraw = ((pucPoint[7] & 0xF0) << 4) + pucPoint[8];
-			pressure = (pucPoint[9] & 0x0F);
-			data->x_pos = xraw;
-			data->y_pos = yraw;
-			data->pressure = pressure;
-			ite7258_report_value(data);
-			input_mt_sync(data->input_dev);
-			//input_sync(data->input_dev);
-		}
-		input_mt_sync(data->input_dev);
-		input_sync(data->input_dev);
-#else
-		if(pucPoint[0] & 0x01){
-			xraw = ((pucPoint[3] & 0x0F) << 8) + pucPoint[2];
-			yraw = ((pucPoint[3] & 0xF0) << 4) + pucPoint[4];
-			data->x_pos = xraw;
-			data->y_pos = yraw;
-			pressure = (pucPoint[5] & 0x0F);
-			ite7258_report_value(data);
-			input_report_key(data->input_dev, BTN_TOUCH, 1);
-			input_sync(data->input_dev);
-		}else if ( pucPoint[0]== 0) {
-			input_report_key(data->input_dev, BTN_TOUCH, 0);
-			input_sync(data->input_dev);
-		}
-#endif
 	}
-	return 0;
 
+	pointid= pucPoint[FT_TOUCH_FINGER_POS]& 0x3;
+	if(pointid == 0){
+		ite7258_ts_release(data);
+		return 0;
+	}
+
+	event->touch_point = 0;
+
+	for(i = 0; i< CFG_MAX_TOUCH_POINTS; i++){
+		event->touch_point++;
+		event->au16_x[i] = ((pucPoint[FT_TOUCH_X_H_POS + FT_TOUCH_STEP * i]
+					& 0x0F) << 8) | pucPoint[FT_TOUCH_X_L_POS + FT_TOUCH_STEP * i];
+		event->au16_y[i] = ((pucPoint[FT_TOUCH_Y_H_POS + FT_TOUCH_STEP * i]
+					& 0xF0) << 4) | pucPoint[FT_TOUCH_Y_L_POS + FT_TOUCH_STEP * i];
+
+		event->pressure[i] = (pucPoint[FT_TOUCH_PRESSURE+FT_TOUCH_STEP * i] & 0x0F);
+		event->au8_finger_id[i] = i;
+		if((pointid >> i)& 0x1)
+			event->au8_touch_event[i] = FTS_POINT_DOWN;
+	}
+return 0;
+
+}
+
+static void ite7258_touch_area_report_value(struct ite7258_ts_data * data, int index)
+{
+	struct ts_event *event = &data->event;
+	switch(event->au8_touch_event[index]){
+		case FTS_POINT_DOWN:
+		case FTS_POINT_CONTACT:
+			{
+#ifdef CONFIG_ITE7258_MULTITOUCH
+				input_mt_slot(data->input_dev,event->au8_finger_id[index]);
+				input_mt_report_slot_state(data->input_dev,MT_TOOL_FINGER, true);
+				input_report_abs(data->input_dev, ABS_MT_POSITION_X,
+						event->au16_x[index]);
+				input_report_abs(data->input_dev, ABS_MT_POSITION_Y,
+						event->au16_y[index]);
+				input_report_abs(data->input_dev,ABS_MT_TOUCH_MAJOR,
+						event->au8_touch_wight[index]);
+				input_report_abs(data->input_dev,ABS_MT_WIDTH_MAJOR,
+						event->pressure[index]);
+				input_mt_sync(data->input_dev);
+				if(event->touch_state[index] != FTS_POINT_DOWN)
+					input_report_key(data->input_dev, BTN_TOUCH, 0);
+
+#else
+				if(0 == index){
+					/*if (event->touch_point == 1) {*/
+						input_report_abs(data->input_dev, ABS_X, event->au16_x[index]);
+						input_report_abs(data->input_dev, ABS_Y, event->au16_y[index]);
+						input_report_abs(data->input_dev, ABS_PRESSURE, event->pressure[index]);
+					/*}*/
+					input_report_key(data->input_dev, BTN_TOUCH, 1);
+				}
+#endif
+				event->touch_state[index] = FTS_POINT_DOWN;
+				break;
+			}
+		case FTS_POINT_UP:
+#ifdef CONFIG_ITE7258_MULTITOUCH
+			input_mt_slot(data->input_dev, event->au8_finger_id[index]);
+			input_mt_report_slot_state(data->input_dev,
+					MT_TOOL_FINGER, false);
+#else
+
+			input_report_key(data->input_dev, BTN_TOUCH, 0);
+#endif
+			event->touch_state[index] = FTS_POINT_UP;
+			break;
+	}
+	input_sync(data->input_dev);
+}
+
+static void ite7258_report_value(struct ite7258_ts_data *data)
+{
+	struct ts_event *event = &data->event;
+	int i = 0;
+	for (i = 0; i < event->touch_point; i++) {
+		dev_dbg(&data->client->dev,"e:%d,p:%d,x:%d,y:%d,w:%d\n",
+			event->au8_touch_event[i],
+			event->au8_finger_id[i],
+			event->au16_x[i],
+			event->au16_y[i],
+			event->au8_touch_wight[i]);
+
+		ite7258_touch_area_report_value(data, i);
+
+	}
 }
 
 static void ite7258_work_handler(struct work_struct *work)
@@ -953,6 +1017,9 @@ static void ite7258_work_handler(struct work_struct *work)
         int ret = 0;
 
         ret = ite7258_read_Touchdata(ite7258_ts);
+		if(ret == 0) {
+			ite7258_report_value(ite7258_ts);
+		}
 
         enable_irq(ite7258_ts->irq);
 }
@@ -1358,32 +1425,31 @@ static int ite7258_regulator_get(struct ite7258_ts_data *ite7258_ts)
 static void ite7258_input_set(struct input_dev *input_dev, struct ite7258_ts_data *ts)
 {
 #ifdef CONFIG_ITE7258_MULTITOUCH
-        set_bit(ABS_MT_TOUCH_MAJOR, input_dev->absbit);
-        set_bit(ABS_MT_POSITION_X, input_dev->absbit);
-        set_bit(ABS_MT_POSITION_Y, input_dev->absbit);
-        set_bit(ABS_MT_PRESSURE, input_dev->absbit);
-        set_bit(ABS_MT_WIDTH_MAJOR, input_dev->absbit);
+	set_bit(ABS_MT_TOUCH_MAJOR, input_dev->absbit);
+	set_bit(ABS_MT_POSITION_X, input_dev->absbit);
+	set_bit(ABS_MT_POSITION_Y, input_dev->absbit);
+	set_bit(ABS_MT_WIDTH_MAJOR, input_dev->absbit);
+	input_mt_init_slots(input_dev, 2, 0);
 
-        input_set_abs_params(input_dev, ABS_MT_POSITION_X, 0, ts->x_max, 0, 0);
-        input_set_abs_params(input_dev, ABS_MT_POSITION_Y, 0, ts->y_max, 0, 0);
-        input_set_abs_params(input_dev, ABS_MT_PRESSURE,   0, PRESS_MAX, 0, 0);
-        input_set_abs_params(input_dev, ABS_MT_WIDTH_MAJOR, 0, PRESS_MAX, 0, 0);
-        input_set_abs_params(input_dev, ABS_MT_TOUCH_MAJOR, 0, PRESS_MAX, 0, 0);
+	input_set_abs_params(input_dev, ABS_MT_POSITION_X, 0, ts->x_max, 0, 0);
+	input_set_abs_params(input_dev, ABS_MT_POSITION_Y, 0, ts->y_max, 0, 0);
+	input_set_abs_params(input_dev, ABS_MT_WIDTH_MAJOR, 0, PRESS_MAX, 0, 0);
+	input_set_abs_params(input_dev, ABS_MT_TOUCH_MAJOR, 0, PRESS_MAX, 0, 0);
+	input_set_abs_params(input_dev, ABS_X, 0, ts->x_max, 0, 0);
+	input_set_abs_params(input_dev, ABS_Y, 0, ts->y_max, 0, 0);
 #else
-        set_bit(ABS_X, input_dev->absbit);
-        set_bit(ABS_Y, input_dev->absbit);
-		set_bit(ABS_PRESSURE, input_dev->absbit);
-        set_bit(EV_SYN, input_dev->evbit);
-        set_bit(BTN_TOUCH, input_dev->keybit);
-        input_set_abs_params(input_dev, ABS_X, 0, ts->x_max, 0, 0);
-        input_set_abs_params(input_dev, ABS_Y, 0, ts->y_max, 0, 0);
-        input_set_abs_params(input_dev, ABS_PRESSURE, 0, 0xFF, 0, 0);
+	set_bit(ABS_X, input_dev->absbit);
+	set_bit(ABS_Y, input_dev->absbit);
+	set_bit(ABS_PRESSURE, input_dev->absbit);
+	set_bit(EV_SYN, input_dev->evbit);
+	input_set_abs_params(input_dev, ABS_X, 0, ts->x_max, 0, 0);
+	input_set_abs_params(input_dev, ABS_Y, 0, ts->y_max, 0, 0);
+	input_set_abs_params(input_dev, ABS_PRESSURE, 0, 0xFF, 0, 0);
 #endif
-    set_bit(EV_KEY, input_dev->evbit);
-    set_bit(EV_ABS, input_dev->evbit);
-	set_bit(KEY_HOMEPAGE, input_dev->keybit);
-	set_bit(KEY_BACK, input_dev->keybit);
-	set_bit(KEY_MENU, input_dev->keybit);
+	set_bit(BTN_TOUCH, input_dev->keybit);
+	set_bit(EV_KEY, input_dev->evbit);
+	set_bit(EV_SYN, input_dev->evbit);
+	set_bit(EV_ABS, input_dev->evbit);
 	set_bit(INPUT_PROP_DIRECT, input_dev->propbit);
 
 	input_dev->name = ITE7258_NAME;
@@ -1540,7 +1606,6 @@ static int ite7258_ts_probe(struct i2c_client *client,
                 dev_err(&client->dev, "failed to allocate input device\n");
                 goto exit_input_dev_alloc_failed;
         }
-        ite7258_ts->input_dev = input_dev;
         ite7258_input_set(input_dev, ite7258_ts);
 
         err = input_register_device(input_dev);
@@ -1550,6 +1615,9 @@ static int ite7258_ts_probe(struct i2c_client *client,
                                 dev_name(&client->dev));
                 goto exit_input_register_device_failed;
         }
+
+		input_set_drvdata(input_dev, ite7258_ts);
+		ite7258_ts->input_dev = input_dev;
 
 	ite7258_register_notifier(ite7258_ts);
 
@@ -1575,7 +1643,7 @@ static int ite7258_ts_probe(struct i2c_client *client,
                 goto exit_irq_request_failed;
         }
         ite7258_exit_sleep_mode(ite7258_ts);
- 
+
         return 0;
 
 

@@ -1,6 +1,17 @@
 #ifndef __LINUX_ITE7258_H
 #define __LINUX_ITE7258_H
 
+#define CFG_MAX_TOUCH_POINTS 2
+
+#define FT_TOUCH_X_L_POS     2
+#define FT_TOUCH_X_H_POS     3
+#define FT_TOUCH_Y_L_POS     4
+#define FT_TOUCH_Y_H_POS     3
+#define FT_TOUCH_FINGER_POS  0
+#define	FT_TOUCH_PRESSURE    5
+#define FT_TOUCH_STEP        4
+
+
 #define PRESS_MAX   0xFF
 #define ITE7258_NAME "ite7258_ts"
 
