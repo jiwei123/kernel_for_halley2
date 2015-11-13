@@ -149,8 +149,8 @@ static int watch_dlv_dai_link_init(struct snd_soc_pcm_runtime *rtd)
 	} else
 	    pr_debug("codec_platform_data gpio_hp_detect is NULL\n");
 #endif
-
-	snd_soc_dapm_force_enable_pin(dapm, "Speaker");
+	/* bootup enable and always on */
+	//snd_soc_dapm_force_enable_pin(dapm, "Speaker");
 	//snd_soc_dapm_force_enable_pin(dapm, "Mic Buildin");
 
 	snd_soc_dapm_sync(dapm);
