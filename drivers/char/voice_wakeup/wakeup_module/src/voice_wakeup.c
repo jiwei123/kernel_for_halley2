@@ -196,7 +196,7 @@ int get_valid_bytes()
 	xfer->head = (char *)(dma_addr | 0xA0000000) - xfer->buf;
 
 	nbytes = CIRC_CNT(xfer->head, xfer->tail, rx_fifo->n_size);
-
+	//serial_put_hex(nbytes);
 	return nbytes;
 }
 int process_nbytes(int nbytes)
@@ -309,9 +309,8 @@ int process_dma_data(void)
 	xfer->head = (char *)(dma_addr | 0xA0000000) - xfer->buf;
 
 	nbytes = CIRC_CNT(xfer->head, xfer->tail, rx_fifo->n_size);
-
 	//printk("xfer->head:%d, xfer->tail:%d, nbyts:%d\n", xfer->head, xfer->tail, nbytes);
-	if(nbytes > 220) {
+ 	if(nbytes > 220) {
 		while(1) {
 			int nread;
 			nread = CIRC_CNT(xfer->head, xfer->tail, rx_fifo->n_size);

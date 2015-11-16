@@ -26,7 +26,7 @@ void wakeup_reset_fifo(void);
 #define SYS_WAKEUP_OK	0x1
 #define SYS_WAKEUP_FAILED 0x2
 #define SYS_NEED_DATA	0x3
-
+#define SYS_WAKEUP_INTC 0x4
 
 extern unsigned int wakeup_res[];
 
