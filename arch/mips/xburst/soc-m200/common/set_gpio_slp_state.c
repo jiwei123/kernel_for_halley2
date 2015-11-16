@@ -4,6 +4,7 @@
 #include <linux/string.h>
 #include <linux/seq_file.h>
 #include <linux/proc_fs.h>
+#include <asm/uaccess.h>
 
 extern int jzgpio_str2gpio(char *str);
 extern void gpio_sleep_state(unsigned int group, unsigned int index,unsigned int state);
@@ -75,6 +76,7 @@ static ssize_t gpio_set_sleep_mode_write(struct file *file,
 							const char __user * buf, size_t len, loff_t * off)
 {
 	char *str = NULL;
+	char buffer[64] = "";
 	char sleep_mode[64] = "";
 	char gpio_port[64] = "";
 	int gpio_num = 0, sleep_type;
@@ -83,14 +85,18 @@ static ssize_t gpio_set_sleep_mode_write(struct file *file,
 		pr_err("%s: buf is null!\n", __func__);
 		return -EINVAL;
 	}
- 
+
 	if (len > 64) {
 		pr_err("%s: length of %s is %d, bigger then 64.\n", __func__, buf, len);
 		return -EINVAL;
 	}
 
-	str = (char *)buf;
-	str = endchar_to_NUL(str, len);
+	if (copy_from_user(buffer, buf, len)) {
+		pr_err("%s: user buf error.\n", __func__);
+		return -EINVAL;
+	}
+
+	str = endchar_to_NUL(buffer, len);
 	sscanf(str, "%s %s", gpio_port, sleep_mode);
 	if (*gpio_port == '\0' || *sleep_mode == '\0') {
 		pr_err("%s: %s of write buf is invalid.\n", __func__, str);
