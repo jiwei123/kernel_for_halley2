@@ -1,3 +1,4 @@
+if SENSORS
 config INPUT_MPU6500
 	bool "Invensense MPU-6500 sensor"
 	default n
@@ -27,3 +28,5 @@ config INPUT_MPU6500_POLLING
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called MPU6500.
+
+endif

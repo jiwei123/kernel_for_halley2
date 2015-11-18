@@ -10,6 +10,7 @@ menuconfig SENSORS
 
 	  If unsure, say Y.
 
+if SENSORS
 config SENSORS_BMI055
 	tristate "BMI055 Combo Sensor Driver"
 	depends on I2C
@@ -73,5 +74,7 @@ config SENSORS_SX9500
 	  SamTech cm3323 device driver.
 
 	  Say N here if you do not use cm3323.
+
+endif
 
 source "drivers/sensors/mpu6500/Kconfig"
