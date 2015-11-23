@@ -160,7 +160,7 @@ err_vdd:
 
 static void mpu6500_get_position(int *pos)
 {
-	*pos = MPU6500_BOTTOM_RIGHT_LOWER;
+	*pos = MPU6500_TOP_LEFT_LOWER;
 }
 
 struct mpu6500_platform_data mpu6500_pdata = {

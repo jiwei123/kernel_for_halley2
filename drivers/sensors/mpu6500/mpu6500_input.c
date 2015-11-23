@@ -1147,6 +1147,7 @@ static ssize_t mpu6500_input_accel_delay_store(struct device *dev,
 		return ret;
 	}
 
+	value = 10;
 	pr_info("[SENSOR] %s : delay = %d\n", __func__, value);
 
 	mutex_lock(&data->mutex);
@@ -1317,6 +1318,7 @@ static ssize_t mpu6500_input_gyro_delay_store(struct device *dev,
 		return ret;
 	}
 
+	value = 10;
 	pr_info("[SENSOR] %s : delay = %d\n", __func__, value);
 
 	mutex_lock(&data->mutex);
