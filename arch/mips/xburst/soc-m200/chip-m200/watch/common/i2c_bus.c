@@ -445,7 +445,7 @@ static int pac7673_power_on(void)
     if (!atomic_read(&pac7673_powered)) {
         if (!IS_ERR(pac7673_power_vdd)) {
             if (cnt == 0) {
-                regulator_disable(pac7673_power_vdd);
+                res = regulator_disable(pac7673_power_vdd);
                 cnt++;
             }
             res = regulator_enable(pac7673_power_vdd);
@@ -488,6 +488,95 @@ static struct pac7673_platform_data pac7673_pdata = {
 
 #endif
 /* *****************************pixart pac7673 end************************ */
+
+/* *****************************em30719 start***************************** */
+#ifdef CONFIG_SENSORS_EM30719
+#include <linux/input/em30719.h>
+
+#if !defined(EM30719_VDD_NAME)
+#define EM30719_VDD_NAME    NULL
+#endif
+
+static struct regulator *em30719_power_vdd = NULL;
+static atomic_t em30719_powered = ATOMIC_INIT(0);
+static int em30719_early_init(struct device *dev)
+{
+    int res;
+
+    if (!em30719_power_vdd) {
+        em30719_power_vdd = regulator_get(dev, EM30719_VDD_NAME);
+        if (IS_ERR(em30719_power_vdd)) {
+            pr_err("%s -> get regulator VDD failed\n", __func__);
+            res = -ENODEV;
+
+        }
+    }
+
+    return 0;
+}
+
+static int em30719_exit(struct device *dev)
+{
+    if (em30719_power_vdd != NULL && !IS_ERR(em30719_power_vdd)) {
+        regulator_put(em30719_power_vdd);
+        em30719_power_vdd = NULL;       //Must set pointer to NULL
+    }
+
+    atomic_set(&em30719_powered, 0);
+
+    return 0;
+}
+
+static int em30719_power_on(void)
+{
+    int res;
+    static int cnt = 0;
+    if (!atomic_read(&em30719_powered)) {
+        if (!IS_ERR(em30719_power_vdd)) {
+            if (cnt == 0) {
+                res = regulator_disable(em30719_power_vdd);
+                cnt++;
+            }
+            res = regulator_enable(em30719_power_vdd);
+        } else {
+            pr_err("%s -> VDD power unavailable!\n", __func__);
+            res = -ENODEV;
+        }
+        msleep(1);
+
+        atomic_set(&em30719_powered, 1);
+    }
+
+    return 0;
+}
+
+static int em30719_power_off(void)
+{
+    int res;
+    if (atomic_read(&em30719_powered)) {
+        if (!IS_ERR(em30719_power_vdd)) {
+            res = regulator_disable(em30719_power_vdd);
+        } else {
+            pr_err("%s -> VDD power unavailable!\n", __func__);
+            res = -ENODEV;
+        }
+
+        atomic_set(&em30719_powered, 0);
+    }
+
+    return 0;
+}
+
+static struct em30719_platform_data em30719_pdata = {
+    .gpio_int = GPIO_EM30719_INT,
+    .board_init = em30719_early_init,
+    .board_exit = em30719_exit,
+    .power_on = em30719_power_on,
+    .power_off = em30719_power_off,
+};
+
+#endif
+/* *****************************em30719 end******************************* */
 
 #if (defined(CONFIG_I2C_GPIO) || defined(CONFIG_I2C0_V12_JZ))
 struct i2c_board_info jz_i2c0_devs[] __initdata = {
@@ -631,6 +720,14 @@ struct i2c_board_info jz_i2c3_devs[] __initdata = {
         I2C_BOARD_INFO("pac7673", 0x48),
         .irq = (IRQ_GPIO_BASE + GPIO_PAC7673_INT),
         .platform_data = &pac7673_pdata,
+    },
+#endif
+
+#ifdef  CONFIG_SENSORS_EM30719
+    {
+        I2C_BOARD_INFO("em30719", 0x24),
+        .irq = (IRQ_GPIO_BASE + GPIO_EM30719_INT),
+        .platform_data = &em30719_pdata,
     },
 #endif
 

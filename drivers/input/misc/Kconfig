@@ -681,5 +681,13 @@ config SENSORS_PIXART_PAC7673
         select I2C_POWER_MANAGER
         help
           If you say yes here you get support for proximity PAC7673 sensor.
+
+config SENSORS_EM30719
+        tristate "Proximity EM30719 sensor"
+        default n
+        depends on I2C
+        select I2C_POWER_MANAGER
+        help
+          If you say yes here you get support for proximity EM30719 sensor.
 endif
 source  "drivers/input/misc/mma955xl/Kconfig"
