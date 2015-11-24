@@ -378,4 +378,10 @@
 #define MMA955XL_INTO_N        GPIO_PA(13)
 #endif
 /* ****************************GPIO MMA955XL END***************************** */
+
+/* ****************************GPIO PAC7673 START**************************** */
+#define GPIO_PAC7673_INT    GPIO_PC(14)
+#define PAC7673_VDD_NAME    LDO3_NAME
+/* ****************************GPIO PAC7673 END****************************** */
+
 #endif /* __BOARD_H__ */

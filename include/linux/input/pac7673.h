@@ -11,7 +11,6 @@ struct pac7673_platform_data {
     int (*power_off)(void);
 };
 
-//mofidy at 21020420 by zhu end
 //SYSTEM
 #define ALPS_PAC7673_DEVICE_ID                  0x00
 #define ALPS_PAC7673_OPCON                      0x01
@@ -50,25 +49,11 @@ struct pac7673_platform_data {
 #define ALPS_PAC7673_PS_ANA_CON2                0x23
 #define ALPS_PAC7673_PS_ANA_CON3                0x24
 
-
 #define PAC7673_SUCCESS                         0
 #define PAC7673_ERR_I2C                         -1
 #define PAC7673_ERR_STATUS                      -3
 #define PAC7673_ERR_SETUP_FAILURE               -4
 #define PAC7673_ERR_GETGSENSORDATA              -5
 #define PAC7673_ERR_IDENTIFICATION              -6
-
-struct sensor_device_attribute{
-    struct device_attribute dev_attr;
-    int index;
-};
-
-#define SENSOR_ATTR(_name, _mode, _show, _store, _index)    \
-    { .dev_attr = __ATTR(_name, _mode, _show, _store),  \
-      .index = _index }
-
-#define SENSOR_DEVICE_ATTR(_name, _mode, _show, _store, _index) \
-struct sensor_device_attribute sensor_dev_attr_##_name      \
-    = SENSOR_ATTR(_name, _mode, _show, _store, _index)
 
 #endif
