@@ -27,6 +27,12 @@ config SENSORS_AK8963C
 	  If you say yes here you get support for Asahi Kasei's
 	  orientation sensor AK8963.
 
+config SENSOR_VIRTUAL
+	tristate "mpu6500 virtual support"
+	default n
+	help
+	  If you say yes here you get support mpu6500_virtual.
+
 config SENSORS_AK09911C
 	tristate "AK09911C compass support"
 	default n
