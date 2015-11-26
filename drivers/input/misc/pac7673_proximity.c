@@ -16,6 +16,7 @@
 #include <linux/miscdevice.h>
 #include <linux/input-polldev.h>
 #include <linux/timer.h>
+#include <linux/hwmon-sysfs.h>
 #include <linux/input/pac7673.h>
 #include <linux/i2c/i2c_power_manager.h>
 
@@ -41,6 +42,7 @@ static pac7673_data_t pac7673data;
 
 static struct i2c_power_device *device = NULL;
 static struct i2c_control_operations func;
+static int last_val = 0;
 
 static int pac7673_i2c_write(unsigned char reg, unsigned char * data, int len) {
     unsigned char buf[20];
@@ -112,22 +114,16 @@ unsigned char pac7673_read_reg(unsigned char addr, unsigned char *data) {
 }
 
 static int pac7673_enable(int enable) {
-    unsigned char i = 0;
     unsigned char reg_value = 0;
     unsigned char ret = 0;
 
     if (enable) {
-        for (i = 0; i < 10; i++) {
-            ret = pac7673_read_reg(0x00, &reg_value);
-            if (reg_value == 0x63)
-                break;
-            msleep(10);
-            return 0;
-        }
-    } else
-        pac7673_write_reg(0x03, 0x20);
+        ret = pac7673_read_reg(0x0, &reg_value); //Leave suspend mode
+    } else {
+        ret = pac7673_write_reg(0x03, 0x20); //Enter suspend mode
+    }
 
-    return 1;
+    return ret;
 }
 
 void pac7673_enable_ps(int enable) //enable operation
@@ -143,18 +139,21 @@ void pac7673_enable_ps(int enable) //enable operation
 }
 
 void pac7673ee_init(void) {
-    msleep(1);
-    pac7673_enable(1);
-    msleep(1);
+    int ret = 0;
+
+    ret = pac7673_enable(1);
+    if (ret == false)
+        return;
+
     pac7673_write_reg(0x03, 0x0d);
 
     pac7673_write_reg(0x04, 0x10); //als intergration time, set idle state step to 1.66ms
-    pac7673_write_reg(0x05, 0xC8); //PS LED Pulse On Time = [7:0] x 2us
-    pac7673_write_reg(0x06, 0x2f); //PS  intergration time 16*1.66
-    pac7673_write_reg(0x07, 0x2a); //idle time 	60-16 =42
-    pac7673_write_reg(0x0c, 0x1E); //PS high threshold
-    pac7673_write_reg(0x0d, 0x32); //PS low threshould
-    pac7673_write_reg(0x11, 0x0c); //Disable PS INT
+    pac7673_write_reg(0x05, 0x0);  //PS LED Pulse On Time = [7:0] x 2us
+    pac7673_write_reg(0x06, 0x20); //ps intergration time [4:0] * 1.66ms
+    pac7673_write_reg(0x07, 0x3c); //idle state time = 0x3c * 1.66ms
+    pac7673_write_reg(0x0c, 0x32); //ps high threshold
+    pac7673_write_reg(0x0d, 0x1E); //ps low threshould
+    pac7673_write_reg(0x11, 0x0c); //Disable ps INT
     pac7673_enable_ps(1);
 }
 
@@ -183,18 +182,42 @@ static irqreturn_t pac7673_irq_func(int irq, void *data) {
 }
 
 void pac7673_work_func(struct work_struct *work) {
-    u8 val = 0;
+    int val = 0;
     u8 int_status = 0;
+    u8 read_back = 0;
+    u8 approach = 0;
 
     pac7673_read_reg(0x10, &val);
-    printk(KERN_DEBUG "====pac7673 report val is %d=====\n",val);
+    pac7673_read_reg(0x09, &approach);
+
+    if (val == last_val) {
+        if (approach & 0x40) {
+            val--;
+        } else {
+            val++;
+        }
+    }
+
+    if (val == 0)
+        val = 1;
+
+    last_val = val;
+
+    if (!(approach & 0x40)) {
+        val = -val;
+    }
+    printk(KERN_DEBUG "====pac7673 report val is %d=====\n", val);
 
     input_report_abs(pac7673data.input_dev, ABS_GAS, val);
     input_sync(pac7673data.input_dev);
 
-    pac7673_read_reg(0x09, &int_status);
-    pac7673_write_reg(0x09, int_status & 0xDB);
     enable_irq(pac7673data.irq);
+    do {
+        pac7673_read_reg(0x09, &int_status);
+        pac7673_write_reg(0x09, int_status & 0xDB);
+        pac7673_read_reg(0x09, &read_back);
+    } while (read_back & 0x20);
+
     wake_unlock(&pac7673data.irq_lock);
 }
 
@@ -214,6 +237,8 @@ static ssize_t pac7673_store_enable(struct device *dev,
         const char *buf, size_t size)
 {
     unsigned long enable;
+    int val = 0;
+    char ps_high_thd = 0;
 
     if (strict_strtoul(buf, 10, &enable))
         return -EINVAL;
@@ -225,9 +250,34 @@ static ssize_t pac7673_store_enable(struct device *dev,
     atomic_set(&pac7673data.enabled, !!enable);
 
     if (!!enable) {
+        pac7673_write_reg(0x05, 0x64);
         enable_irq(pac7673data.irq);
         pac7673_write_reg(0x11, 0x8c);
+
+        pac7673_read_reg(0x10, &val);
+        pac7673_read_reg(0x0c, &ps_high_thd);
+        if (val == last_val) {
+            if (val < ps_high_thd) {
+                val++;
+            } else {
+                val--;
+            }
+        }
+
+        if (val == 0)
+            val = 1;
+
+        last_val = val;
+
+        if (val < ps_high_thd) {
+            val = -val;
+        }
+
+        printk(KERN_DEBUG "====pac7673 report first val is %d=====\n", val);
+        input_report_abs(pac7673data.input_dev, ABS_GAS, val);
+        input_sync(pac7673data.input_dev);
     } else {
+        pac7673_write_reg(0x05, 0x0);
         pac7673_write_reg(0x11, 0x0c);
         disable_irq(pac7673data.irq);
     }
@@ -296,7 +346,7 @@ static void pac7673_power_off(struct pac7673_platform_data *pdata)
 
 static void pac7673_init_chip(void)
 {
-    jzgpio_ctrl_pull(GPIO_PORT_C, 1, 22);
+    jzgpio_ctrl_pull(pac7673data.pdata->gpio_int / 32, 1, pac7673data.pdata->gpio_int % 32);
     pac7673ee_init();
 }
 
@@ -305,7 +355,6 @@ static int pac7673_i2c_probe(struct i2c_client *client,
     struct pac7673_platform_data *pdata = NULL;
     struct input_dev *input_dev = NULL;
     int err = 0;
-    int i = 0;
     u8 read_reg = 0;
 
     pdata = (struct pac7673_platform_data *) client->dev.platform_data;
@@ -333,20 +382,17 @@ static int pac7673_i2c_probe(struct i2c_client *client,
     i2c_power_device_on(device);
     msleep(2);
 
-    for (i = 0; i < 5; i++) {
-        err = pac7673_read_reg(0x0, &read_reg);
-
-        if (i == 4 && err == 0) {
-            printk("pac7673 error: Can not read register 0x0\n");
-            err = -1;
-            goto failed_to_read_reg;
-        }
+    err = pac7673_read_reg(0x0, &read_reg);
+    if (err == false) {
+        printk("pac7673 error: Can not read PID\n");
+        err = -1;
+        goto failed_to_read_reg;
     }
 
     err = gpio_request(pdata->gpio_int, "pac7673_gpio_int");
     if (err < 0) {
         printk("pac7673: Unable to request INT GPIO %d\n", pdata->gpio_int);
-        goto failed_request_gpio;
+        goto failed_request_gpio_int;
     }
     gpio_direction_input(pdata->gpio_int);
     jzgpio_ctrl_pull(pdata->gpio_int / 32, 1, pdata->gpio_int % 32);
@@ -359,7 +405,7 @@ static int pac7673_i2c_probe(struct i2c_client *client,
 
         if (err) {
             printk(KERN_ERR "Failed to request irq: %d\n", err);
-            goto failed_request_gpio;
+            goto failed_gpio_to_irq;
         } else {
             enable_irq_wake(pac7673data.irq);
             disable_irq(pac7673data.irq);
@@ -369,6 +415,7 @@ static int pac7673_i2c_probe(struct i2c_client *client,
     err = register_chrdev(0, PAC7673_NAME, &pac7673_fops);
     if (err < 0) {
         printk(KERN_WARNING "pac7673 : Can't get major\n");
+        goto failed_gpio_to_irq;
     } else {
         pac7673data.major_id = err;
         printk("pac7673 : Success to register character device %d\n", pac7673data.major_id);
@@ -424,8 +471,6 @@ static int pac7673_i2c_probe(struct i2c_client *client,
 
     return 0;
 
-failed_request_gpio:
-    input_unregister_device(pac7673data.input_dev);
 failed_input_register_device:
     input_free_device(pac7673data.input_dev);
 failed_input_dev_alloc:
@@ -437,6 +482,9 @@ failed_kobj_create:
     class_destroy(pac7673data.pac7673_class);
 free_chrdev:
     unregister_chrdev(pac7673data.major_id, PAC7673_NAME);
+failed_gpio_to_irq:
+    gpio_free(pdata->gpio_int);
+failed_request_gpio_int:
 failed_to_read_reg:
     i2c_power_device_off(device);
     unregister_i2c_power_device(device);
