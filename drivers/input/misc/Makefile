@@ -66,3 +66,4 @@ obj-$(CONFIG_SENSORS_PIXART_PAH8001)    += pixart_hc_driver.o
 obj-$(CONFIG_INPUT_SENSORS_SI1132)	+= uvsensor_si1132.o
 obj-$(CONFIG_SENSORS_PIXART_PAC7673)    += pac7673_proximity.o
 obj-$(CONFIG_SENSORS_MMA955XL_I2C)      += mma955xl/
+obj-$(CONFIG_SENSORS_EM30719)           += em30719_proximity.o
