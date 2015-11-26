@@ -472,7 +472,7 @@ int inv_get_silicon_rev_mpu6500(struct inv_mpu_iio_s *st)
 	if (result)
 		return result;
 
-	if (whoami != MPU6500_ID && whoami != MPU9250_ID) {
+	if (whoami != MPU6500_ID && whoami != MPU9250_ID && whoami != MPU9255_ID) {
 		pr_err(" ERROR, invensense chip id = 0x%02x\n",whoami);
 		return -EINVAL;
 	}
@@ -488,9 +488,9 @@ int inv_get_silicon_rev_mpu6500(struct inv_mpu_iio_s *st)
 	if (result)
 		return result;
 
-	if (whoami == MPU9250_ID) {
+	if (whoami == MPU9250_ID || whoami == MPU9255_ID) {
 		sw_rev = MPU6500_REV;
-		pr_warning("MPU9250 use MPU6500 software version\n");
+		pr_warning("MPU9250/MPU9255 use MPU6500 software version\n");
 	}
 
 	if (sw_rev > MPU6500_REV)

@@ -601,6 +601,7 @@ struct inv_mpu_slave {
 
 /*---- MPU9250 ----*/
 #define MPU9250_ID               0x71      /* unique WHOAMI */
+#define MPU9255_ID               0x73      /* unique WHOAMI */
 
 #define THREE_AXIS               3
 #define GYRO_CONFIG_FSR_SHIFT    3

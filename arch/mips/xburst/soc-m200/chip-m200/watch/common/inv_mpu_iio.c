@@ -27,7 +27,7 @@ static int inv_mpu_early_init(struct device *dev)
 	}
 
 	if (!inv_mpu_power_vdd) {
-		inv_mpu_power_vdd = regulator_get(dev, "vcc_sensor3v3");
+		inv_mpu_power_vdd = regulator_get(dev, GSENSOR_VDD_NAME);
 		if (IS_ERR(inv_mpu_power_vdd)) {
 			pr_err("%s -> get regulator VDD failed\n",__func__);
 			res = -ENODEV;
@@ -36,7 +36,7 @@ static int inv_mpu_early_init(struct device *dev)
 	}
 
 	if (USE_INV_MPU_POWE_VIO_CTRL && !inv_mpu_power_vio) {
-		inv_mpu_power_vio = regulator_get(dev, "vcc_sensor1v8");
+		inv_mpu_power_vio = regulator_get(dev, GSENSOR_VIO_NAME);
 		if (IS_ERR(inv_mpu_power_vio)) {
 			pr_err("%s -> get regulator VIO failed\n",__func__);
 			res = -ENODEV;
@@ -45,6 +45,7 @@ static int inv_mpu_early_init(struct device *dev)
 	}
 
 	return 0;
+
 err_vio:
 	regulator_put(inv_mpu_power_vdd);
 	inv_mpu_power_vdd = NULL;
@@ -138,7 +139,7 @@ struct mpu_platform_data mpu9250_platform_data = {
 		},
         .key = { 0xec, 0x5c, 0xa6, 0x17, 0x54, 0x3, 0x42, 0x90, 0x74, 0x7e,
                  0x3a, 0x6f, 0xc, 0x2c, 0xdd, 0xb },
-#if !defined(CONFIG_SENSORS_AK09911)
+#if !defined(CONFIG_SENSORS_AK09911) && defined(CONFIG_SENSOR_MPU9250)
 		.sec_slave_type = SECONDARY_SLAVE_TYPE_COMPASS,
 		.sec_slave_id   = COMPASS_ID_AK8963,
 		.secondary_i2c_addr = 0x0C,

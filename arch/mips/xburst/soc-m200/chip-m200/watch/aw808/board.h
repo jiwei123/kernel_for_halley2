@@ -115,8 +115,8 @@
 #define GPIO_I2C1_SCK GPIO_PE(31)
 #endif
 #ifndef CONFIG_I2C2_V12_JZ
-#define GPIO_I2C2_SDA GPIO_PE(00)
-#define GPIO_I2C2_SCK GPIO_PE(03)
+#define GPIO_I2C2_SDA GPIO_PE(0)
+#define GPIO_I2C2_SCK GPIO_PE(3)
 #endif
 #ifndef CONFIG_I2C3_V12_JZ
 #define GPIO_I2C3_SDA GPIO_PB(7)
@@ -221,9 +221,15 @@
 /* ****************************SENSOR HUB END********************************** */
 
 /* ****************************GPIO GSENSOR START**************************** */
+#ifdef CONFIG_INV_MPU_IIO
+#define GPIO_GSENSOR_INT	GPIO_PA(13)
+#define GSENSOR_VDD_NAME	LDO5_NAME
+#define GSENSOR_VIO_NAME	DC4_NAME
+#else
 #define GPIO_GSENSOR_INT	-1
 #define GSENSOR_VDD_NAME	LDO5_NAME
 #define GSENSOR_VIO_NAME	DC4_NAME
+#endif
 /* ****************************GPIO GSENSOR END****************************** */
 
 /* ****************************GPIO UVSENSOR START**************************** */

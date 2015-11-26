@@ -25,3 +25,9 @@ config INV_IIO_MPU3050_ACCEL_SLAVE_BMA250
 	  it can be added to this menu if the proper interface is filled.
 	  There are some interface function to be defined.
 
+config SENSOR_MPU9250
+	bool "Use sensor MPU9250"
+	depends on INV_MPU_IIO
+	default n
+	help
+	  This is configure to choose MPU9250.
