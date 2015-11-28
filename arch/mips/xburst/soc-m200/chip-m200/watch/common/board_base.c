@@ -23,6 +23,10 @@
 #include <mach/jz_dsim.h>
 #include "board_base.h"
 
+#ifdef CONFIG_SWITCH
+#include <linux/switch.h>
+#endif
+
 struct jz_platform_device
 {
 	struct platform_device *pdevices;
@@ -233,9 +237,36 @@ static struct jz_platform_device platform_devices_array[] __initdata = {
 #endif
 };
 
+#ifdef CONFIG_SWITCH
+static struct switch_dev switch_usb = {
+	.name = "usb_cable",
+};
+
+static int board_switch_init(void)
+{
+	int ret;
+	/* for usb client mode */
+	ret = switch_dev_register(&switch_usb);
+
+	if (ret < 0)
+		pr_err("Failed to register usb switch. %d\n", ret);
+	else
+		pr_info("%s: usb_switch (usb_cable) registered\n", __func__);
+
+	/* Always set usb_cable as connected. this should be move to usb driver later. 2015-11-28 */
+	switch_set_state(&switch_usb, 1);
+
+	return 0;
+}
+#endif /* CONFIG_SWITCH	*/
+
 static int __init board_base_init(void)
 {
 	int pdevices_array_size, i;
+
+#ifdef CONFIG_SWITCH
+	board_switch_init();
+#endif
 
 #ifdef CONFIG_LCD_LH155
 	mipi_dsi_register_lcd_device(&lh155_device);
