@@ -250,12 +250,14 @@ static void wifi_le_restore_io(void)
 {
 	/*when wifi is up ,set WL_MSC1_D0 , WL_MSC1_D1, WL_MSC1_D2, WL_MSC1_D3,
 		 WL_MSC1_CLK, WL_MSC1_CMD pins to GPIO_FUNC_0*/
-	jzgpio_set_func_pull(GPIO_PORT_E, GPIO_FUNC_2, 0x1 << 20);
-	jzgpio_set_func_pull(GPIO_PORT_E, GPIO_FUNC_2, 0x1 << 21);
-	jzgpio_set_func_pull(GPIO_PORT_E, GPIO_FUNC_2, 0x1 << 22);
-	jzgpio_set_func_pull(GPIO_PORT_E, GPIO_FUNC_2, 0x1 << 23);
-	jzgpio_set_func_nopull(GPIO_PORT_E, GPIO_FUNC_2, 0x1 << 28);
-	jzgpio_set_func_pull(GPIO_PORT_E, GPIO_FUNC_2, 0x1 << 29);
+#if 1
+	jzgpio_set_func(GPIO_PORT_E, GPIO_FUNC_2, 0x1 << 20);
+	jzgpio_set_func(GPIO_PORT_E, GPIO_FUNC_2, 0x1 << 21);
+	jzgpio_set_func(GPIO_PORT_E, GPIO_FUNC_2, 0x1 << 22);
+	jzgpio_set_func(GPIO_PORT_E, GPIO_FUNC_2, 0x1 << 23);
+	jzgpio_set_func(GPIO_PORT_E, GPIO_FUNC_2, 0x1 << 28);
+	jzgpio_set_func(GPIO_PORT_E, GPIO_FUNC_2, 0x1 << 29);
+#endif
 }
 
 int bcm_wlan_init(void)
