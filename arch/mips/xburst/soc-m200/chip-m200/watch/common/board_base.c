@@ -254,7 +254,9 @@ static int board_switch_init(void)
 		pr_info("%s: usb_switch (usb_cable) registered\n", __func__);
 
 	/* Always set usb_cable as connected. this should be move to usb driver later. 2015-11-28 */
-	switch_set_state(&switch_usb, 1);
+	// switch_set_state(&switch_usb, 1);
+	/* if set usb_cable as always connected. it prevent the device enter suspend mode, so just disable the mtp function and fix it later. 2015-12-02 */
+	switch_set_state(&switch_usb, 0);
 
 	return 0;
 }
