@@ -24,12 +24,17 @@
 #include <linux/slpt.h>
 #include <linux/string.h>
 #include <linux/miscdevice.h>
+#include <asm/cacheops.h>
+#include <soc/cache.h>
+#include <asm/r4kcache.h>
+#include <linux/spinlock.h>
 
 #define SLPT_CMD_LOAD_FW     _IOW('S', 0x121, int)
 #define SLPT_CMD_ENABLE_FW   _IOW('S', 0x122, int)
 #define SLPT_CMD_DISABLE_FW  _IOW('S', 0x123, int)
 
 #define TAG_SIZE 4
+
 struct slpt_data {
 	char tag[TAG_SIZE];
 	unsigned int hdr_len;
@@ -38,6 +43,8 @@ struct slpt_data {
 	void *mem;
 };
 
+static DEFINE_SPINLOCK(m_lock);
+
 static long slpt_ioctl_load_firmware(void *hdr, unsigned int hdr_len,void *mem, unsigned int mem_len)
 {
 	struct firmware firmware;
@@ -45,6 +52,7 @@ static long slpt_ioctl_load_firmware(void *hdr, unsigned int hdr_len,void *mem, 
 	const char *name = hdr;
 	unsigned int name_len = hdr_len;
 	long err;
+	unsigned long flags;
 
 	if (hdr == NULL || mem == NULL)
 		return -EINVAL;
@@ -69,6 +77,11 @@ static long slpt_ioctl_load_firmware(void *hdr, unsigned int hdr_len,void *mem, 
 	task->name = (char *)&task[1];
 	memcpy((char *)task->name, name, name_len);
 	task->bin_desc = task->name;
+
+	spin_lock_irqsave(&m_lock, flags);
+	blast_dcache32();
+	blast_icache32();
+	spin_unlock_irqrestore(&m_lock, flags);
 
 	task->task_fw = &firmware;
 	err = slpt_register_task(task, 1, 0);
