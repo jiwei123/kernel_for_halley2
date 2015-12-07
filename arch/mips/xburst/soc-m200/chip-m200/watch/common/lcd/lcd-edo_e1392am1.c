@@ -36,6 +36,9 @@
 #include <mach/jz_dsim.h>
 #include "../board_base.h"
 
+extern struct regulator_dev *regulator_to_rdev(struct regulator *regulator);
+extern int ricoh61x_regulator_set_sleep_mode_power(struct regulator_dev *rdev, int power_on);
+
 static struct regulator *lcd_vcc_reg = NULL;
 static struct regulator *lcd_io_reg = NULL;
 static bool is_init = 0;
@@ -77,10 +80,10 @@ int edo_e1392am1_init(struct lcd_device *lcd)
 
 int edo_e1392am1_reset(struct lcd_device *lcd)
 {
-	gpio_direction_output(GPIO_MIPI_RST_N, 1);
-	msleep(50);
+//	gpio_direction_output(GPIO_MIPI_RST_N, 1);
+//	msleep(50);
 	gpio_direction_output(GPIO_MIPI_RST_N, 0);
-	msleep(50);
+	msleep(10);
 	gpio_direction_output(GPIO_MIPI_RST_N, 1);
 	mdelay(10);
 
@@ -101,15 +104,23 @@ int edo_e1392am1_power_on(struct lcd_device *lcd, int enable)
 		ret = regulator_enable(lcd_io_reg);
 		if (ret)
 			printk(KERN_ERR "failed to enable lcd io reg\n");
+#if defined(CONFIG_SLPT) && defined(CONFIG_REGULATOR_RICOH619)
+		ricoh61x_regulator_set_sleep_mode_power(regulator_to_rdev(lcd_vcc_reg), 1);
+		ricoh61x_regulator_set_sleep_mode_power(regulator_to_rdev(lcd_io_reg), 1);
+#endif
 	} else if (enable == POWER_ON_BL){
 		if (gpio_is_valid(GPIO_LCD_BLK_EN))
 			gpio_direction_output(GPIO_LCD_BLK_EN, 1);
 	} else {
 		/* power off the power of LCD and it's Backlight */
-		regulator_disable(lcd_io_reg);
-		regulator_disable(lcd_vcc_reg);
+		regulator_force_disable(lcd_io_reg);
+		regulator_force_disable(lcd_vcc_reg);
 		if (gpio_is_valid(GPIO_LCD_BLK_EN))
 			gpio_direction_output(GPIO_LCD_BLK_EN, 0);
+#if defined(CONFIG_SLPT) && defined(CONFIG_REGULATOR_RICOH619)
+		ricoh61x_regulator_set_sleep_mode_power(regulator_to_rdev(lcd_vcc_reg), 0);
+		ricoh61x_regulator_set_sleep_mode_power(regulator_to_rdev(lcd_io_reg), 0);
+#endif
 	}
 
 	return 0;

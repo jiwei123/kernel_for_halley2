@@ -72,7 +72,7 @@ static void edo_e1392am1_brightness_setting(struct edo_e1392am1_dev *lcd, int br
 	};
 
 	array_size = ARRAY_SIZE(brightness_cmd_table);
-	ops->cmd_write(dsi, brightness_cmd_table, array_size);
+	ops->cmd_write(lcd_to_master(lcd), brightness_cmd_table, array_size);
 }
 
 static int edo_e1392am1_update_status(struct backlight_device *bd)
@@ -94,7 +94,7 @@ void edo_e1392am1_nop(struct edo_e1392am1_dev *lcd) /* nop */
 	int array_size = ARRAY_SIZE(data_to_send);
 	struct dsi_master_ops *ops = lcd_to_master_ops(lcd);
 	struct dsi_device *dsi = lcd_to_master(lcd);
-	ops->cmd_write(dsi, data_to_send, array_size);
+	ops->cmd_write(lcd_to_master(lcd), data_to_send, array_size);
 }
 
 static void edo_e1392am1_sleep_in(struct edo_e1392am1_dev *lcd)
@@ -103,7 +103,7 @@ static void edo_e1392am1_sleep_in(struct edo_e1392am1_dev *lcd)
 	int array_size = ARRAY_SIZE(data_to_send);
 	struct dsi_master_ops *ops = lcd_to_master_ops(lcd);
 	struct dsi_device *dsi = lcd_to_master(lcd);
-	ops->cmd_write(dsi, data_to_send, array_size);
+	ops->cmd_write(lcd_to_master(lcd), data_to_send, array_size);
 }
 
 static void edo_e1392am1_sleep_out(struct edo_e1392am1_dev *lcd)
@@ -112,7 +112,7 @@ static void edo_e1392am1_sleep_out(struct edo_e1392am1_dev *lcd)
 	int array_size = ARRAY_SIZE(data_to_send);
 	struct dsi_master_ops *ops = lcd_to_master_ops(lcd);
 	struct dsi_device *dsi = lcd_to_master(lcd);
-	ops->cmd_write(dsi, data_to_send, array_size);
+	ops->cmd_write(lcd_to_master(lcd), data_to_send, array_size);
 }
 
 static void edo_e1392am1_display_on(struct edo_e1392am1_dev *lcd)
@@ -121,7 +121,7 @@ static void edo_e1392am1_display_on(struct edo_e1392am1_dev *lcd)
 	int array_size = ARRAY_SIZE(data_to_send);
 	struct dsi_master_ops *ops = lcd_to_master_ops(lcd);
 	struct dsi_device *dsi = lcd_to_master(lcd);
-	ops->cmd_write(dsi, data_to_send, array_size);
+	ops->cmd_write(lcd_to_master(lcd), data_to_send, array_size);
 }
 
 static void edo_e1392am1_display_off(struct edo_e1392am1_dev *lcd)
@@ -130,7 +130,7 @@ static void edo_e1392am1_display_off(struct edo_e1392am1_dev *lcd)
 	int array_size = ARRAY_SIZE(data_to_send);
 	struct dsi_master_ops *ops = lcd_to_master_ops(lcd);
 	struct dsi_device *dsi = lcd_to_master(lcd);
-	ops->cmd_write(dsi, data_to_send, array_size);
+	ops->cmd_write(lcd_to_master(lcd), data_to_send, array_size);
 }
 
 unsigned char edo_e1392am1_cmd_list[] = {
@@ -200,6 +200,7 @@ unsigned char edo_e1392am1_cmd_list[] = {
 		0x15, 0x0E, 0x8B,
 		0x15, 0x0F, 0x8B,
 		0x15, 0x10, 0x11,
+		0x15, 0x11, 0xA2,
 		0x15, 0x12, 0x60,
 		0x15, 0x14, 0x01,
 		0x15, 0x15, 0x82,
@@ -207,22 +208,23 @@ unsigned char edo_e1392am1_cmd_list[] = {
 		0x15, 0x19, 0x36,
 		0x15, 0x1A, 0x10,
 		0x15, 0x1C, 0x57,
+		0x15, 0x1D, 0x02,
 		0x15, 0x21, 0xF8,
 		0x15, 0x22, 0x90,
 		0x15, 0x23, 0x00,
 		0x15, 0x25, 0x03,
 		0x15, 0x26, 0x4a,
-		0x15, 0x2A, 0x43,
+		0x15, 0x2A, 0x47,
 		0x15, 0X2B, 0xFF,
 		0x15, 0x2D, 0XFF,
-		0x15, 0x2F, 0xFA,
+		0x15, 0x2F, 0xAE,
 		0x15, 0x37, 0x0C,
 		0x15, 0x3a, 0x00,
 		0x15, 0x3b, 0x20,
-		0x15, 0x3d, 0x01,
+		0x15, 0x3d, 0x0B,
 		0x15, 0x3f, 0x38,
-		0x15, 0x40, 0x01,
-		0x15, 0x41, 0x01,
+		0x15, 0x40, 0x0B,
+		0x15, 0x41, 0x0B,
 		0x15, 0x42, 0x33,
 		0x15, 0x43, 0x66,
 		0x15, 0x44, 0x11,
@@ -248,17 +250,15 @@ unsigned char edo_e1392am1_cmd_list[] = {
 		0x15, 0x65, 0x33,
 		0x15, 0x66, 0x66,
 		0x15, 0x6d, 0x90,
-		0x15, 0x70, 0x05,
-		0x15, 0x72, 0x00,
-		0x15, 0x73, 0x11,
+		0x15, 0x6E, 0x40,
+		0x15, 0x70, 0xA5,
+		0x15, 0x72, 0x04,
+		0x15, 0x73, 0x15,
 		0x15, 0xFE, 0x0A,
 		0x15, 0x29, 0x10,
 		0x15, 0xFE, 0x05,
-		0x15, 0x05, 0x15,
-		0x15, 0xFE, 0x05,
-		0x15, 0x2B, 0xF8,
+		0x15, 0x05, 0x1F,
 		0x15, 0xFE, 0x00,
-		0x15, 0xC2, 0x00,
 		0x15, 0x35, 0x00,
 		0x15, 0x11, 0x00,
 };
@@ -396,7 +396,7 @@ static int edo_e1392am1_suspend(struct mipi_dsim_lcd_device *dsim_dev)
 }
 #else
 #define edo_e1392am1_suspend		NULL
-#define edo_e1392am1_resume		NULL
+#define edo_e1392am1_resume			NULL
 #define edo_e1392am1_power_on		NULL
 #endif
 

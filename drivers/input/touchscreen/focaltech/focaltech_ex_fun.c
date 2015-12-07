@@ -1002,7 +1002,8 @@ int fts_5x36_ctpm_fw_upgrade(struct i2c_client *client, u8 *pbt_buf, u32 dw_lent
 	{
 		dw_lenth = dw_lenth - 8;
 	}
-	else if(is_5336_new_bootloader == BL_VERSION_GZF) dw_lenth = dw_lenth - 14;
+	else if(is_5336_new_bootloader == BL_VERSION_GZF) 
+		dw_lenth = dw_lenth - 14;
 	packet_number = (dw_lenth) / FTS_PACKET_LENGTH;
 	packet_buf[0] = 0xbf;
 	packet_buf[1] = 0x00;
