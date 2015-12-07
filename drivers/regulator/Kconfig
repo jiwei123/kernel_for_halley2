@@ -515,6 +515,11 @@ config REGULATOR_SM5007
 	  This driver supports regulator driver for the Siliconmitus SM5007
 	  Power Management device.
 
+config SM5007_DISABLE_NO_ALWAYS_ON_REGULATOR_WHEN_SUSPEND
+	bool "sm5007 disable the no always on regulator when suspend"
+	depends on REGULATOR_SM5007
+	default n
+
 config REGULATOR_RICOH619
 	tristate "Ricoh R5T619 Power regulators"
 	depends on MFD_RICOH619

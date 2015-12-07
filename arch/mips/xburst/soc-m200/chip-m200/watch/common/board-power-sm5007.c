@@ -43,6 +43,10 @@
 static struct regulator_consumer_supply sm5007_buck1_supply_0[] = {
 	REGULATOR_SUPPLY(BUCK1_NAME, NULL),
 };
+static struct regulator_consumer_supply sm5007_buck1_slp_supply_0[] = {
+	REGULATOR_SUPPLY(BUCK1_SLP_NAME, NULL),
+};
+
 static struct regulator_consumer_supply sm5007_buck1_dvs_supply_0[] = {
 	REGULATOR_SUPPLY(BUCK1_DVS_NAME, NULL),
 };
@@ -136,6 +140,9 @@ static struct regulator_consumer_supply sm5007_ps5_supply_0[] = {
 /*_name,_sname,_minmv,_maxmv,_supply_reg,_always_on,_boot_on,_apply_uv,
 _init_uV,_init_enable,_init_apply,_flags,_ext_contol,_ds_slots) */
 SM_PDATA_INIT(buck1, 0,	700,   1300, 0, BUCK1_ALWAYS_ON, BUCK1_BOOT_ON, 1,
+		 BUCK1_INIT_UV, BUCK1_INIT_ENABLE, 1, 0, 0, 0, BUCK1_LPM);
+
+SM_PDATA_INIT(buck1_slp, 0,	700,   1300, 0, BUCK1_ALWAYS_ON, BUCK1_BOOT_ON, 1,
 		 BUCK1_INIT_UV, BUCK1_INIT_ENABLE, 1, 0, 0, 0, BUCK1_LPM);
 
 SM_PDATA_INIT(buck1_dvs, 0,	600,   3500, 0, BUCK1_ALWAYS_ON, BUCK1_BOOT_ON, 1,
@@ -317,6 +324,7 @@ static struct sm5007_charger_platform_data sm5007_charger_data = {
 
 #define SM5007_DEV_REG 		\
 	SM_REG(BUCK1, buck1, 0),		\
+	SM_REG(BUCK1_SLP, buck1_slp, 0),	\
     SM_REG(BUCK1_DVS, buck1_dvs, 0),	\
 	SM_REG(BUCK2, buck2, 0),		\
 	SM_REG(BUCK3, buck3, 0),		\

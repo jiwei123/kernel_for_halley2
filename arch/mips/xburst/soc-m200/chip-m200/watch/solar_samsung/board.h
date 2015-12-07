@@ -349,13 +349,8 @@
 
 #ifdef	CONFIG_ANDROID_TIMED_GPIO
 
-#if defined(CONFIG_WATCH_SOLAR)
 #define	VIBRATOR_EN		GPIO_PC(18)
 #define	ACTIVE_LEVEL	0
-#else
-#define	VIBRATOR_EN		-1
-#define	ACTIVE_LEVEL	0
-#endif
 
 #define	MAX_TIMEOUT	15000
 #endif

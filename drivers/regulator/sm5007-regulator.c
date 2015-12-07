@@ -645,6 +645,8 @@ static struct regulator_ops SM5007_ops = {
 static struct SM5007_regulator SM5007_regulator[] = {
 	SM5007_REG_BUCK(BUCK1, 0x30, 0, 0x30, 0x31, 0x3F, 0x00,
 			700, 1300, 12500, 0x30, SM5007_ops, 500, sm5703_buck_output_list, 0x46, 0x01, 0x00),
+	SM5007_REG_BUCK(BUCK1_SLP, 0x30, 0, 0x30, 0x31, 0x3F, 0x00,
+			700, 1300, 12500, 0x30, SM5007_ops, 500, sm5703_buck_output_list, 0x46, 0x01, 0x00),
 	SM5007_REG_BUCK(BUCK1_DVS, 0x30, 0, 0x30, 0x32, 0x3F, 0x00,
 			700, 1300, 12500, 0x30, SM5007_ops, 500, sm5703_buck_output_list, 0x46, 0x01, 0x00),
     SM5007_REG_BUCK(BUCK2, 0x33, 0, 0x33, 0xFF, 0xFF, 0x00,
@@ -815,10 +817,35 @@ static int SM5007_regulator_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int SM5007_regulator_suspend_noirq(struct device *dev)
+{
+#ifdef CONFIG_SM5007_DISABLE_NO_ALWAYS_ON_REGULATOR_WHEN_SUSPEND
+	struct regulator_dev *rdev = dev_get_drvdata(dev);
+	if(!rdev->constraints->always_on && (rdev->use_count > 0))
+		SM5007_reg_disable(rdev);
+#endif
+	return 0;
+}
+static int SM5007_regulator_resume_noirq(struct device *dev)
+{
+#ifdef CONFIG_SM5007_DISABLE_NO_ALWAYS_ON_REGULATOR_WHEN_SUSPEND
+	struct regulator_dev *rdev = dev_get_drvdata(dev);
+	if(!rdev->constraints->always_on && (rdev->use_count > 0))
+		SM5007_reg_enable(rdev);
+#endif
+	return 0;
+}
+
+static struct dev_pm_ops SM5007_regulator_pm = {
+	.suspend_noirq = SM5007_regulator_suspend_noirq,
+	.resume_noirq = SM5007_regulator_resume_noirq,
+};
+
 static struct platform_driver SM5007_regulator_driver = {
 	.driver	= {
 		.name	= "sm5007-regulator",
 		.owner	= THIS_MODULE,
+		.pm = &SM5007_regulator_pm,
 	},
 	.probe		= SM5007_regulator_probe,
 	.remove		= SM5007_regulator_remove,

@@ -5,6 +5,7 @@
 #define PMU_I2C_BUSNUM5007  0
 /* ****************************PMU BUCK/LDO/PS NAME******************************* */
 #define BUCK1_NAME "cpu_core"
+#define BUCK1_SLP_NAME "cpu_core_slp"
 #define BUCK1_DVS_NAME "buck1_dvs"
 #define BUCK2_NAME "cpu_mem12"
 #define BUCK3_NAME "cpu_vddio"
@@ -57,17 +58,17 @@
 #define BUCK2_ALWAYS_ON     1
 #define BUCK3_ALWAYS_ON     1
 #define BUCK4_ALWAYS_ON     1
-#define LDO1_ALWAYS_ON    1
+#define LDO1_ALWAYS_ON    0
 #define LDO2_ALWAYS_ON    0
 #define LDO3_ALWAYS_ON    0
 #define LDO4_ALWAYS_ON    0
 #define LDO5_ALWAYS_ON    1
 #define LDO6_ALWAYS_ON    0
-#define LDO7_ALWAYS_ON    1
-#define LDO8_ALWAYS_ON    1
-#define LDO9_ALWAYS_ON    1
-#define PS1_ALWAYS_ON     1
-#define PS2_ALWAYS_ON     1
+#define LDO7_ALWAYS_ON    0
+#define LDO8_ALWAYS_ON    0
+#define LDO9_ALWAYS_ON    0
+#define PS1_ALWAYS_ON     0
+#define PS2_ALWAYS_ON     0
 #define PS3_ALWAYS_ON     0
 #define PS4_ALWAYS_ON     0
 #define PS5_ALWAYS_ON     0
@@ -103,7 +104,7 @@
 #define LDO2_LPM	 LPM_LDO_ATTACH_TO_STM
 #define LDO3_LPM     LPM_LDO_ATTACH_TO_STM
 #define LDO4_LPM     LPM_LDO_ATTACH_TO_STM
-#define LDO5_LPM     LPM_LDO_ATTACH_TO_STM
+#define LDO5_LPM     LPM_LDO_FORCE_INTO_LPM
 #define LDO6_LPM     LPM_LDO_ATTACH_TO_STM
 #define LDO7_LPM     LPM_LDO_ATTACH_TO_STM
 #define LDO8_LPM     LPM_LDO_ATTACH_TO_STM

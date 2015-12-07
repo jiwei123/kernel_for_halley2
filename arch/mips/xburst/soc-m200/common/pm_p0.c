@@ -47,6 +47,7 @@
 #include <soc/ddr.h>
 #include <tcsm.h>
 #include <smp_cp0.h>
+#include <linux/moduleparam.h>
 
 extern void local_flush_tlb_all(void );
 
@@ -925,9 +926,8 @@ static int m200_pm_enter(suspend_state_t state)
 	return 0;
 }
 
-#ifdef CONFIG_SLPT
 #define SLEEP_CHANGE_CORE_VCC
-#endif
+
 static struct m200_early_sleep_t {
 #ifdef SLEEP_CHANGE_CORE_VCC
 	struct regulator*  core_vcc;
@@ -940,8 +940,10 @@ static struct m200_early_sleep_t {
 }m200_early_sleep;
 const unsigned int sleep_rate_hz = 300*1000*1000;
 #ifdef SLEEP_CHANGE_CORE_VCC
-const unsigned int sleep_vol_uv = 1025 * 1000;
+unsigned int sleep_vol_uv = 1025 * 1000;
+core_param(sleep_vol_uv, sleep_vol_uv, int, 0600);
 #endif
+
 static int m200_prepare(void)
 {
 #ifdef CONFIG_CPU_FREQ
