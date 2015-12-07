@@ -117,7 +117,8 @@ struct jzmmc_host {
 	int 			irq;
 	struct clk		*clk;
 	struct clk		*clk_gate;
-	struct regulator 	*power;
+	struct regulator 	*vcc_power;
+	struct regulator 	*vio_power;
 
 	struct mmc_request	*mrq;
 	struct mmc_command	*cmd;
@@ -1229,11 +1230,19 @@ static inline void jzmmc_power_on(struct jzmmc_host *host)
 {
 	dev_vdbg(host->dev, "power_on\n");
 
-	if (!IS_ERR(host->power)) {
-		if(!regulator_is_enabled(host->power))
-		regulator_enable(host->power);
+	if (!IS_ERR(host->vcc_power)) {
+		if(!regulator_is_enabled(host->vcc_power)) {
+			regulator_enable(host->vcc_power);
+		}
 
-	} else if (host->pdata->gpio) {
+	}
+	if (!IS_ERR(host->vio_power)) {
+		if(!regulator_is_enabled(host->vio_power)) {
+			regulator_enable(host->vio_power);
+		}
+
+	}
+	if (host->pdata->gpio) {
 		set_pin_status(&host->pdata->gpio->pwr, 1);
 	}
 }
@@ -1242,11 +1251,19 @@ static inline void jzmmc_power_off(struct jzmmc_host *host)
 {
 	dev_vdbg(host->dev, "power_off\n");
 
-	if (!IS_ERR(host->power)) {
-		if(regulator_is_enabled(host->power))
-			regulator_disable(host->power);
+	if (!IS_ERR(host->vcc_power)) {
+		if(regulator_is_enabled(host->vcc_power)) {
+			regulator_disable(host->vcc_power);
+		}
 
-	} else if (host->pdata->gpio) {
+	}
+	if (!IS_ERR(host->vio_power)) {
+		if(regulator_is_enabled(host->vio_power)) {
+			regulator_disable(host->vio_power);
+		}
+
+	}
+	if (host->pdata->gpio) {
 		set_pin_status(&host->pdata->gpio->pwr, 0);
 	}
 }
@@ -1799,9 +1816,20 @@ static int __init jzmmc_probe(struct platform_device *pdev)
 		goto err_ioremap;
 	mmc_set_drvdata(pdev, host);
 
-	host->power = regulator_get(host->dev, "cpu_mem12");
-	if (IS_ERR(host->power)) {
-		dev_warn(host->dev, "vmmc regulator missing\n");
+	sprintf(regulator_name, "emmc_vcc.%d", pdev->id);
+	host->vcc_power = regulator_get(host->dev, regulator_name);
+	if (IS_ERR(host->vcc_power)) {
+		dev_warn(host->dev, "mmc vcc regulator missing\n");
+	} else {
+		dev_warn(host->dev, "mmc vio regulator ok\n");
+	}
+
+	sprintf(regulator_name, "emmc_vio.%d", pdev->id);
+	host->vio_power = regulator_get(host->dev, regulator_name);
+	if (IS_ERR(host->vio_power)) {
+		dev_warn(host->dev, "mmc vio regulator missing\n");
+	} else {
+		dev_warn(host->dev, "mmc vio regulator ok\n");
 	}
 
 	if (host->pdata->pio_mode)
@@ -1885,7 +1913,8 @@ static int __exit jzmmc_remove(struct platform_device *pdev)
 	free_irq(host->irq, host);
 	jzmmc_gpio_deinit(host);
 	iounmap(host->decshds[0].dma_desc);
-	regulator_put(host->power);
+	regulator_put(host->vcc_power);
+	regulator_put(host->vio_power);
 	jzmmc_clk_autoctrl(host, 0);
 
 	clk_put(host->clk);
@@ -1903,11 +1932,7 @@ static int jzmmc_suspend(struct platform_device *dev, pm_message_t state)
 
 	if (host->mmc->card && host->mmc->card->type != MMC_TYPE_SDIO) {
 		ret = mmc_suspend_host(host->mmc);
-
-		/* if(clk_is_enabled(host->clk)) { */
-		/* 	clk_disable(host->clk); */
-		/* 	clk_disable(host->clk_gate); */
-		/* } */
+		jzmmc_clk_autoctrl(host, 0);
 	}
 	return ret;
 }
@@ -1918,12 +1943,7 @@ static int jzmmc_resume(struct platform_device *dev)
 	int ret = 0;
 
 	if (host->mmc->card && host->mmc->card->type != MMC_TYPE_SDIO) {
-
-		/* if (test_bit(JZMMC_CARD_PRESENT, &host->flags)) { */
-		/* 	clk_enable(host->clk); */
-		/* 	clk_enable(host->clk_gate); */
-		/* 	jzmmc_reset(host); */
-		/* } */
+		jzmmc_clk_autoctrl(host, 1);
 		ret = mmc_resume_host(host->mmc);
 	}
 	return ret;
