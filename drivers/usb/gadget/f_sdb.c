@@ -76,6 +76,7 @@ struct sdb_dev {
 
 	struct usb_request *rx_req;
 	int rx_done;
+	int rx_count;
 };
 
 static struct usb_interface_descriptor sdb_interface_desc = {
@@ -263,6 +264,7 @@ static void sdb_complete_out(struct usb_ep *ep, struct usb_request *req)
 	dev->rx_done = 1;
 	if (req->status != 0)
 		dev->error = 1;
+	dev->rx_count--;
 
 	wake_up(&dev->read_wq);
 }
@@ -303,6 +305,7 @@ static int sdb_create_bulk_endpoints(struct f_sdb *sdb_func,
 		return -ENOMEM;
 	req->complete = sdb_complete_out;
 	dev->rx_req = req;
+	dev->rx_count = 0;
 
 	for (i = 0; i < SDB_TX_REQ_MAX; i++) {
 		req = sdb_request_new(sdb_func->ep_in, SDB_BULK_BUFFER_SIZE);
@@ -344,9 +347,9 @@ static ssize_t sdb_read(struct file *fp, char __user *buf,
 		return -EBUSY;
 
 	/* we will block until we're online */
-	while (!(dev->online || dev->error)) {
+	while (!(dev->online || dev->error) || (dev->rx_count != 0)) {
 		ret = wait_event_interruptible(dev->read_wq,
-				(dev->online || dev->error));
+				(dev->online || dev->error) && (dev->rx_count == 0));
 		if (ret < 0) {
 			_sdb_unlock(&dev->read_excl);
 			return ret;
@@ -365,6 +368,7 @@ requeue_req:
 	else {
 		dev->rx_req->length = count;
 		dev->rx_done = 0;
+		dev->rx_count++;
 		ret = usb_ep_queue(dev->sdb_func->ep_out,
 				dev->rx_req, GFP_ATOMIC);
 	}
