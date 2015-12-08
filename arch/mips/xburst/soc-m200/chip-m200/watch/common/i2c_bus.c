@@ -18,6 +18,15 @@ static struct frizz_platform_data frizz_pdata = {
 	.g_chip_orientation = GSENSOR_CHIP_ORIENTATION,
 };
 #endif
+#if defined(CONFIG_INPUT_FRIZZ)
+#include <linux/i2c/frizz.h>
+static struct frizz_platform_data frizz_input_pdata = {
+	.irq_gpio = FRIZZ_IRQ,
+	.reset_gpio = FRIZZ_RESET,
+	.wakeup_frizz_gpio = FRIZZ_WAKEUP,
+	.g_chip_orientation = GSENSOR_CHIP_ORIENTATION,
+};
+#endif
 /* *****************************sensor hub end**************************** */
 
 /* *****************************pedometer start ************************** */
@@ -570,6 +579,12 @@ struct i2c_board_info jz_i2c2_devs[] __initdata = {
 	{
 		I2C_BOARD_INFO("frizz", 0x38),
 		.platform_data = &frizz_pdata,
+	},
+#endif
+#if defined(CONFIG_INPUT_FRIZZ)
+	{
+		I2C_BOARD_INFO("frizz_input", 0x38),
+		.platform_data = &frizz_input_pdata,
 	},
 #endif
 #ifdef CONFIG_INV_MPU_IIO

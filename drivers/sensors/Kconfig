@@ -84,3 +84,4 @@ config SENSORS_SX9500
 endif
 
 source "drivers/sensors/mpu6500/Kconfig"
+source "drivers/sensors/frizz/Kconfig"

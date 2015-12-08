@@ -1,0 +1,23 @@
+if SENSORS
+config INPUT_FRIZZ
+	bool "Frizz sensor"
+	default n
+	help
+	  If you select yes here that will support Mega Chips's
+	  sensor hub frizz for your product.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called FRIZZ.
+
+
+config INPUT_FRIZZ_POLLING
+	bool "Polling-mode of Frizz sensor"
+	default n
+	help
+	  Say Y here if you want support for polling-mode of the Frizz sensorhub
+	  device.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called FRIZZ.
+
+endif

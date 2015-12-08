@@ -15,6 +15,11 @@
 /* ****************************GPIO SLEEP END******************************** */
 
 /* ****************************SENSOR HUB START********************************** */
+#ifdef CONFIG_INPUT_FRIZZ
+#define FRIZZ_IRQ GPIO_PA(9)
+#define FRIZZ_RESET GPIO_PA(8)
+#define FRIZZ_WAKEUP GPIO_PA(15)
+#endif
 #ifdef CONFIG_FRIZZ
 #define FRIZZ_IRQ GPIO_PA(9)
 #define FRIZZ_RESET GPIO_PA(8)
@@ -206,6 +211,18 @@
 /* ****************************GPIO PMU END********************************** */
 
 /* ****************************SENSOR HUB START********************************** */
+#ifdef CONFIG_INPUT_FRIZZ
+#define FRIZZ_IRQ GPIO_PA(9)
+#define FRIZZ_RESET GPIO_PA(8)
+#define FRIZZ_WAKEUP GPIO_PA(15)
+#if defined(CONFIG_AW808_HW_X3)
+#define GSENSOR_CHIP_ORIENTATION 7
+#elif defined(CONFIG_AW808_HW_IN901)
+#define GSENSOR_CHIP_ORIENTATION 2
+#else
+#define GSENSOR_CHIP_ORIENTATION 4
+#endif //define g_chip_orientation
+#endif
 #ifdef CONFIG_FRIZZ
 #define FRIZZ_IRQ GPIO_PA(9)
 #define FRIZZ_RESET GPIO_PA(8)
