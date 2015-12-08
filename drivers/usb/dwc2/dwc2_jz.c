@@ -198,7 +198,7 @@ static void usb_plug_change(struct dwc2_jz *jz) {
 	synchronize_irq(dwc->irq);
 	flush_work(&dwc->otg_id_work);
 	dwc2_gadget_plug_change(insert);
-	if (!jz_otg_phy_is_suspend())
+	if (!jz_otg_phy_is_suspend() || dwc->suspended)
 		dwc2_enable_global_interrupts(dwc);
 }
 

@@ -915,7 +915,6 @@ static void dwc2_handle_otg_intr(struct dwc2 *dwc) {
 		if (likely((!dwc->keep_phy_on || dwc->suspended) && (dctl.b.sftdiscon || (!dwc->plugin))))
 			jz_otg_phy_suspend(1);
 
-#ifdef CONFIG_BOARD_HAS_NO_DETE_FACILITY
 #if !DWC2_HOST_MODE_ENABLE
 		{
 			gotgctl_data_t gotgctl;
@@ -925,7 +924,6 @@ static void dwc2_handle_otg_intr(struct dwc2 *dwc) {
 			gotgctl.b.bvalidoven = 0;
 			dwc_writel(gotgctl.d32, &dwc->core_global_regs->gotgctl);
 		}
-#endif
 #endif
 	}
 #endif
@@ -1692,20 +1690,30 @@ extern void dwc2_start_ep0state_watcher(struct dwc2 *dwc, int count);
 
 static void dwc2_device_resume(struct dwc2 *dwc) {
 	dctl_data_t	 dctl;
+	gotgctl_data_t			 gotgctl     = {.d32 = 0 };
 
 	dev_dbg(dwc->dev, "====>dwc->plug_status = %d dwc->plugin = %d dwc->pullup_on = %d\n",
 		dwc->plug_status, dwc->plugin, dwc->pullup_on);
 
-	if (!dwc->plug_status && dwc->plugin) {
-		dev_dbg(dwc->dev, "plugin when we are suspend, pullup_on = %d\n", dwc->pullup_on);
+	if (dwc->plugin) {
 		dwc->sftdiscon = dwc->pullup_on ? 0 : 1;
-		dwc->phy_status = 1;
+		if (dwc->pullup_on)
+			dwc->phy_status = 1;
+		gotgctl.d32 = dwc_readl(&dwc->core_global_regs->gotgctl);
+		gotgctl.b.bvalidoven = 0;
+		dwc_writel(gotgctl.d32, &dwc->core_global_regs->gotgctl);
 	}
 
 	if (dwc->plug_status && !dwc->plugin) {
-		dev_dbg(dwc->dev, "unplug when we are suspend\n");
 		dwc->sftdiscon = 1; /* disconnect */
 		dwc->phy_status = 1; /* but keep phy on, let session-end-detect intr to close it */
+		/* ensure bvalid signal is from PHY */
+#if !DWC2_HOST_MODE_ENABLE
+		gotgctl.d32 = dwc_readl(&dwc->core_global_regs->gotgctl);
+		gotgctl.b.bvalidoven = 1;
+		gotgctl.b.bvalidovval = 0;
+		dwc_writel(gotgctl.d32, &dwc->core_global_regs->gotgctl);
+#endif
 	}
 
 	/* if plugin status didnot changed when we are suspend, just restore the previous value */

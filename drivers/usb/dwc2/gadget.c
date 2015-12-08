@@ -2469,8 +2469,8 @@ void dwc2_gadget_plug_change(int plugin)  {
 	dev_info(dwc->dev,"enter %s:%d: plugin = %d pullup_on = %d suspend = %d\n",
 		__func__, __LINE__, plugin, dwc->pullup_on, dwc->suspended);
 
-//	if (dwc->suspended)//add by xyfu for when otg suspended plug usb, resume the adb is disconnect
-//		goto out;
+	if (dwc->suspended)//add by xyfu for when otg suspended plug usb, resume the adb is disconnect
+		goto out;
 
 	dctl.d32 = dwc_readl(&dwc->dev_if.dev_global_regs->dctl);
 	if (plugin) {
