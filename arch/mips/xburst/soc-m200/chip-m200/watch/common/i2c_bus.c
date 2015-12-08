@@ -672,6 +672,12 @@ struct i2c_board_info jz_i2c1_devs[] __initdata = {
 		.platform_data = &ft3x0x_tsc_pdata,
 	},
 #endif
+#ifdef CONFIG_TOUCHSCREEN_FT6X0X
+	{
+		I2C_BOARD_INFO("ft6x0x_tsc", 0x38),
+		.platform_data = &ft6x0x_tsc_pdata,
+	},
+#endif
 };
 #endif  /*I2C1*/
 

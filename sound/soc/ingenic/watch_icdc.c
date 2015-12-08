@@ -40,20 +40,57 @@ static int watch_spk_power(struct snd_soc_dapm_widget *w,
 	    if (codec_platform_data && (codec_platform_data->gpio_spk_en.gpio) != -1) {
 	        gpio_direction_output(codec_platform_data->gpio_spk_en.gpio,
 	                codec_platform_data->gpio_spk_en.active_level);
-	        printk("gpio speaker enable %d\n", gpio_get_value(codec_platform_data->gpio_spk_en.gpio));
+	        pr_debug("gpio speaker enable %d\n", gpio_get_value(codec_platform_data->gpio_spk_en.gpio));
 	    } else
 	        printk("set speaker enable failed. please check codec_platform_data\n");
 	} else {
 	    if (codec_platform_data && (codec_platform_data->gpio_spk_en.gpio) != -1) {
 	        gpio_direction_output(codec_platform_data->gpio_spk_en.gpio, !(codec_platform_data->gpio_spk_en.active_level));
-	        printk("gpio speaker disable %d\n", gpio_get_value(codec_platform_data->gpio_spk_en.gpio));
+	        pr_debug("gpio speaker disable %d\n", gpio_get_value(codec_platform_data->gpio_spk_en.gpio));
 	    } else
 	        printk("set speaker disable failed. please check codec_platform_data\n");
 	}
 	return 0;
 }
 
+static int watch_headhpone_to_speaker_power(struct snd_soc_dapm_widget *w,
+		struct snd_kcontrol *kcontrol, int event)
+{
+	if (SND_SOC_DAPM_EVENT_ON(event)) {
+	    if (codec_platform_data && (codec_platform_data->gpio_hpl_en.gpio) != -1) {
+	        gpio_direction_output(codec_platform_data->gpio_hpl_en.gpio,
+	                codec_platform_data->gpio_hpl_en.active_level);
+	        pr_debug("gpio headphone l speaker enable %d\n", gpio_get_value(codec_platform_data->gpio_hpl_en.gpio));
+	    } else
+	        printk("set headphone l speaker enable failed. please check codec_platform_data\n");
+	} else {
+	    if (codec_platform_data && (codec_platform_data->gpio_hpl_en.gpio) != -1) {
+	        gpio_direction_output(codec_platform_data->gpio_hpl_en.gpio, !(codec_platform_data->gpio_hpl_en.active_level));
+	        pr_debug("gpio headphone l speaker disable %d\n", gpio_get_value(codec_platform_data->gpio_hpl_en.gpio));
+	    } else
+	        printk("set headphone l speaker disable failed. please check codec_platform_data\n");
+	}
+
+	if (SND_SOC_DAPM_EVENT_ON(event)) {
+	    if (codec_platform_data && (codec_platform_data->gpio_hpr_en.gpio) != -1) {
+	        gpio_direction_output(codec_platform_data->gpio_hpr_en.gpio,
+	                codec_platform_data->gpio_hpr_en.active_level);
+	        pr_debug("gpio headphone r speaker enable %d\n", gpio_get_value(codec_platform_data->gpio_hpr_en.gpio));
+	    } else
+	        printk("set headphone r speaker enable failed. please check codec_platform_data\n");
+	} else {
+	    if (codec_platform_data && (codec_platform_data->gpio_hpr_en.gpio) != -1) {
+	        gpio_direction_output(codec_platform_data->gpio_hpr_en.gpio, !(codec_platform_data->gpio_hpr_en.active_level));
+	        pr_debug("gpio headphone r speaker disable %d\n", gpio_get_value(codec_platform_data->gpio_hpr_en.gpio));
+	    } else
+	        printk("set headphone r speaker disable failed. please check codec_platform_data\n");
+	}
+	return 0;
+}
+
+
 static const struct snd_soc_dapm_widget watch_dapm_widgets[] = {
+	SND_SOC_DAPM_HP("Headphone Jack", watch_headhpone_to_speaker_power),
 	SND_SOC_DAPM_HP("Headphone Jack", NULL),
 	SND_SOC_DAPM_SPK("Speaker", watch_spk_power),
 	SND_SOC_DAPM_MIC("Mic Jack", NULL),
@@ -116,6 +153,23 @@ static int watch_dlv_dai_link_init(struct snd_soc_pcm_runtime *rtd)
 	    return err;
 	}
 
+	if (codec_platform_data && (codec_platform_data->gpio_hpl_en.gpio) != -1) {
+		err = devm_gpio_request(card->dev, codec_platform_data->gpio_hpl_en.gpio, "Headphonel_speaker_en");
+		if (err)
+		return err;
+	} else {
+		pr_err("codec_platform_data gpio_headphonel_speaker_en is NULL\n");
+		return err;
+	}
+
+	if (codec_platform_data && (codec_platform_data->gpio_hpr_en.gpio) != -1) {
+		err = devm_gpio_request(card->dev, codec_platform_data->gpio_hpr_en.gpio, "Headphoner_speaker_en");
+		if (err)
+			return err;
+	} else {
+		pr_err("codec_platform_data gpio_headphoner_speaker_en is NULL\n");
+		return err;
+	}
 
 	err = snd_soc_dapm_new_controls(dapm, watch_dapm_widgets,
 			ARRAY_SIZE(watch_dapm_widgets));

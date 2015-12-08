@@ -12,28 +12,19 @@ static atomic_t touch_powered = ATOMIC_INIT(0);
 int touch_power_init(struct device *dev)
 {
 	if (!touch_power_vdd) {
-		touch_power_vdd = regulator_get(dev, "tp_vdd");
+		touch_power_vdd = regulator_get(dev, VCC_TOUCHSCREEN);
 		if (IS_ERR(touch_power_vdd)) {
 			pr_err("can not get regulator tp_vdd\n");
-			goto err_vdd;
 		}
 	}
 
 	if (!touch_power_vio) {
-		touch_power_vio = regulator_get(dev, "tp_vio");
+		touch_power_vio = regulator_get(dev, VIO_TOUCHSCREEN);
 		if (IS_ERR(touch_power_vio)) {
 			pr_err("can not get regulator tp_vio\n");
-			goto err_vio;
 		}
 	}
 	return 0;
-
-err_vio:
-	regulator_put(touch_power_vdd);
-	touch_power_vdd = NULL;
-	touch_power_vio = NULL;
-err_vdd:
-	return -ENODEV;
 }
 int touch_power_on(struct device *dev)
 {
@@ -44,21 +35,19 @@ int touch_power_on(struct device *dev)
 		}
 
 		if (!IS_ERR(touch_power_vdd)) {
-			regulator_enable(touch_power_vdd);
+			err = regulator_enable(touch_power_vdd);
 		} else {
 			err = -ENODEV;
 			pr_err("touch power on vdd failed !\n");
-			goto err_vdd;
 		}
 
 //		msleep(10);
 
 		if (!IS_ERR(touch_power_vio)) {
-			regulator_enable(touch_power_vio);
+			err = regulator_enable(touch_power_vio);
 		} else {
 			err = -ENODEV;
 			pr_err("touch power on vio failed !\n");
-			goto err_vio;
 		}
 
 //		msleep(10);
@@ -67,10 +56,6 @@ int touch_power_on(struct device *dev)
 	}
 
 	return 0;
-err_vio:
-	regulator_disable(touch_power_vdd);
-err_vdd:
-	return err;
 }
 int touch_power_off(struct device *dev)
 {

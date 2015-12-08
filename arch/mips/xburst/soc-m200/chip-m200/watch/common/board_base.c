@@ -85,6 +85,9 @@ static struct jz_platform_device platform_devices_array[] __initdata = {
 #ifdef CONFIG_LCD_TRULY_TFT240240_2_E
 	DEF_DEVICE(&truly_tft240240_device, 0, 0),
 #endif
+#ifdef CONFIG_LCD_BOE_HSX0154B24B
+	DEF_DEVICE(&boe_hsx0154b24b_device, 0, 0),
+#endif
 #ifdef CONFIG_LCD_CV90_M5377_P30
 	DEF_DEVICE(&cv90_m5377_p30_device, 0, 0),
 #endif

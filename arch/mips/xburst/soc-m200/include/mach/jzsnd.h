@@ -166,6 +166,8 @@ struct snd_codec_data {
 	/* gpio */
 	struct snd_board_gpio gpio_hp_mute;
 	struct snd_board_gpio gpio_spk_en;
+	struct snd_board_gpio gpio_hpl_en;
+	struct snd_board_gpio gpio_hpr_en;
 	struct snd_board_gpio gpio_handset_en;
 	struct snd_board_gpio gpio_hp_detect;
 	struct snd_board_gpio gpio_mic_detect;

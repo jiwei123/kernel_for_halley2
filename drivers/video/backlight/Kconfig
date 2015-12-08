@@ -254,6 +254,11 @@ config LCD_TRULY_TFT240240_2_E
        depends on BACKLIGHT_CLASS_DEVICE
        default n
 
+config LCD_BOE_HSX0154B24B
+       tristate "SLCD TRULY TFT240240-2-E with control"
+       depends on BACKLIGHT_CLASS_DEVICE
+       default n
+
 config TRULY_240X240_ROTATE_180
         tristate "SLCD TRULY TFT240240-2-E rotate 180"
         depends on LCD_TRULY_TFT240240_2_E

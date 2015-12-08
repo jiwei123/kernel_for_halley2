@@ -1,5 +1,6 @@
 
 obj-$(CONFIG_LCD_TRULY_TFT240240_2_E) += lcd-truly_tft240240_2_e.o
+obj-$(CONFIG_LCD_BOE_HSX0154B24B) += lcd-boe-hsx0154b24b.o
 obj-$(CONFIG_LCD_TRULY_TFT320320) += lcd-truly_tft320320.o
 obj-$(CONFIG_LCD_BYD_8991FTGF) += lcd-8991.o
 obj-$(CONFIG_LCD_CV90_M5377_P30) += lcd-mirasol.o

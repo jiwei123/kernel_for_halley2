@@ -40,6 +40,8 @@ static struct platform_device jz_li_ion_charger_device = {
 static struct snd_codec_data snd_newton_platform_data = {
     .gpio_spk_en = {.gpio = GPIO_SPEAKER_EN, .active_level = GPIO_SPEAKER_EN_LEVEL},
     .gpio_hp_detect = {.gpio = GPIO_HP_DETECT, .active_level = GPIO_HP_INSERT_LEVEL},
+    .gpio_hpl_en = {.gpio = -1, .active_level = -1},
+    .gpio_hpr_en = {.gpio = -1, .active_level = -1},
 };
 
 struct platform_device snd_newton_device = {
@@ -54,6 +56,13 @@ struct platform_device snd_newton_device = {
 static struct snd_codec_data snd_watch_platform_data = {
 	.gpio_spk_en = {.gpio = GPIO_SPEAKER_EN, .active_level = GPIO_SPEAKER_EN_LEVEL},
 	.gpio_hp_detect = {.gpio = GPIO_HP_DETECT, .active_level = GPIO_HP_INSERT_LEVEL},
+    #ifdef CONFIG_SWIMBOT_HW
+    .gpio_hpl_en = {.gpio = GPIO_HEADPHONEL_SPEAKER_EN, .active_level = GPIO_HEADPHONEL_SPEAKER_EN_LEVEL},
+    .gpio_hpr_en = {.gpio = GPIO_HEADPHONER_SPEAKER_EN, .active_level = GPIO_HEADPHONER_SPEAKER_EN_LEVEL},
+    #else
+    .gpio_hpl_en = {.gpio = -1, .active_level = -1},
+    .gpio_hpr_en = {.gpio = -1, .active_level = -1},
+    #endif
 };
 
 struct platform_device snd_watch_device = {

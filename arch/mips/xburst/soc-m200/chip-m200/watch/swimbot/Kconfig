@@ -1,0 +1,10 @@
+choice
+	prompt "Select hardware version"
+	depends on WATCH_SWIMBOT
+	default SWIMBOT_HW
+
+config SWIMBOT_HW
+       bool "swimbot hardware version swimbot"
+       depends on WATCH_SWIMBOT
+endchoice
+

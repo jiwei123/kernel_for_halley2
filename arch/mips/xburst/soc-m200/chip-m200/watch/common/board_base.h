@@ -133,6 +133,9 @@ extern struct platform_device byd_8991_device;
 #ifdef CONFIG_LCD_TRULY_TFT240240_2_E
 extern struct platform_device truly_tft240240_device;
 #endif
+#ifdef CONFIG_LCD_BOE_HSX0154B24B
+extern struct platform_device boe_hsx0154b24b_device;
+#endif
 #ifdef CONFIG_MFD_JZ_SADC_V12
 extern struct jz_adc_platform_data adc_platform_data;
 #endif

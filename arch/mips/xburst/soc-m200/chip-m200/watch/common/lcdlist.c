@@ -23,7 +23,11 @@ void setup_lcd_hwlist(void)
 	HWLIST_LCD_INFO_DEF("boe", "", "1.54", "240", "", "square");
 #elif defined(CONFIG_LCD_H160_TFT320320)
 	HWLIST_LCD_INFO_DEF("auo", "h160", "1.54", "240", "", "square");
+#elif defined(CONFIG_LCD_TRULY_TFT240240_2_E)
+	HWLIST_LCD_INFO_DEF("TRULY", "TFT240240-2-E", "1.54", "212", "", "square");
+#elif defined(CONFIG_LCD_BOE_HSX0154B24B)
+	HWLIST_LCD_INFO_DEF("boe", "HSX0154B24B", "1.54", "212", "", "square");
 #else
-#error "not support your lcd, please add your lcd's info here"
+	#error "not support your lcd, please add your lcd's info here"
 #endif
 }
