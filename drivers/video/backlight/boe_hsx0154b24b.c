@@ -75,8 +75,6 @@ static int boe_hsx0154b24b_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	dev_set_drvdata(&pdev->dev, dev);
-
 	dev->lcd = lcd_device_register("boe_hsx0154b24b_slcd", &pdev->dev,
 				       dev, &boe_hsx0154b24b_ops);
 	if (IS_ERR(dev->lcd)) {
@@ -87,10 +85,7 @@ static int boe_hsx0154b24b_probe(struct platform_device *pdev)
 		dev_info(&pdev->dev, "lcd device(BOE HSX0154B24B) register success\n");
 	}
 
-	if (dev->ctrl->power_on) {
-		dev->ctrl->power_on(dev->lcd, 1);
-		dev->lcd_power = FB_BLANK_UNBLANK;
-	}
+	dev_set_drvdata(&pdev->dev, dev);
 
 	return 0;
 }

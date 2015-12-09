@@ -470,11 +470,11 @@ struct fb_videomode jzfb0_videomode = {
 
 
 struct jzfb_platform_data jzfb_pdata = {
-	.name = "truly240240",
+	.name = "hsx0154b24b",
 	.num_modes = 1,
 	.modes = &jzfb0_videomode,
 	.lcd_type = LCD_TYPE_SLCD,
-	.bpp    = 16,
+	.bpp    = 18,
 	.width = 31,
 	.height = 31,
 	.pinmd  = 0,
