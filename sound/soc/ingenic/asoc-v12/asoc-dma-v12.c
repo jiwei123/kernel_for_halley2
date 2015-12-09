@@ -594,6 +594,9 @@ static const  struct platform_device_id jz_dma_id_table[] = {
 	{
 		.name = "jz-asoc-pcm-dma",	/*pcmc dma*/
 	},
+	{
+		.name = "jz-asoc-dmic-dma",	/*dmic dma*/
+	},
 	{},
 };
 

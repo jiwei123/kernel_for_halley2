@@ -173,6 +173,15 @@ static struct snd_soc_dai_link dorado_dais[] = {
 		.codec_dai_name = "pcm dump dai",
 		.codec_name = "pcm dump",
 	},
+	[2] = {
+		.name = "DORADO DMIC",
+		.stream_name = "DORADO DMIC",
+		.platform_name = "jz-asoc-dmic-dma",
+		.cpu_dai_name = "jz-asoc-dmic",
+		.codec_dai_name = "dmic dump dai",
+		.codec_name = "dmic dump",
+	},
+
 };
 
 static struct snd_soc_card dorado = {

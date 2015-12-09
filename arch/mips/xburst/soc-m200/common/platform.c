@@ -134,11 +134,11 @@ struct jz_gpio_func_def platform_devio_array[] = {
 	PCM_PORTF,
 #endif
 
-#if defined(CONFIG_JZ_DMIC0)
+#if defined(CONFIG_JZ_DMIC0) || defined(CONFIG_SND_ASOC_JZ_DMIC_V12)
 	DMIC_PORTF,
 #endif
 
-#if defined(CONFIG_JZ_DMIC1)
+#if defined(CONFIG_JZ_DMIC1) || defined(CONFIG_SND_ASOC_JZ_DMIC_V12)
 #ifndef CONFIG_USB_DWC2_DUAL_ROLE
 #ifndef CONFIG_USB_DWC2_HOST_ONLY
 	DMIC_PORTE,
@@ -845,6 +845,46 @@ struct platform_device jz_aic_device = {
 	.num_resources  = ARRAY_SIZE(jz_aic_resources),
 };
 #endif
+#if defined(CONFIG_SND_ASOC_JZ_DMIC_V12)
+static struct resource jz_dmic_dma_resources[] = {
+	[0] = {
+		.start          = JZDMA_REQ_I2S1,
+		.end		= JZDMA_REQ_I2S1,
+		.flags          = IORESOURCE_DMA,
+	},
+};
+
+struct platform_device jz_dmic_dma_device = {
+	.name		= "jz-asoc-dmic-dma",
+	.id		= -1,
+	.dev = {
+		.dma_mask               = &jz_asoc_dmamask,
+		.coherent_dma_mask      = 0xffffffff,
+	},
+	.resource       = jz_dmic_dma_resources,
+	.num_resources  = ARRAY_SIZE(jz_dmic_dma_resources),
+};
+
+static struct resource jz_dmic_resources[] = {
+	[0] = {
+		.start          = DMIC_IOBASE,
+		.end            = DMIC_IOBASE + 0x70 -1,
+		.flags          = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start          = IRQ_DMIC,
+		.end            = IRQ_DMIC,
+		.flags          = IORESOURCE_IRQ,
+	},
+};
+struct platform_device jz_dmic_device = {
+	.name           = "jz-asoc-dmic",
+	.id             = -1,
+	.resource       = jz_dmic_resources,
+	.num_resources  = ARRAY_SIZE(jz_dmic_resources),
+};
+#endif
+
 #if defined(CONFIG_SND_ASOC_JZ_PCM_V12)
 static struct resource jz_pcm_dma_resources[] = {
 	[0] = {
@@ -915,6 +955,12 @@ struct platform_device jz_pcm_dump_cdc_device = {   /*jz dump codec*/
      .id             = -1,
  };
 
+#endif
+#if defined(CONFIG_SND_ASOC_JZ_DMIC_DUMP_CDC)
+struct platform_device jz_dmic_dump_cdc_device = {   /*jz dump codec*/
+	.name           = "dmic dump",
+	.id             = -1,
+};
 #endif
 #endif /* CONFIG_SND && (CONFIG_SND_ASOC_INGENIC || CONFIG_SND_ASOC_INGENIC_MODULE) */
 

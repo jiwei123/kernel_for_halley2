@@ -4,6 +4,7 @@ snd-asoc-aic-v12-objs 	:= asoc-v12/asoc-aic-v12.o
 snd-asoc-i2s-v12-objs 	:= asoc-v12/asoc-i2s-v12.o
 snd-asoc-pcm-v12-objs 	:= asoc-v12/asoc-pcm-v12.o
 snd-asoc-spdif-v12-objs := asoc-v12/asoc-spdif-v12.o
+snd-asoc-dmic-v12-objs := asoc-v12/asoc-dmic-v12.o
 
 snd-asoc-dma-v13-objs 	:= asoc-v13/asoc-dma-v13.o
 snd-asoc-i2s-v13-objs 	:= asoc-v13/asoc-i2s-v13.o
@@ -36,6 +37,7 @@ obj-$(CONFIG_SND_ASOC_JZ_SPDIF_V12) += snd-asoc-spdif-v12.o
 obj-$(CONFIG_SND_ASOC_JZ_SPDIF_V13) += snd-asoc-spdif-v13.o
 obj-$(CONFIG_SND_ASOC_JZ_SPDIF_DUMP_CDC) += snd-asoc-spdif-dump.o
 
+obj-$(CONFIG_SND_ASOC_JZ_DMIC_V12) += snd-asoc-dmic-v12.o
 obj-$(CONFIG_SND_ASOC_JZ_DMIC_V13) += snd-asoc-dmic-v13.o
 obj-$(CONFIG_SND_ASOC_JZ_DMIC_DUMP_CDC) += snd-asoc-dmic-dump.o
 

@@ -81,6 +81,10 @@ config SND_ASOC_JZ_DMIC_V13
 	tristate
 	select SND_ASOC_JZ_DMIC_DUMP_CDC
 
+config SND_ASOC_JZ_DMIC_V12
+	tristate
+	select SND_ASOC_JZ_DMIC_DUMP_CDC
+
 config SND_ASOC_JZ_EXTCDC
 	tristate
 	select SND_ASOC_JZ_AIC_V12
@@ -97,6 +101,7 @@ choice
 	select SND_ASOC_JZ_INCODEC
 	select SND_ASOC_JZ_ICDC_D1
 	select SND_ASOC_JZ_PCM_V12
+	select SND_ASOC_JZ_DMIC_V12
 	help
 	  Say Y if you want to add audio support for M200 Dorado
 	  reference board with internal codec
