@@ -19,5 +19,14 @@ config INPUT_FRIZZ_POLLING
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called FRIZZ.
+config INPUT_FRIZZ_FW_COMMAND_TEST
+	bool "Fw command test of Frizz sensor"
+	default n
+	help
+	  Say Y here if you want support for fw command test of the Frizz sensorhub
+	  device.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called FRIZZ.
 
 endif
