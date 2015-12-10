@@ -40,8 +40,8 @@
 #define MAG_MIN_POS     0
 #define MAG_MAX_POS     256
 
-#define LOW_THRESHOLD   0x40
-#define HIGH_THRESHOLD  0x50
+#define LOW_THRESHOLD   0xA0
+#define HIGH_THRESHOLD  0xA0
 
 typedef struct {
     struct i2c_client *client;
@@ -249,6 +249,9 @@ void em30719_work_func(struct work_struct *work) {
     last_val = val;
 
     if (val < ps_high_thd) {
+        if (val >= 39) {
+            val = 39;
+        }
         val = -val;
     }
 
