@@ -23,7 +23,6 @@
  *
  * @return 0=sucess, otherwise 0=fail
  */
-int frizz_ioctl_enable_gpio_interrupt(void);
 
 int frizz_ioctl_sensor_get_version(void);
 
@@ -67,23 +66,19 @@ int frizz_ioctl_hardware_download_firmware(char*);
  *
  * @return 0=sucess, otherwise 0=fail
  */
-//int frizz_ioctl_hardware_stall(void);
 
 /*!
  * Reset frizz in frizz driver.
  *
  * @return 0=sucess, otherwise 0=fail
  */
-//int frizz_ioctl_hardware_reset(void);
 
 int set_pedo_interval(int interval);
 /*!
  * Test whether frizz and sensor work normally?
  */
-//void frizz_fw_command_test(uint32_t sensor_id, uint32_t test_loop);
 
 int set_gesture_state(unsigned int gesture);
-int init_g_chip_orientation(unsigned int position);
 int right_hand_wear(unsigned int isrighthand);
 int set_fall_parameter(void);
 /*!< This macro copies data from user area. */
