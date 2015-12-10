@@ -5,6 +5,7 @@
 #define PMU_I2C_BUSNUM5007  0
 /* ****************************PMU BUCK/LDO/PS NAME******************************* */
 #define BUCK1_NAME "cpu_core"
+#define BUCK1_SLP_NAME "cpu_core_slp"
 #define BUCK1_DVS_NAME "buck1_dvs"
 #define BUCK2_NAME "cpu_mem12"
 #define BUCK3_NAME "cpu_vddio"
