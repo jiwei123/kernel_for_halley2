@@ -1154,6 +1154,16 @@ config MFD_RICOH619
 	  additional drivers must be enabled in order to use the
 	  functionality of the device.
 
+config MFD_SM5007
+	bool "Siliconmitus SM5007 Power Management system device"
+	depends on I2C && GPIOLIB && GENERIC_HARDIRQS
+	select MFD_CORE
+	default n
+	help
+	  If you say yes here you get support for the Siliconmitus SM5007
+	  Power Management system device.
+	  This driver provides common support for accessing the device,
+	  additional drivers must be enabled in order to use the
 
 endmenu
 endif

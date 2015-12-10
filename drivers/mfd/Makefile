@@ -160,3 +160,4 @@ obj-$(CONFIG_MFD_AS3711)	+= as3711.o
 
 obj-$(CONFIG_MFD_DA9024)    	+= d2041-core.o d2041-irq.o d2041-i2c.o
 obj-$(CONFIG_MFD_RICOH619)	+= ricoh619.o ricoh619-irq.o
+obj-$(CONFIG_MFD_SM5007)	+= sm5007.o sm5007-irq.o
