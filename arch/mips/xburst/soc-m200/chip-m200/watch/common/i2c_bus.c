@@ -509,14 +509,6 @@ struct i2c_board_info jz_i2c0_devs[] __initdata = {
 	},
 #endif
 
-#if (defined(CONFIG_TOUCHSCREEN_ITE7258) && !defined(CONFIG_WATCH_SOLAR_SAMSUNG))
-	{
-		I2C_BOARD_INFO("ite7258_ts", 0x46),
-		.platform_data = &ite7258_tsc_pdata,
-	},
-#endif
-
-
 #ifdef CONFIG_TOUCHSCREEN_FT6X0X
 	{
 		I2C_BOARD_INFO("ft6x0x_tsc", 0x38),
@@ -557,7 +549,7 @@ struct i2c_board_info jz_i2c1_devs[] __initdata = {
 		.platform_data  = &dorado_pca953x_pdata,
 	},
 #endif
-#if (defined(CONFIG_TOUCHSCREEN_ITE7258) && defined(CONFIG_WATCH_SOLAR_SAMSUNG))
+#ifdef CONFIG_TOUCHSCREEN_ITE7258
 	{
 		I2C_BOARD_INFO("ite7258_ts", 0x46),
 		.platform_data = &ite7258_tsc_pdata,
