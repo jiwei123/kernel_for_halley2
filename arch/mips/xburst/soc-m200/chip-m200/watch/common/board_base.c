@@ -222,6 +222,13 @@ static struct jz_platform_device platform_devices_array[] __initdata = {
 #if defined(CONFIG_SND_ASOC_JZ_PCM_DUMP_CDC)
 	   DEF_DEVICE(&jz_pcm_dump_cdc_device,0,0),
 #endif
+#if defined(CONFIG_SND_ASOC_JZ_DMIC_V12)
+	   DEF_DEVICE(&jz_dmic_device,0,0),
+	   DEF_DEVICE(&jz_dmic_dma_device,0,0),
+#endif
+#if defined(CONFIG_SND_ASOC_JZ_DMIC_DUMP_CDC)
+	   DEF_DEVICE(&jz_dmic_dump_cdc_device,0,0),
+#endif
 #if IS_ENABLED(CONFIG_SND_ASOC_INGENIC_NEWTON_ICDC)
        DEF_DEVICE(&snd_newton_device, NULL, 0),
 #endif
