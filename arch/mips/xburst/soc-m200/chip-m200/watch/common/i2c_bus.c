@@ -122,7 +122,7 @@ static struct jztsc_platform_data ite7258_tsc_pdata = {
 	.y_max          = 320,
 	.irqflags = IRQF_TRIGGER_LOW | IRQF_DISABLED,
 	.vcc_name = VCC_TOUCHSCREEN,
-#if (defined(CONFIG_WATCH_ACRAB) || defined(CONFIG_WATCH_AW808) || defined(CONFIG_WATCH_SOLAR))
+#if (defined(CONFIG_WATCH_ACRAB) || defined(CONFIG_WATCH_AW808) || defined(CONFIG_WATCH_SOLAR) || defined(CONFIG_WATCH_SOLAR_SAMSUNG))
 	.vccio_name = VIO_TOUCHSCREEN,
 #endif
 };
@@ -509,7 +509,7 @@ struct i2c_board_info jz_i2c0_devs[] __initdata = {
 	},
 #endif
 
-#ifdef CONFIG_TOUCHSCREEN_ITE7258
+#if (defined(CONFIG_TOUCHSCREEN_ITE7258) && !defined(CONFIG_WATCH_SOLAR_SAMSUNG))
 	{
 		I2C_BOARD_INFO("ite7258_ts", 0x46),
 		.platform_data = &ite7258_tsc_pdata,
@@ -557,7 +557,7 @@ struct i2c_board_info jz_i2c1_devs[] __initdata = {
 		.platform_data  = &dorado_pca953x_pdata,
 	},
 #endif
-#ifdef CONFIG_TOUCHSCREEN_ITE7258
+#if (defined(CONFIG_TOUCHSCREEN_ITE7258) && defined(CONFIG_WATCH_SOLAR_SAMSUNG))
 	{
 		I2C_BOARD_INFO("ite7258_ts", 0x46),
 		.platform_data = &ite7258_tsc_pdata,

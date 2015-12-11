@@ -6,15 +6,23 @@ choice
 config WATCH_AW808
        bool "watch aw808"
        depends on BOARD_WATCH
+
+config WATCH_SOLAR_SAMSUNG
+       bool "watch solar for samsung power test"
+       depends on BOARD_WATCH
 endchoice
 
 if WATCH_AW808
 source "arch/mips/xburst/soc-m200/chip-m200/watch/aw808/Kconfig"
 endif
+if WATCH_SOLAR_SAMSUNG
+source "arch/mips/xburst/soc-m200/chip-m200/watch/solar_samsung/Kconfig"
+endif
 
 config BOARD_NAME
 	string "BOARD_NAME"
 	default "aw808" if WATCH_AW808
+	default "solar_samsung" if WATCH_SOLAR_SAMSUNG
 
 config ROOTLIST
 	bool "Export hardware information to proc/hardware/list"

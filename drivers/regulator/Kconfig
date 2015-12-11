@@ -515,6 +515,14 @@ config REGULATOR_RN5T567
 	  This driver supports regulator driver for the Ricoh RN5T567
 	  Power Management device.
 
+config REGULATOR_SM5007
+	tristate "Siliconmitus SM5007 Power regulators"
+	depends on MFD_SM5007
+	default n
+	help
+	  This driver supports regulator driver for the Siliconmitus SM5007
+	  Power Management device.
+
 config REGULATOR_RICOH619
 	tristate "Ricoh R5T619 Power regulators"
 	depends on MFD_RICOH619

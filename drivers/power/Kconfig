@@ -342,6 +342,46 @@ config CHARGER_SMB347
 	  Say Y to include support for Summit Microelectronics SMB347
 	  Battery Charger.
 
+menuconfig CHARGER_SM5007
+	tristate "Siliconmitus SM5007 PMIC charger driver"
+	depends on MFD_SM5007 && I2C && GENERIC_HARDIRQS
+	help
+	  Say Y to enable support for the battery control of the Siliconmitus SM5007
+	  Power Management device.
+
+if CHARGER_SM5007
+config SM5007_FUELGUAGE
+	depends on CHARGER_SM5007
+	tristate "Use SM5007 fulegauge"
+	default y
+
+config SM5007_CHARGER_HOLD_WAKE_LOCK
+	depends on CHARGER_SM5007
+	tristate "Siliconmitus hold a wake_lock when charging"
+	default y
+
+config DWC2_BOND_TO_CHARGER
+	depends on CHARGER_SM5007
+	tristate "Turn on/off dwc2 when charger connect/disconnect"
+	default y
+
+config SM5007_FG_N_VS_LPM
+	depends on CHARGER_SM5007
+	tristate "sm5007 fuelgauge will enter/exit LPM when suspend/resume"
+	default y
+
+config 320MAH_BATTERY
+	depends on CHARGER_SM5007
+	tristate "320mAh battery"
+	default y
+
+config SM5007_FG_DEBUG_LOG
+	depends on CHARGER_SM5007
+	tristate "Print fuelgauge log"
+	default n
+
+endif
+
 config BATTERY_RICOH619
 	tristate "Ricoh R5T619 PMIC battery driver"
 	depends on MFD_RICOH619 && I2C && GENERIC_HARDIRQS
