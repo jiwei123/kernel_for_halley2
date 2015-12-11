@@ -109,6 +109,7 @@ struct jzdsi_data {
  * @width: width of the lcd display in mm
  * @height: height of the lcd display in mm
  * @pinmd: 16bpp lcd data pin mapping. 0: LCD_D[15:0],1: LCD_D[17:10] LCD_D[8:1]
+ * @booting :1: during booting the system, 0: suspend or resume; added for elink
  * @pixclk_falling_edge: pixel clock at falling edge
  * @data_enable_active_low: data enable active low
  * @smart_type: smart lcd transfer type, 0: parrallel, 1: serial
@@ -147,6 +148,7 @@ struct jzfb_platform_data {
 	unsigned int width;
 	unsigned int height;
 	unsigned pinmd:1;
+	unsigned booting:1;
 
 	unsigned pixclk_falling_edge:1;
 	unsigned data_enable_active_low:1;

@@ -728,7 +728,8 @@ static void jzfb_slcd_mcu_init(struct fb_info *info)
 	 *set cmd_width and data_width
 	 * */
 	if (pdata->smart_config.length_data_table
-	    && pdata->smart_config.data_table) {
+	    && pdata->smart_config.data_table
+	    && !pdata->booting) {
 		for (i = 0; i < pdata->smart_config.length_data_table; i++) {
 			switch (pdata->smart_config.data_table[i].type) {
 			case SMART_CONFIG_DATA:
@@ -763,6 +764,7 @@ static void jzfb_slcd_mcu_init(struct fb_info *info)
 		}
 
 	}
+	pdata->booting = 0;
 
 	if(pdata->bpp / pdata->smart_config.bus_width != 1 ) {
 		int tmp = reg_read(jzfb, SLCDC_CFG_NEW);

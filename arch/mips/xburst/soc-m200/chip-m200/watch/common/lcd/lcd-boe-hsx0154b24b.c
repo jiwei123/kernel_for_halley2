@@ -478,6 +478,7 @@ struct jzfb_platform_data jzfb_pdata = {
 	.width = 31,
 	.height = 31,
 	.pinmd  = 0,
+	.booting = 1,
 
 	.smart_config.rsply_cmd_high       = 0,
 	.smart_config.csply_active_high    = 0,
@@ -497,13 +498,12 @@ struct jzfb_platform_data jzfb_pdata = {
 static int backlight_init(struct device *dev)
 {
 	int ret;
-
 	//GPIO redefinition in arch/mips/xburst/soc-m200/include/mach/platform.h
-/*	ret = gpio_request(GPIO_LCD_PWM, "Backlight");
+	ret = gpio_request(GPIO_LCD_PWM, "Backlight");
 	if (ret) {
 		printk(KERN_ERR "failed to request GPF for PWM-OUT1\n");
 		return ret;
-	}*/
+	}
 
 	ret = gpio_request(GPIO_BL_PWR_EN, "BL PWR");
 	if (ret) {

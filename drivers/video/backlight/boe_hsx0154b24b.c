@@ -159,5 +159,5 @@ static void __exit boe_hsx0154b24b_exit(void)
 }
 module_exit(boe_hsx0154b24b_exit);
 
-MODULE_DESCRIPTION("TRULY TFT240240 lcd panel driver");
+MODULE_DESCRIPTION("BOE HSX0154B24B lcd panel driver");
 MODULE_LICENSE("GPL");
