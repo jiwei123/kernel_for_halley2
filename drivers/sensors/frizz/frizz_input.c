@@ -527,7 +527,6 @@ static ssize_t enable_store(struct device *dev,
 	int ret;
 	int value = simple_strtoul(buf, NULL, 10);
 
-	pr_info("[SENOSRHUB:]In this function %s \n",__func__);
 	pr_info("[SENSOR] %s : enable = %d  read:%d  value&0x02:%x)\n", __func__, value,atomic_read(&data->enable),value & 0x02);
 
 	mutex_lock(&data->mutex);
@@ -893,11 +892,11 @@ static ssize_t set_acc_delay(struct device *dev,
 		return ret;
 	}
 
-	value = 1000;
+	value = 10;
 	pr_info("[SENSOR] %s : delay = %d\n", __func__, value);
 	mutex_lock(&data->mutex);
 
-	set_delay_sensor_id(data,0x80,0x02,1000);
+	set_delay_sensor_id(data,0x80,0x02,10);
 
 	atomic_set(&data->accel_delay, value);
 
@@ -1090,7 +1089,6 @@ static void mpu6500_input_report_accel_xyz(struct frizz_input_data *data)
 	int i;
 	unsigned int f32_data[10] = {0};
 	mutex_lock(&data->mutex);
-	// ===================== Get sensor raw data =========================
 	if(enabled_accel){
 		fifo_size = serial_read_fifo_size(data->client);
 		if(fifo_size > 0){
@@ -1100,15 +1098,11 @@ static void mpu6500_input_report_accel_xyz(struct frizz_input_data *data)
 				if (((fifo_data[i] >> 16) == 0xFF80) && ((fifo_data[i] & 0xff) <= (fifo_size - i))) {
 					memset(f32_data, 0, 10);
 					analysis_fifo(fifo_data, &i,f32_data);
-					pr_info("[SENSOR] %s, %u, %u %u\n",
-			__func__, f32_data[0], f32_data[1], f32_data[2]);
 
 					input_report_rel(data->accel_input, REL_X, f32_data[0]);
-					input_report_rel(data->accel_input, REL_Y, f32_data[1] );
+					input_report_rel(data->accel_input, REL_Y, f32_data[1]);
 					input_report_rel(data->accel_input, REL_Z, f32_data[2]);
 					if (atomic_read(&data->accel_delay) * data->count_logtime > MPU6500_LOGTIME) {
-						pr_info("[SENSOR] %s, %u, %u %u\n",
-							__func__, f32_data[0], f32_data[1], f32_data[2]);
 						data->count_logtime = 0;
 					} else
 						data->count_logtime++;
