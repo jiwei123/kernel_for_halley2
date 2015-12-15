@@ -135,7 +135,7 @@ struct frizz_input_data {
 	struct device *mcu_device;
 	s16 acc_cal[3];
 	bool factory_mode;
-    struct frizz_i2c_dev_data *pdata;
+	struct frizz_i2c_dev_data *pdata;
 };
 
 struct sensor_virtual {

@@ -856,7 +856,7 @@ static ssize_t accel_vendor_show(struct device *dev,
 				struct device_attribute *attr,
 					char *buf)
 {
-	return sprintf(buf, "%s\n", "INVENSENSE");
+	return sprintf(buf, "%s\n", "Frizz");
 }
 
 static struct device_attribute dev_attr_accel_sensor_vendor =
@@ -868,7 +868,7 @@ static ssize_t accel_name_show(struct device *dev,
 				struct device_attribute *attr,
 					char *buf)
 {
-	return sprintf(buf, "%s\n", "MPU6500");
+	return sprintf(buf, "%s\n", "FRIZZ-MPU6500");
 }
 
 static ssize_t show_acc_delay(struct device *dev,
