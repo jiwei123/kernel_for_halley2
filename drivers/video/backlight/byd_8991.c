@@ -38,7 +38,7 @@ struct byd_8991_data {
 };
 
 static void byd_8991_on(struct byd_8991_data *dev) {
-	dev->lcd_power = 1;
+	dev->lcd_power = FB_BLANK_UNBLANK;
 	if (!IS_ERR(dev->lcd_vcc_reg)) {
 		if(!regulator_is_enabled(dev->lcd_vcc_reg)) {
 			regulator_enable(dev->lcd_vcc_reg);
@@ -65,7 +65,7 @@ static void byd_8991_on(struct byd_8991_data *dev) {
 
 static void byd_8991_off(struct byd_8991_data *dev)
 {
-	dev->lcd_power = 0;
+	dev->lcd_power = FB_BLANK_POWERDOWN;
 	if (dev->pdata->gpio_lcd_cs)
 		gpio_direction_output(dev->pdata->gpio_lcd_cs, 0);
 	if (dev->pdata->gpio_lcd_disp)
@@ -83,11 +83,21 @@ static int byd_8991_set_power(struct lcd_device *lcd, int power)
 {
 	struct byd_8991_data *dev = lcd_get_data(lcd);
 
-	if (!power && !(dev->lcd_power)) {
-                byd_8991_on(dev);
-        } else if (power && (dev->lcd_power)) {
-                byd_8991_off(dev);
-        }
+	if (power != FB_BLANK_UNBLANK && power != FB_BLANK_POWERDOWN &&
+		power != FB_BLANK_NORMAL) {
+		return -EINVAL;
+	}
+
+	if (dev->lcd_power != power) {
+		if (power == FB_BLANK_UNBLANK) {
+			byd_8991_on(dev);
+		}
+		else{
+			byd_8991_off(dev);
+		}
+		dev->lcd_power = power;
+	}
+
 	return 0;
 }
 
@@ -141,8 +151,10 @@ static int byd_8991_probe(struct platform_device *pdev)
 	if (dev->pdata->gpio_lcd_back_sel)
 		gpio_request(dev->pdata->gpio_lcd_back_sel, "back_light_ctrl");
 #endif
-	if ( ! lcd_display_inited_by_uboot() )
+	if ( ! lcd_display_inited_by_uboot() ) {
 		byd_8991_on(dev);
+	}
+	dev->lcd_power = FB_BLANK_UNBLANK;
 
 	dev->lcd = lcd_device_register("byd_8991-lcd", &pdev->dev,
 				       dev, &byd_8991_ops);

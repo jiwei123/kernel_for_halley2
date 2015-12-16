@@ -451,6 +451,7 @@ static int auo_x163_probe(struct mipi_dsim_lcd_device *dsim_dev)
 	lcd->dsim_dev = dsim_dev;
 	lcd->ddi_pd = (struct  auo_x163_platform_data*)dsim_dev->platform_data;
 	lcd->dev = &dsim_dev->dev;
+	lcd->power = FB_BLANK_UNBLANK;
 
 	mutex_init(&lcd->lock);
 
@@ -506,6 +507,7 @@ static int auo_x163_suspend(struct mipi_dsim_lcd_device *dsim_dev)
 
 	lcd->ddi_pd->lcd_pdata->lcd_enabled = false;
 	mutex_unlock(&lcd->lock);
+	lcd->power = FB_BLANK_POWERDOWN;
 
 	return 0;
 }

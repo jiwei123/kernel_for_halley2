@@ -3161,7 +3161,6 @@ static int jzfb_suspend(struct device *dev)
 	/* clk_disable(jzfb->clk); */
 	/* clk_disable(jzfb->pclk); */
 	printk("++++++%s\n",__func__);
-	jzfb_do_suspend(jzfb);
 
 	return 0;
 }
@@ -3173,7 +3172,6 @@ static int jzfb_resume(struct device *dev)
 	/* clk_enable(jzfb->pclk); */
 	/* jzfb_clk_enable(jzfb); */
 	printk("++++++%s\n",__func__);
-	jzfb_do_resume(jzfb);
 
 	return 0;
 }
