@@ -210,6 +210,7 @@ static void bluesleep_sleep_work(struct work_struct *work)
 {
 	if (bluesleep_can_sleep()) {
 		BT_SLEEP_ERR("can sleep...\n");
+		wake_unlock(&bsi->wake_lock);
 		/* already asleep, this is an error case */
 		if (test_bit(BT_ASLEEP, &flags)) {
 			BT_SLEEP_ERR("already asleep\n");
@@ -460,7 +461,7 @@ int bluesleep_start(void)
 
 	BT_SLEEP_ERR("set BT_PROTO\n");
 	set_bit(BT_PROTO, &flags);
-	wake_lock(&bsi->wake_lock);
+//	wake_lock(&bsi->wake_lock);
 	return 0;
       fail:
 	del_timer(&tx_timer);
