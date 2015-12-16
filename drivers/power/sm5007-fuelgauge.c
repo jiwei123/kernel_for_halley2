@@ -208,7 +208,7 @@ void fg_vbatocv_check(struct i2c_client *client)
 
 	if(fuelgauge->info.iocv_error_count > 5)
 	{
-		printk("%s: p_v - v = (%d)\n", __func__, fuelgauge->info.p_batt_voltage - fuelgauge->info.batt_voltage);
+		//printk("%s: p_v - v = (%d)\n", __func__, fuelgauge->info.p_batt_voltage - fuelgauge->info.batt_voltage);
 		if(abs(fuelgauge->info.p_batt_voltage - fuelgauge->info.batt_voltage)>15) // 15mV over
 		{
 			fuelgauge->info.iocv_error_count = 0;
@@ -216,7 +216,7 @@ void fg_vbatocv_check(struct i2c_client *client)
 		else
 		{
 			// mode change to mix RS manual mode
-			printk("%s: mode change to mix RS manual mode\n", __func__);
+			//printk("%s: mode change to mix RS manual mode\n", __func__);
 
 			// mode change
 			ret = sm5007_fg_i2c_read_word(client, SM5007_REG_CNTL);
@@ -230,7 +230,7 @@ void fg_vbatocv_check(struct i2c_client *client)
 			&& (fuelgauge->info.batt_voltage < fuelgauge->info.alarm_vol_mv + 20) && (!fuelgauge->is_charging))
 		{
 			// mode change to mix RS manual mode
-			printk("%s: mode change to mix RS manual mode\n", __func__);
+			//printk("%s: mode change to mix RS manual mode\n", __func__);
 
 			// mode change
 			ret = sm5007_fg_i2c_read_word(client, SM5007_REG_CNTL);
@@ -291,7 +291,7 @@ unsigned int fg_get_soc(struct i2c_client *client)
 	ret = sm5007_fg_i2c_read_word(client, SM5007_REG_SOC);
 	if (ret < 0) {
 		pr_err("%s: read soc reg fail\n", __func__);
-		soc = 500;
+		soc = 1000;
 	} else {
 		/*integer bit;*/
 		soc = ((ret&0xff00)>>8) * 10;
@@ -299,7 +299,7 @@ unsigned int fg_get_soc(struct i2c_client *client)
 		soc = soc + (((ret&0x00ff)*10)/256);
 	}
 
-	fuelgauge->info.batt_soc = 0;
+	fuelgauge->info.batt_soc = soc;
 #ifdef CONFIG_SM5007_FG_DEBUG_LOG
 	printk("%s: read = 0x%x, soc = %d\n", __func__, ret, soc);
 #endif
@@ -767,6 +767,7 @@ static enum power_supply_property sm5007_fuelgauge_props[] = {
 	POWER_SUPPLY_PROP_TEMP,
 	POWER_SUPPLY_PROP_TEMP_AMBIENT,
 	POWER_SUPPLY_PROP_ENERGY_EMPTY,
+	POWER_SUPPLY_PROP_PRESENT,
 };
 
 static int sm5007_fg_get_property(struct power_supply *psy,
@@ -814,6 +815,9 @@ static int sm5007_fg_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_ENERGY_EMPTY:
 		/*for test: 1 is Low vbat*/
 		val->intval = fuelgauge->info.volt_alert_flag;
+		break;
+	case POWER_SUPPLY_PROP_PRESENT:
+		val->intval = 1;/*info->present;*/
 		break;
 	default:
 		return -EINVAL;
@@ -954,7 +958,7 @@ static int sm5007_fuelgauge_probe (struct i2c_client *client,
 		dev_err(fuelgauge->dev, "Failed to Initialize Fuelgauge\n");
 
 
-	fuelgauge->psy_fg.name		= "sm5007-fuelgauge";
+	fuelgauge->psy_fg.name		= "battery";
 	fuelgauge->psy_fg.type		= POWER_SUPPLY_TYPE_BATTERY;
 	fuelgauge->psy_fg.get_property	= sm5007_fg_get_property;
 	fuelgauge->psy_fg.set_property	= sm5007_fg_set_property;
