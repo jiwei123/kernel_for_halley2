@@ -91,7 +91,6 @@ static int watch_headhpone_to_speaker_power(struct snd_soc_dapm_widget *w,
 
 static const struct snd_soc_dapm_widget watch_dapm_widgets[] = {
 	SND_SOC_DAPM_HP("Headphone Jack", watch_headhpone_to_speaker_power),
-	SND_SOC_DAPM_HP("Headphone Jack", NULL),
 	SND_SOC_DAPM_SPK("Speaker", watch_spk_power),
 	SND_SOC_DAPM_MIC("Mic Jack", NULL),
 	SND_SOC_DAPM_MIC("Mic Buildin", NULL),
@@ -141,45 +140,53 @@ static int watch_dlv_dai_link_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
 	struct snd_soc_card *card = rtd->card;
-	int err;
+	int err = -1;
 	int jack = 0;
 
-	if (codec_platform_data) {
+	if (codec_platform_data && (codec_platform_data->gpio_spk_en.gpio) != -1) {
 	    err = devm_gpio_request(card->dev, codec_platform_data->gpio_spk_en.gpio, "Speaker_en");
-	    if (err)
+	    if (0 != err) {
+	        printk("gpio_spk_en gpio request error!\n");
 	        return err;
+	    }
 	} else {
 	    pr_err("codec_platform_data gpio_spk_en is NULL\n");
-	    return err;
 	}
 
 	if (codec_platform_data && (codec_platform_data->gpio_hpl_en.gpio) != -1) {
 		err = devm_gpio_request(card->dev, codec_platform_data->gpio_hpl_en.gpio, "Headphonel_speaker_en");
-		if (err)
-		return err;
+		if (0 != err) {
+			printk("gpio_hpl_en gpio request error!\n");
+			return err;
+		}
 	} else {
 		pr_err("codec_platform_data gpio_headphonel_speaker_en is NULL\n");
-		return err;
 	}
 
 	if (codec_platform_data && (codec_platform_data->gpio_hpr_en.gpio) != -1) {
 		err = devm_gpio_request(card->dev, codec_platform_data->gpio_hpr_en.gpio, "Headphoner_speaker_en");
-		if (err)
+		if (0 != err) {
+			printk("gpio_hpr_en gpio request error!\n");
 			return err;
+		}
 	} else {
 		pr_err("codec_platform_data gpio_headphoner_speaker_en is NULL\n");
+	}
+
+	if(-1 == err) {
+		printk("codec_platform_data is null\n");
 		return err;
 	}
 
 	err = snd_soc_dapm_new_controls(dapm, watch_dapm_widgets,
 			ARRAY_SIZE(watch_dapm_widgets));
-	if (err)
+	if (0 != err)
 		return err;
 
 	/* Set up rx1950 specific audio path audio_mapnects */
 	err = snd_soc_dapm_add_routes(dapm, audio_map,
 			ARRAY_SIZE(audio_map));
-	if (err)
+	if (0 != err)
 		return err;
 
 	snd_soc_jack_new(codec, "Headset Jack", SND_JACK_HEADSET, &watch_icdc_d1_jack);
