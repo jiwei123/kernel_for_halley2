@@ -55,6 +55,9 @@ struct dwc2_jz {
 
 #define to_dwc2_jz(dwc) container_of((dwc)->pdev, struct dwc2_jz, dwc2)
 
+#ifdef CONFIG_SWITCH
+extern void usb_switch_set_state(unsigned int state);
+#endif
 #if DWC2_HOST_MODE_ENABLE
 int dwc2_jz_input_init(struct dwc2_jz *jz) {
 #ifdef CONFIG_USB_DWC2_INPUT_EVDEV
@@ -194,6 +197,11 @@ static void usb_plug_change(struct dwc2_jz *jz) {
 	int insert = __dwc2_get_detect_pin_status(jz);
 	struct dwc2 *dwc = platform_get_drvdata(&jz->dwc2);
 	pr_info("USB %s\n", insert ? "connect" : "disconnect");
+
+#ifdef CONFIG_SWITCH
+	usb_switch_set_state(insert);
+#endif
+
 	dwc2_disable_global_interrupts(dwc);
 	synchronize_irq(dwc->irq);
 	flush_work(&dwc->otg_id_work);

@@ -30,3 +30,5 @@ obj-y += jz_big_little_switch.o cpu_switch.o cpu_core_voltage.o
 obj-$(SW-DEBUG) +=  cpu_switch_debug.o
 
 obj-$(CONFIG_DWC_LM_INTERFACE)  += lm.o lm-device.o
+
+obj-$(CONFIG_SWITCH) += usb-switch.o
