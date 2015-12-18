@@ -121,9 +121,10 @@
 #define GPIO_TP_RESET		(-1)
 #endif
 #ifdef  CONFIG_TOUCHSCREEN_ITE7258
-#define VCC_TOUCHSCREEN         LDO3_NAME
-#define GPIO_TP_INT             (-1)
-#define GPIO_TP_RESET           (-1)
+#define VIO_TOUCHSCREEN			LDO2_NAME
+#define VCC_TOUCHSCREEN         LDO4_NAME
+#define GPIO_TP_INT             GPIO_PC(14)
+#define GPIO_TP_RESET           GPIO_PC(13)
 #endif  /* CONFIG_TOUCHSCREEN_ITE7258 */
 
 /* ****************************GPIO TOUCHSCREEN END************************** */
@@ -248,10 +249,6 @@
 
 /* ****************************GPIO BLUETOOTH START************************** */
 /* BT gpio */
-#define BLUETOOTH_UART_GPIO_PORT        GPIO_PORT_D
-#define BLUETOOTH_UART_GPIO_FUNC        GPIO_FUNC_0
-#define BLUETOOTH_UART_FUNC_SHIFT       (1 << 28)
-
 #define HOST_WAKE_BT	GPIO_PD(5)
 #define BT_WAKE_HOST	GPIO_PD(10)
 #define BT_REG_EN	GPIO_PD(9)

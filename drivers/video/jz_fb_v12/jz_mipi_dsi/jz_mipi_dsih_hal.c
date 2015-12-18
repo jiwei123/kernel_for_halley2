@@ -9,6 +9,9 @@
 #include "jz_mipi_dsih_hal.h"
 #include "jz_mipi_dsi_regs.h"
 #include <linux/delay.h>
+
+#define kprint(fmt,args...) printk("\033[1;31m" fmt "\033[0m \n", ##args);
+
 /**
  * Write a 32-bit word to the DSI Host core
  * @param dsi pointer to structure holding the DSI Host core information
@@ -758,21 +761,11 @@ dsih_error_t mipi_dsih_hal_gen_packet_header(struct dsi_device * dsi, unsigned c
  */
 dsih_error_t mipi_dsih_hal_gen_packet_payload(struct dsi_device * dsi, unsigned int payload)
 {
-	//if (mipi_dsih_hal_gen_write_fifo_full(dsi))
-	//{
-		//printk("write fifo full error!!!\n");
-		//return ERR_DSI_OVERFLOW;
-	//}
-	int timeout = DSIH_FIFO_ACTIVE_WAIT;
-	while(mipi_dsih_hal_gen_write_fifo_full(dsi) && timeout) {
-		timeout--;
-		udelay(500);
-	}
-	mipi_dsih_write_word(dsi, R_DSI_HOST_GEN_PLD_DATA, payload);
-	if(timeout <= 0) {
-		printk("mipi gen pld data over flow.\n");
+	if (mipi_dsih_hal_gen_write_fifo_full(dsi))
+	{
 		return ERR_DSI_OVERFLOW;
 	}
+	mipi_dsih_write_word(dsi, R_DSI_HOST_GEN_PLD_DATA, payload);
 	return OK;
 
 }
@@ -1214,31 +1207,36 @@ dsih_error_t mipi_dsih_gen_wr_packet(struct dsi_device * dsi, unsigned char vc, 
 		}
 	}
 
-	timeout = DSIH_FIFO_ACTIVE_WAIT;
-	while(!mipi_dsih_hal_gen_cmd_fifo_empty(dsi) && timeout) {
-		udelay(500);
-		timeout--;
-	}
-
-	if (param_length == 0)
+	for (timeout = 0; timeout < DSIH_FIFO_ACTIVE_WAIT; timeout++)
 	{
-		err_code |= mipi_dsih_hal_gen_packet_header(dsi, vc, data_type, 0x0, 0x0);
+		/* check if payload Tx fifo is not full */
+		if (!mipi_dsih_hal_gen_cmd_fifo_full(dsi))
+		{
+			if (param_length == 0)
+			{
+				err_code |= mipi_dsih_hal_gen_packet_header(dsi, vc, data_type, 0x0, 0x0);
+			}
+			else if (param_length == 1)
+			{
+				err_code |= mipi_dsih_hal_gen_packet_header(dsi, vc, data_type, 0x0, params[0]);
+			}
+			else
+			{
+				/*make the header*/
+				err_code |= mipi_dsih_hal_gen_packet_header(dsi, vc, data_type, params[1], params[0]);
+			}
+			break;
+		}
+		else{
+			printk("cmd fifo full error\n");
+			err_code = ERR_DSI_OVERFLOW;
+			return err_code;
+		}
 	}
-	else if (param_length == 1)
+	if (!(timeout < DSIH_FIFO_ACTIVE_WAIT))
 	{
-		err_code |= mipi_dsih_hal_gen_packet_header(dsi, vc, data_type, 0x0, params[0]);
+		err_code = ERR_DSI_TIMEOUT;
 	}
-	else
-	{
-		/*make the header*/
-		err_code |= mipi_dsih_hal_gen_packet_header(dsi, vc, data_type, params[1], params[0]);
-	}
-
-	if(timeout <= 0) {
-		printk("mipi gen write command timeout.\n");
-		return ERR_DSI_TIMEOUT;
-	}
-
 	return err_code;
 }
 
@@ -1256,17 +1254,20 @@ unsigned int  mipi_dsih_write_register_configuration(struct dsi_device * dsi, re
 	return count;
 }
 
-int write_command(struct dsi_device * dsi, struct dsi_cmd_packet cmd_data)
+int _write_command(struct dsi_device * dsi, struct dsi_cmd_packet * cmd_data)
 {
 	unsigned int i, j;
 	unsigned int packet_type;
 	unsigned char dsi_command_param[MAX_WORD_COUNT] = {0};
 	unsigned short word_count = 0;
 	unsigned int ret;
+	//struct dsi_cmd_packet *a_cmd_data;
+	//a_cmd_data = kmalloc(sizeof(struct dsi_cmd_packet), GFP_KERNEL);
+	//a_cmd_data = cmd_data;
 	/*word count*/
-	packet_type = cmd_data.packet_type;
-	dsi_command_param[0] = cmd_data.cmd0_or_wc_lsb;
-	dsi_command_param[1] = cmd_data.cmd1_or_wc_msb;
+	packet_type = cmd_data->packet_type;
+	dsi_command_param[0] = cmd_data->cmd0_or_wc_lsb;
+	dsi_command_param[1] = cmd_data->cmd1_or_wc_msb;
 	//printk("packet_type  = %x\n",  packet_type);
 	if(packet_type == 0x39){ //dcs long packet
 		word_count = ((dsi_command_param[1] << 8 ) | dsi_command_param[0]);
@@ -1274,7 +1275,7 @@ int write_command(struct dsi_device * dsi, struct dsi_cmd_packet cmd_data)
 		j = 2;
 		/*payload: */
 		for(i = 0; i < word_count; i++) {
-			dsi_command_param[j++] = cmd_data.cmd_data[i];
+			dsi_command_param[j++] = cmd_data->cmd_data[i];
 		//	printk("dsi_command_param[%d] = %x\n", j-1, dsi_command_param[j-1]);
 		}
 
@@ -1285,12 +1286,87 @@ int write_command(struct dsi_device * dsi, struct dsi_cmd_packet cmd_data)
 		printk("not support packet type, please checkout!,\n");
 	}
 	ret = mipi_dsih_gen_wr_packet(dsi, 0, packet_type, dsi_command_param, word_count + 2);
-#ifdef CONFIG_JZ_MIPI_DBI
-	udelay(3000);
-#endif
 	if(ret < 0) {
 		printk("gen_wr_packet failed. ret:%d\n", ret);
 	}
+	mdelay(1);
+	return 0;
+}
 
+int print_mipi_cmd_list(unsigned char * cmd_array, int array_size)
+{
+	int i = 0;
+	int j = 0;
+	int cmd_len = 0;
+	unsigned char *p = cmd_array;
+	while(i < array_size)
+	{
+		switch (*p)
+		{
+		case 0x05:
+		case 0x15:
+			cmd_len = 3;
+			if((i+cmd_len) > array_size) {
+				kprint("0x%02x: This line you get the command make the array overflow!\n please checkout the packet_type and cmd_length!", *p);
+				return -1;
+			}
+			break;
+		case 0x39:
+			cmd_len = 3 + (*(p + 1) + (*(p + 2) << 8));
+			if((i+cmd_len) > array_size) {
+				kprint("0x%02x: This line you get the command make the array overflow!\n please checkout the packet_type and cmd_length!", *p);
+				return -1;
+			}
+			break;
+		default:
+			kprint("0x%02x: This packet_type is error, please checkout previous line packet_type and cmd_length!", *p);
+			return -1;
+			break;
+		}
+		for (j = 0; j < cmd_len; j++, i++)
+			printk("0x%02x,", *(p++));
+		printk("\n");
+	}
+	return 0;
+}
+
+int write_command(struct dsi_device * dsi, unsigned char * cmd_array, int array_size)
+{
+	int i = 0;
+	struct dsi_cmd_packet *cmd_packet;
+	unsigned char *p = cmd_array;
+	while(i < array_size)
+	{
+		switch (*p)
+		{
+		case 0x05:
+		case 0x15:
+			cmd_packet = (struct dsi_cmd_packet *)p;
+			i += 3;
+			if (i > array_size) {
+				print_mipi_cmd_list(cmd_array, array_size);
+				BUG_ON(1);
+				return -1;
+			}
+			p += 3;
+			break;
+		case 0x39:
+			cmd_packet = (struct dsi_cmd_packet *)p;
+			i += (3 + *(p + 1) + (*(p + 2) << 8));
+			if (i > array_size) {
+				print_mipi_cmd_list(cmd_array, array_size);
+				BUG_ON(1);
+				return -1;
+			}
+			p += (3 + *(p + 1) + (*(p + 2) << 8));
+			break;
+		default:
+			print_mipi_cmd_list(cmd_array, array_size);
+			dump_stack();
+			return -1;
+			break;
+		}
+		_write_command(dsi, cmd_packet);
+	}
 	return 0;
 }

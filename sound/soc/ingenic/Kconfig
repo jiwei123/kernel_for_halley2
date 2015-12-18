@@ -101,6 +101,7 @@ config SND_ASOC_INGENIC_NEWTON2_PLUS_ICDC
 	select SND_ASOC_JZ_AIC_I2S_V12
 	select SND_ASOC_JZ_ICDC_D1
 	select SND_ASOC_JZ_PCM_V12
+	select SND_ASOC_JZ_DMIC_V12
 	help
 	  Say Y if you want to add audio support for M200S Newton2 Plus
 	  reference board with internal codec

@@ -9,6 +9,11 @@ menuconfig FB_JZ_V12
 	help
 	  Framebuffer support for the M200 SoC.
 
+config DELAY_AFTER_LCD_DISPLAY_ON
+	int "delay ms after the lcd display on, when fb resume"
+	depends on FB_JZ_V12
+	default 0
+
 config JZ_MIPI_DSI
 	bool "jz mipi dsi interface"
     depends on FB_JZ_V12
@@ -71,5 +76,12 @@ config LCD_GPIO_FUNC2_SLCD_8BIT
 	 set lcd gpio function2 only for 8bit smart panel
 		for example,
 		for truly_tft240240_2_e panel, set it
+
+config SOFT_LCD_GPIO_FUNC2_SLCD_8BIT
+	bool "soft func2 only for 8bit slcd"
+	help
+	 select soft lcd gpio function2 only for 8bit smart panel
+		for example,
+		for soft truly_tft240240_2_e panel, set it
 endchoice
 

@@ -37,6 +37,10 @@ config VIDEO_OUTPUT_CONTROL
 	  This framework adds support for low-level control of the video 
 	  output switch.
 
+config DEFAULT_FB
+	tristate "Default Fb device ctrl driver"
+	default y
+
 config VIDEOMODE_HELPERS
 	bool
 

@@ -178,6 +178,17 @@ config LCD_X163
 	help
 	jz mipi dsi.dbi smart display panel support
 
+config LCD_BOE_TFT320320
+	tristate "BOE 1.54 inch TFT320320 mipi-dsi panel(320x320)"
+	depends on FB && JZ_MIPI_DSI
+	help
+	   jz mipi dsi.dpi TFT display panel  support
+
+config LCD_BOE_TFT320320_ROTATION_180
+	bool "BOE TFT320320 rotation 180"
+	depends on LCD_BOE_TFT320320
+	default n
+
 config SLCDC_USE_TE
 	tristate "SLCDC USE TE SIGNAL"
 	depends on BACKLIGHT_CLASS_DEVICE

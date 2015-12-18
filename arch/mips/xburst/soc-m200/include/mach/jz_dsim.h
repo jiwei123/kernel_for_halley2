@@ -179,12 +179,21 @@ struct mipi_dsim_lcd_device {
 	void            *platform_data;
 };
 
+enum {
+    POWER_ON_LCD = 1,
+    POWER_ON_BL,
+};
+enum {
+    CMD_MIPI_DISPLAY_ON = 1,
+    CMD_MIPI_END,
+};
 struct mipi_dsim_lcd_driver {
 	char            *name;
 	int         id;
 
 	void    (*power_on)(struct mipi_dsim_lcd_device *dsim_dev, int enable);
 	void    (*set_sequence)(struct mipi_dsim_lcd_device *dsim_dev);
+	int    (*ioctl)(struct mipi_dsim_lcd_device *dsim_dev, int cmd);
 	int (*probe)(struct mipi_dsim_lcd_device *dsim_dev);
 	int (*remove)(struct mipi_dsim_lcd_device *dsim_dev);
 	void    (*shutdown)(struct mipi_dsim_lcd_device *dsim_dev);
@@ -245,10 +254,11 @@ struct loop_band {
  */
 
 struct dsi_master_ops {
-	int (*cmd_write) (struct dsi_device * dsi, struct dsi_cmd_packet cmd_data);
+	int (*cmd_write)(struct dsi_device * dsi, unsigned char *cmd_array, int array_size);
 	int (*cmd_read) (struct dsi_device * dsi, u8 * rx_buf);
 	int (*video_cfg) (struct dsi_device * dsi);
 	int (*set_early_blank_mode)(struct dsi_device *dsi, int power);
+	int (*ioctl)(struct dsi_device *dsi, int cmd);
 	int (*set_blank_mode)(struct dsi_device *dsi, int power);
 	int (*set_blank)(struct dsi_device *dsi, int blank_mode);
 };

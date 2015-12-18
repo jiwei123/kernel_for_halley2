@@ -322,7 +322,7 @@ static int jz_dmic_platfrom_probe(struct platform_device *pdev)
 	jz_dmic->dmic_mode = 0;
 	jz_dmic->rx_dma_data.dma_addr = (dma_addr_t)jz_dmic->res_start + DMICDR;
 
-	jz_dmic->vcc_dmic = regulator_get(&pdev->dev,"dmic_1v8");
+	jz_dmic->vcc_dmic = regulator_get(&pdev->dev,"dmic");
 	platform_set_drvdata(pdev, (void *)jz_dmic);
 
 	for (; i < ARRAY_SIZE(jz_dmic_sysfs_attrs); i++) {

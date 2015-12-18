@@ -59,10 +59,10 @@ struct ft6x06_platform_data ft6x06_tsc_pdata = {
 #endif
 
 #ifdef CONFIG_TOUCHSCREEN_ITE7258
-#include <linux/i2c/ite7258_tsc.h>
+#include <linux/tsc.h>
 struct jztsc_pin ite7258_tsc_gpio[2] = {
-	{GPIO_TP_INT},
-	{GPIO_TP_RESET},
+        [0] = {GPIO_TP_INT, LOW_ENABLE},
+        [1] = {GPIO_TP_RESET, LOW_ENABLE},
 };
 static struct jztsc_platform_data ite7258_tsc_pdata = {
 	.gpio           = ite7258_tsc_gpio,
@@ -70,9 +70,7 @@ static struct jztsc_platform_data ite7258_tsc_pdata = {
 	.y_max          = 320,
 	.irqflags = IRQF_TRIGGER_LOW | IRQF_DISABLED,
 	.vcc_name = VCC_TOUCHSCREEN,
-#ifdef CONFIG_WATCH_ACRAB
 	.vccio_name = VIO_TOUCHSCREEN,
-#endif
 };
 #endif  /* CONFIG_TOUCHSCREEN_ITE7258 */
 
@@ -153,6 +151,13 @@ struct i2c_board_info jz_i2c1_devs[] __initdata = {
 	{
 		I2C_BOARD_INFO("pca9539",0x74),
 		.platform_data  = &dorado_pca953x_pdata,
+	},
+#endif
+
+#ifdef CONFIG_TOUCHSCREEN_ITE7258
+	{
+		I2C_BOARD_INFO("ite7258_ts", 0x46),
+		.platform_data = &ite7258_tsc_pdata,
 	},
 #endif
 };

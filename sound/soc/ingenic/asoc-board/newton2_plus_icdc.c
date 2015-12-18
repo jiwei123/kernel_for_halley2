@@ -128,6 +128,15 @@ static struct snd_soc_dai_link newton2_plus_dais[] = {
 		.codec_dai_name = "pcm dump dai",
 		.codec_name = "pcm dump",
 	},
+	[2] = {
+		.name = "Newton2_plus",
+		.stream_name = "Newton2_plus DMIC",
+		.platform_name = "jz-asoc-dmic-dma",
+		.cpu_dai_name = "jz-asoc-dmic",
+		.codec_dai_name = "dmic dump dai",
+		.codec_name = "dmic dump",
+	},
+
 };
 
 static struct snd_soc_card newton2_plus = {

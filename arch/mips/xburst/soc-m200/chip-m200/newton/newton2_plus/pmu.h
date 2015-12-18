@@ -14,7 +14,7 @@
 #define LDO3_NAME "LDO3_3V0"
 #define LDO4_NAME "LDO4_2V8"
 #define LDO5_NAME "cpu_2v5"
-#define LDO6_NAME "v33"
+#define LDO6_NAME "dmic"
 #define LDO7_NAME "vcc_sensor1v8"
 #define LDO8_NAME "vcc_sensor3v3"
 #define LDO9_NAME "lcd_1v8"

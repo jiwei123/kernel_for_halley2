@@ -25,4 +25,6 @@ int jz_dsi_video_coding(struct dsi_device *dsi, unsigned short *bytes_per_pixel_
 void jz_dsi_dpi_cfg(struct dsi_device *dsi, unsigned int *ratio_clock_xPF, unsigned short *bytes_per_pixel_x100);
 void jz_dsih_hal_tx_escape_division(struct dsi_device * dsi, unsigned char tx_escape_division);
 dsih_error_t jz_dsih_dphy_configure(struct dsi_device *dsi, unsigned char no_of_lanes, unsigned int output_freq);
+void jz_dsih_dphy_ulpm_enter(struct dsi_device *dsi);
+void jz_dsih_dphy_ulpm_exit(struct dsi_device *dsi);
 #endif /* _JZ_MIPI_DSI_LOWLEVEL_H */
