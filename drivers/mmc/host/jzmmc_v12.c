@@ -29,6 +29,8 @@
 #include <linux/slab.h>
 #include <linux/stat.h>
 #include <linux/module.h>
+#include <soc/gpio.h>
+#include <mach/platform.h>
 #include "jzmmc_v12.h"
 
 /**
@@ -67,6 +69,13 @@ struct desc_hd {
 	struct sdma_desc *dma_desc;
 	dma_addr_t dma_desc_phys_addr;
 	struct desc_hd *next;
+};
+
+struct jz_i2c_gpios {
+    char name[20];
+    int port;
+    int func;
+    unsigned long pins;
 };
 
 static LIST_HEAD(manual_list);
@@ -108,7 +117,8 @@ struct jzmmc_host {
 	int 			irq;
 	struct clk		*clk;
 	struct clk		*clk_gate;
-	struct regulator 	*power;
+	struct regulator 	*vcc_power;
+	struct regulator 	*vio_power;
 
 	struct mmc_request	*mrq;
 	struct mmc_command	*cmd;
@@ -1220,11 +1230,19 @@ static inline void jzmmc_power_on(struct jzmmc_host *host)
 {
 	dev_vdbg(host->dev, "power_on\n");
 
-	if (!IS_ERR(host->power)) {
-		if(!regulator_is_enabled(host->power))
-		regulator_enable(host->power);
+	if (!IS_ERR(host->vcc_power)) {
+		if(!regulator_is_enabled(host->vcc_power)) {
+			regulator_enable(host->vcc_power);
+		}
 
-	} else if (host->pdata->gpio) {
+	}
+	if (!IS_ERR(host->vio_power)) {
+		if(!regulator_is_enabled(host->vio_power)) {
+			regulator_enable(host->vio_power);
+		}
+
+	}
+	if (host->pdata->gpio) {
 		set_pin_status(&host->pdata->gpio->pwr, 1);
 	}
 }
@@ -1233,11 +1251,19 @@ static inline void jzmmc_power_off(struct jzmmc_host *host)
 {
 	dev_vdbg(host->dev, "power_off\n");
 
-	if (!IS_ERR(host->power)) {
-		if(regulator_is_enabled(host->power))
-			regulator_disable(host->power);
+	if (!IS_ERR(host->vcc_power)) {
+		if(regulator_is_enabled(host->vcc_power)) {
+			regulator_disable(host->vcc_power);
+		}
 
-	} else if (host->pdata->gpio) {
+	}
+	if (!IS_ERR(host->vio_power)) {
+		if(regulator_is_enabled(host->vio_power)) {
+			regulator_disable(host->vio_power);
+		}
+
+	}
+	if (host->pdata->gpio) {
 		set_pin_status(&host->pdata->gpio->pwr, 0);
 	}
 }
@@ -1261,7 +1287,8 @@ static int jzmmc_get_card_detect(struct mmc_host *mmc)
 
 	dev_vdbg(host->dev, "get card present\n");
 	if ((host->pdata->removal == NONREMOVABLE)
-	    || (host->pdata->removal == MANUAL)) {
+	    || (host->pdata->removal == MANUAL)
+	    || (host->pdata->removal == DONTCARE)) {
 		return test_bit(JZMMC_CARD_PRESENT, &host->flags);
 	}
 
@@ -1588,29 +1615,26 @@ static int __init jzmmc_gpio_init(struct jzmmc_host *host)
 			dev_vdbg(host->dev, "no detect pin available\n");
 			card_gpio->cd.num = -EBUSY;
 		}
-		if(card_gpio->wp.num > 0){
-			if (gpio_request_one(card_gpio->wp.num, GPIOF_DIR_IN, "mmc_wp")) {
-				printk("%s %d %d \n",__func__,__LINE__,card_gpio->wp.num);
-				dev_vdbg(host->dev, "no WP pin available\n");
-				card_gpio->wp.num = -EBUSY;
-			}
+
+		if (gpio_request_one(card_gpio->wp.num,
+				     GPIOF_DIR_IN, "mmc_wp")) {
+			dev_vdbg(host->dev, "no WP pin available\n");
+			card_gpio->wp.num = -EBUSY;
 		}
-		if(card_gpio->rst.num>0){
-			if (gpio_request_one(card_gpio->rst.num,
-						GPIOF_DIR_OUT, "mmc_rst")) {
-				dev_vdbg(host->dev, "no RST pin available\n");
-				card_gpio->rst.num = -EBUSY;
-			}
+
+		if (gpio_request_one(card_gpio->rst.num,
+				     GPIOF_DIR_OUT, "mmc_rst")) {
+			dev_vdbg(host->dev, "no RST pin available\n");
+			card_gpio->rst.num = -EBUSY;
 		}
-		if(card_gpio->pwr.num>0){
-			if (gpio_request(card_gpio->pwr.num, "mmc_power")) {
-				dev_vdbg(host->dev, "no PWR pin available\n");
-				card_gpio->pwr.num = -EBUSY;
-			} else {
-				gpio_direction_output(card_gpio->pwr.num,
-						card_gpio->pwr.enable_level
-						? 0 : 1);
-			}
+
+		if (gpio_request(card_gpio->pwr.num, "mmc_power")) {
+			dev_vdbg(host->dev, "no PWR pin available\n");
+			card_gpio->pwr.num = -EBUSY;
+		} else {
+			gpio_direction_output(card_gpio->pwr.num,
+					      card_gpio->pwr.enable_level
+					      ? 0 : 1);
 		}
 	}
 
@@ -1673,6 +1697,68 @@ static void jzmmc_gpio_deinit(struct jzmmc_host *host)
 	}
 }
 
+static inline void set_mmc0_internal_pull(void)
+{
+#if (defined(CONFIG_JZMMC_V12_MMC0))
+    struct jz_i2c_gpios gpios =
+#if defined(CONFIG_JZMMC_V12_MMC0_PA_4BIT)
+    MSC0_PORTA_4BIT;
+#elif (defined(CONFIG_JZMMC_V12_MMC0_PA_8BIT))
+    MSC0_PORTA_8BIT;
+#elif (defined(CONFIG_JZMMC_V12_MMC0_PE_4BIT))
+    MSC0_PORTE;
+#endif
+
+#if (defined(CONFIG_JZMMC_V12_MMC0_PA_4BIT) || defined(CONFIG_JZMMC_V12_MMC0_PA_8BIT))
+    gpios.pins = (gpios.pins & ~(1<<18)); //mmc clk not pull up
+#elif (defined(CONFIG_JZMMC_V12_MMC0_PE_4BIT))
+    gpios.pins = (gpios.pins & ~(1<<28)); //mmc clk not pull up
+#endif
+
+    jzgpio_ctrl_pull(gpios.port, 1, gpios.pins);
+#endif
+}
+
+static inline void set_mmc1_internal_pull(void)
+{
+#if (defined(CONFIG_JZMMC_V12_MMC1))
+    struct jz_i2c_gpios gpios =
+#if defined(CONFIG_JZMMC_V12_MMC1_PD_4BIT)
+    MSC1_PORTD;
+#elif (defined(CONFIG_JZMMC_V12_MMC1_PE_4BIT))
+    MSC1_PORTE;
+#endif
+
+#if defined(CONFIG_JZMMC_V12_MMC1_PD_4BIT)
+    gpios.pins = (gpios.pins & ~(1<<24)); //mmc clk not pull up
+#elif (defined(CONFIG_JZMMC_V12_MMC1_PE_4BIT))
+    gpios.pins = (gpios.pins & ~(1<<28)); //mmc clk not pull up
+#endif
+
+    jzgpio_ctrl_pull(gpios.port, 1, gpios.pins);
+#endif
+}
+
+static inline void set_mmc2_internal_pull(void)
+{
+#if (defined(CONFIG_JZMMC_V12_MMC2))
+    struct jz_i2c_gpios gpios =
+#if defined(CONFIG_JZMMC_V12_MMC2_PB_4BIT)
+    MSC2_PORTB;
+#elif (defined(CONFIG_JZMMC_V12_MMC2_PE_4BIT))
+    MSC2_PORTE;
+#endif
+
+#if defined(CONFIG_JZMMC_V12_MMC2_PB_4BIT)
+    gpios.pins = (gpios.pins & ~(1<<28)); //mmc clk not pull up
+#elif (defined(CONFIG_JZMMC_V12_MMC2_PE_4BIT))
+    gpios.pins = (gpios.pins & ~(1<<28)); //mmc clk not pull up
+#endif
+
+    jzgpio_ctrl_pull(gpios.port, 1, gpios.pins);
+#endif
+}
+
 static int __init jzmmc_probe(struct platform_device *pdev)
 {
 	int irq;
@@ -1730,9 +1816,20 @@ static int __init jzmmc_probe(struct platform_device *pdev)
 		goto err_ioremap;
 	mmc_set_drvdata(pdev, host);
 
-	host->power = regulator_get(host->dev, "cpu_mem12");
-	if (IS_ERR(host->power)) {
-		dev_warn(host->dev, "vmmc regulator missing\n");
+	sprintf(regulator_name, "emmc_vcc.%d", pdev->id);
+	host->vcc_power = regulator_get(host->dev, regulator_name);
+	if (IS_ERR(host->vcc_power)) {
+		dev_warn(host->dev, "mmc vcc regulator missing\n");
+	} else {
+		dev_warn(host->dev, "mmc vio regulator ok\n");
+	}
+
+	sprintf(regulator_name, "emmc_vio.%d", pdev->id);
+	host->vio_power = regulator_get(host->dev, regulator_name);
+	if (IS_ERR(host->vio_power)) {
+		dev_warn(host->dev, "mmc vio regulator missing\n");
+	} else {
+		dev_warn(host->dev, "mmc vio regulator ok\n");
 	}
 
 	if (host->pdata->pio_mode)
@@ -1764,6 +1861,22 @@ static int __init jzmmc_probe(struct platform_device *pdev)
 
 	dev_info(host->dev, "register success!\n");
 	jzmmc_clk_autoctrl(host, 1);
+	if(host->mmc->index == 0) {
+#ifdef CONFIG_MMC0_INTERNAL_PULL
+	    set_mmc0_internal_pull();
+#endif
+	}
+    if(host->mmc->index == 1) {
+#ifdef CONFIG_MMC1_INTERNAL_PULL
+        set_mmc1_internal_pull();
+#endif
+    }
+    if(host->mmc->index == 2) {
+#ifdef CONFIG_MMC2_INTERNAL_PULL
+        set_mmc2_internal_pull();
+#endif
+    }
+
 	return 0;
 
 err_sysfs_create:
@@ -1800,7 +1913,8 @@ static int __exit jzmmc_remove(struct platform_device *pdev)
 	free_irq(host->irq, host);
 	jzmmc_gpio_deinit(host);
 	iounmap(host->decshds[0].dma_desc);
-	regulator_put(host->power);
+	regulator_put(host->vcc_power);
+	regulator_put(host->vio_power);
 	jzmmc_clk_autoctrl(host, 0);
 
 	clk_put(host->clk);
@@ -1818,11 +1932,7 @@ static int jzmmc_suspend(struct platform_device *dev, pm_message_t state)
 
 	if (host->mmc->card && host->mmc->card->type != MMC_TYPE_SDIO) {
 		ret = mmc_suspend_host(host->mmc);
-
-		/* if(clk_is_enabled(host->clk)) { */
-		/* 	clk_disable(host->clk); */
-		/* 	clk_disable(host->clk_gate); */
-		/* } */
+		jzmmc_clk_autoctrl(host, 0);
 	}
 	return ret;
 }
@@ -1833,12 +1943,7 @@ static int jzmmc_resume(struct platform_device *dev)
 	int ret = 0;
 
 	if (host->mmc->card && host->mmc->card->type != MMC_TYPE_SDIO) {
-
-		/* if (test_bit(JZMMC_CARD_PRESENT, &host->flags)) { */
-		/* 	clk_enable(host->clk); */
-		/* 	clk_enable(host->clk_gate); */
-		/* 	jzmmc_reset(host); */
-		/* } */
+		jzmmc_clk_autoctrl(host, 1);
 		ret = mmc_resume_host(host->mmc);
 	}
 	return ret;

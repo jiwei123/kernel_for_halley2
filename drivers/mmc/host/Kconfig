@@ -6,7 +6,7 @@ comment "MMC/SD/SDIO Host Controller Drivers"
 
 config JZMMC_V12
 	tristate "Ingenic(XBurst)  MMC/SD Card Controller(MSC) v1.2 support"
-	depends on SOC_M200 || SOC_X1000
+	depends on SOC_M200
 	help
 	  This selects the Ingenic XBurst SD/MMC Card Controller v1.2.
 	  If you have platform with a SD/Multimedia Card slot and compact
@@ -40,6 +40,10 @@ config MMC0_MAX_FREQ
 	help
 	  The max frequency of msc0, it should NOT be higher than 50mHz.
 	  If unsure, say N.
+config MMC0_INTERNAL_PULL
+	bool "set mmc0 to internal pull"
+	default n
+	depends on JZMMC_V12_MMC0
 
 config MMC0_PIO_MODE
 	bool "Use PIO mode for MSC0"
@@ -55,13 +59,11 @@ config JZMMC_V12_MMC1
 choice
 	depends on JZMMC_V12_MMC1
 	prompt "JZMMC_V12 GPIO function pins select"
-	default JZMMC_V12_MMC1_PC_4BIT
+	default JZMMC_V12_MMC1_PD_4BIT
 config JZMMC_V12_MMC1_PD_4BIT
 	bool "GPIO D, Data width 4 bit"
 config JZMMC_V12_MMC1_PE_4BIT
 	bool "GPIO E, Data width 4 bit"
-config JZMMC_V12_MMC1_PC_4BIT
-	bool "GPIO C, Data width 4 bit"
 endchoice
 
 config MMC1_MAX_FREQ
@@ -71,6 +73,11 @@ config MMC1_MAX_FREQ
 	help
 	  The max frequency of msc1, it should not be higher than 50 Mhz
 	  If unsure, say N.
+
+config MMC1_INTERNAL_PULL
+	bool "set mmc1 to internal pull"
+	default n
+	depends on JZMMC_V12_MMC1
 
 config MMC1_PIO_MODE
 	bool "Use PIO mode for MSC1"
@@ -100,6 +107,11 @@ config MMC2_MAX_FREQ
 	help
 	 The max frequency of msc2, it should not be higher than 50 Mhz,
 	 If unsure , say N.
+
+config MMC2_INTERNAL_PULL
+	bool "set mmc2 to internal pull"
+	default n
+	depends on JZMMC_V12_MMC2
 
 config MMC2_PIO_MODE
 	bool "Use PIO mode for MSC2"
