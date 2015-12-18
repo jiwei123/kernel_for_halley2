@@ -220,10 +220,14 @@ static int icdc_d1_set_bias_level(struct snd_soc_codec *codec,
 			msleep(400);
 			icdc_d1_reset_gain(codec);
 		}
+		snd_soc_update_bits(codec, DLV_REG_AICR_ADC, DLV_AICR_AICR_SB_MASK, 0);
+		snd_soc_update_bits(codec, DLV_REG_AICR_DAC, DLV_AICR_AICR_SB_MASK, 0);
 		break;
 	case SND_SOC_BIAS_OFF:
-		snd_soc_update_bits(codec, DLV_REG_CR_VIC, 0, DLV_CR_VIC_SB_SLEEP_MASK);
-		snd_soc_update_bits(codec, DLV_REG_CR_VIC, 0, DLV_CR_VIC_SB_MASK);
+		snd_soc_update_bits(codec, DLV_REG_AICR_ADC, DLV_AICR_AICR_SB_MASK, DLV_AICR_AICR_SB_MASK);
+		snd_soc_update_bits(codec, DLV_REG_AICR_DAC, DLV_AICR_AICR_SB_MASK, DLV_AICR_AICR_SB_MASK);
+		snd_soc_update_bits(codec, DLV_REG_CR_VIC, DLV_CR_VIC_SB_SLEEP_MASK, DLV_CR_VIC_SB_SLEEP_MASK);
+		snd_soc_update_bits(codec, DLV_REG_CR_VIC, DLV_CR_VIC_SB_MASK, DLV_CR_VIC_SB_MASK);
 		break;
 	}
 	codec->dapm.bias_level = level;
@@ -609,7 +613,7 @@ static int icdc_d1_aohp_anti_pop_event_sub(struct snd_soc_codec *codec,
 			icdc_d1_wait_hp_mode_unlocked(codec);
 
 			/*hp mute*/
-			snd_soc_update_bits(codec, DLV_REG_CR_HP, 0, DLV_CR_HP_MUTE_MASK);
+			snd_soc_update_bits(codec, DLV_REG_CR_HP, DLV_CR_HP_MUTE_MASK, DLV_CR_HP_MUTE_MASK);
 
 			/*hp +6db to wished :ingnore hp gain set when aohp power up seq*/
 			snd_soc_write(codec, DLV_REG_GCR_HPL, icdc_d1->hpl_wished_gain);
@@ -737,13 +741,25 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{ "AOLON", NULL, "AOLO Vmux"}
 };
 
-static int icdc_d1_suspend(struct snd_soc_codec *codec, pm_message_t state)
+static int icdc_d1_suspend(struct snd_soc_codec *codec)
 {
+	struct icdc_d1 *icdc_d1 = snd_soc_codec_get_drvdata(codec);
+
+	icdc_d1_set_bias_level(codec, SND_SOC_BIAS_OFF);
+	snd_soc_update_bits(codec, DLV_REG_CR_CK, DLV_CR_CK_SB_MASK, DLV_CR_CK_SB_MASK);
+	if (icdc_d1_debug)
+		dump_registers_hazard(icdc_d1);
 	return 0;
 }
 
 static int icdc_d1_resume(struct snd_soc_codec *codec)
 {
+	struct icdc_d1 *icdc_d1 = snd_soc_codec_get_drvdata(codec);
+
+	snd_soc_update_bits(codec, DLV_REG_CR_CK, DLV_CR_CK_SB_MASK, 0);
+	icdc_d1_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
+	if (icdc_d1_debug)
+		dump_registers_hazard(icdc_d1);
 	return 0;
 }
 
@@ -815,7 +831,7 @@ int icdc_d1_hp_detect(struct snd_soc_codec *codec, struct snd_soc_jack *jack,
 			snd_soc_jack_report(icdc_d1->jack, report, icdc_d1->report_mask);
 		}
 	} else {
-		snd_soc_update_bits(codec, DLV_REG_IMR, 0, DLV_IMR_JACK);
+		snd_soc_update_bits(codec, DLV_REG_IMR, DLV_IMR_JACK, DLV_IMR_JACK);
 	}
 	return 0;
 }
@@ -910,13 +926,8 @@ static int icdc_d1_probe(struct snd_soc_codec *codec)
 	/*codec select i2s interface*/
 	snd_soc_update_bits(codec, DLV_REG_AICR_ADC, DLV_AICR_AUDIOIF_MASK,
 			DLV_AICR_AUDIOIF_I2S << DLV_AICR_AUDIOIF_SHIFT);
-
-	/*FIXME*/
-	snd_soc_update_bits(codec, DLV_REG_AICR_ADC, DLV_AICR_AICR_SB_MASK, 0);
 	snd_soc_update_bits(codec, DLV_REG_AICR_DAC, DLV_AICR_AUDIOIF_MASK,
 			DLV_AICR_AUDIOIF_I2S << DLV_AICR_AUDIOIF_SHIFT);
-	/*FIXME*/
-	snd_soc_update_bits(codec, DLV_REG_AICR_DAC, DLV_AICR_AICR_SB_MASK, 0);
 
 	/*codec mixer in input normal default*/
 	snd_soc_write(codec, DLV_EXREG_MIX0, 0x50);	/*AIDACX_SEL should be configured to 01 in normal mode*/
