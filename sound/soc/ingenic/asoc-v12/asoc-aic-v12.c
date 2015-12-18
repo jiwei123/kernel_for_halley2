@@ -249,9 +249,27 @@ static int jz_aic_remove(struct platform_device *pdev)
 	return 0;
 }
 
+int jz_aic_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	struct jz_aic * jz_aic = platform_get_drvdata(pdev);
+	clk_disable(jz_aic->clk);
+	clk_disable(jz_aic->clk_gate);
+	return 0;
+}
+
+int jz_aic_resume(struct platform_device *pdev)
+{
+	struct jz_aic * jz_aic = platform_get_drvdata(pdev);
+	clk_enable(jz_aic->clk_gate);
+	clk_enable(jz_aic->clk);
+	return 0;
+}
+
 struct platform_driver jz_asoc_aic_driver = {
 	.probe  = jz_aic_probe,
 	.remove = jz_aic_remove,
+	.suspend = jz_aic_suspend,
+	.resume = jz_aic_resume,
 	.driver = {
 		.name   = "jz-asoc-aic",
 		.owner  = THIS_MODULE,
