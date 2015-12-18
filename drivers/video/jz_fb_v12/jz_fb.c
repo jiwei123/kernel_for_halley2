@@ -186,6 +186,11 @@ static int jzfb_open(struct fb_info *info, int user)
 
 	dev_dbg(info->dev, "open count : %d\n", ++jzfb->open_cnt);
 
+	if ( jzfb->is_suspend ) {
+		dev_err(info->dev, "%s() jzfb->is_suspend ...\n", __func__);
+		return 0;	/*  */
+	}
+
 	if (!jzfb->is_lcd_en && jzfb->vidmem_phys) {
 		jzfb_set_par(info);
 		jzfb_enable(info);
@@ -624,6 +629,11 @@ static int jzfb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 	struct jzfb *jzfb = info->par;
 	struct fb_videomode *mode;
 
+	if ( jzfb->is_suspend ) {
+		dev_err(info->dev, "%s() jzfb->is_suspend ...\n", __func__);
+		return 0;	/*  */
+	}
+
 	if (var->bits_per_pixel != jzfb_get_controller_bpp(jzfb) &&
 	    var->bits_per_pixel != jzfb->pdata->bpp){
 		dev_err(info->dev, "%s var->bits_per_pixel = %d\n", __func__,var->bits_per_pixel);
@@ -890,6 +900,11 @@ static int jzfb_set_par(struct fb_info *info)
 	uint32_t smart_wtime = 0, smart_tas = 0;
 	uint32_t pcfg;
 	unsigned long rate;
+
+	if ( jzfb->is_suspend ) {
+		dev_err(info->dev, "%s workaround for suspend tty_ioctl()...\n", __func__);
+		return 0;	/* workaround for suspend tty_ioctl()... */
+	}
 
 	mode = jzfb_get_mode(var, info);
 	if (mode == NULL) {
@@ -1167,6 +1182,7 @@ static int jzfb_do_blank(struct jzfb *jzfb, int blank_mode)
 	int count = 50000;
 	unsigned long ctrl;
 
+	//printk("%s(), blank_mode=%d\n", __FUNCTION__, blank_mode);
 	switch (blank_mode) {
 	case FB_BLANK_UNBLANK:
 		reg_write(jzfb, LCDC_STATE, 0);
@@ -1220,6 +1236,7 @@ static int jzfb_do_blank(struct jzfb *jzfb, int blank_mode)
 static int jzfb_blank(int blank_mode, struct fb_info *info) {
 	struct jzfb *jzfb = info->par;
 
+	//printk("%s(), blank_mode=%d\n", __FUNCTION__, blank_mode);
 	if (blank_mode == FB_BLANK_UNBLANK) {
 		jzfb_do_resume(jzfb);
 	} else {
@@ -1333,6 +1350,11 @@ static int jzfb_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 	int next_frm;
 	//unsigned int tmp = 0;
 	struct jzfb *jzfb = info->par;
+
+	if ( jzfb->is_suspend ) {
+		dev_err(info->dev, "%s() jzfb->is_suspend ...\n", __func__);
+		return 0;	/*  */
+	}
 
 	{/*debug*/
 		static struct timeval time_now, time_last;
@@ -1595,6 +1617,11 @@ static int jzfb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 		struct jzfb_color_key color_key;
 		struct jzfb_mode_res res;
 	} osd;
+
+	if ( jzfb->is_suspend ) {
+		dev_err(info->dev, "%s() jzfb->is_suspend ...\n", __func__);
+		//return 0;	/*  */
+	}
 
 	switch (cmd) {
 	case JZFB_GET_MODENUM:
@@ -1936,6 +1963,7 @@ unsigned blue, unsigned transp, struct fb_info *fb)
 
 	return 0;
 }
+
 static struct fb_ops jzfb_ops = {
 	.owner = THIS_MODULE,
 	.fb_open = jzfb_open,
