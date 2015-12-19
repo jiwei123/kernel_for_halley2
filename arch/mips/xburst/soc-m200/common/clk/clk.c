@@ -183,6 +183,13 @@ int clk_enable(struct clk *clk)
 		clk->flags |= CLK_FLG_ENABLE;
 	}
 	clk->count++;
+
+	/* 
+	if ( clk->name && strcmp("cgu_lpc", clk->name) == 0 ) {
+		dump_stack();
+	}
+	*/
+
 	return 0;
 }
 EXPORT_SYMBOL(clk_enable);
@@ -196,6 +203,7 @@ int clk_is_enabled(struct clk *clk)
 EXPORT_SYMBOL(clk_is_enabled);
 void clk_disable(struct clk *clk)
 {
+
 	if(!clk)
 		return;
 	if(clk->count == 0)
@@ -205,6 +213,7 @@ void clk_disable(struct clk *clk)
 		clk = clk->source;
 	}
 	clk->count--;
+
 	if(clk->count > 0) {
 		return;
 	}else
@@ -290,6 +299,37 @@ struct clk *clk_get_parent(struct clk *clk)
 	return clk->source->parent;
 }
 EXPORT_SYMBOL(clk_get_parent);
+
+int jz_clocks_show(void* args)
+{
+	int i,len=0;
+	struct clk *clk_srcs = get_clk_from_id(0);
+	printk("%s\n", __FUNCTION__);
+	if(1) {
+		printk("CLKGR\t: %08x\n",cpm_inl(CPM_CLKGR));
+		printk("CLKGR1\t: %08x\n",cpm_inl(CPM_CLKGR1));
+		printk("LCR1\t: %08x\n",cpm_inl(CPM_LCR));
+		printk("PGR\t: %08x\n",cpm_inl(CPM_PGR));
+		printk("SPCR0\t: %08x\n",cpm_inl(CPM_SPCR0));
+	}
+	{
+		printk("ID NAME       FRE        stat       count     parent\n");
+		for(i = 0; i < get_clk_sources_size(); i++) {
+			if (clk_srcs[i].name == NULL) {
+				printk("--------------------------------------------------------\n");
+			} else {
+				unsigned int mhz = clk_srcs[i].rate / 10000;
+				printk("%2d %-10s %4d.%02dMHz %3sable   %d %s\n",i,clk_srcs[i].name
+						, mhz/100, mhz%100
+						, clk_srcs[i].flags & CLK_FLG_ENABLE? "en": "dis"
+						, clk_srcs[i].count
+						, clk_srcs[i].parent? clk_srcs[i].parent->name: "root");
+			}
+		}
+	}
+	return len;
+}
+/* EXPORT_SYMBOL(jz_clocks_show); */
 
 static int clocks_show(struct seq_file *m, void *v)
 {

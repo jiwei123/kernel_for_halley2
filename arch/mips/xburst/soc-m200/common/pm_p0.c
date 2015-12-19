@@ -715,6 +715,13 @@ static void load_func_to_tcsm(unsigned int *tcsm_addr,unsigned int *f_addr,unsig
 	}
 }
 
+/* debug with allow suspend printk().
+   diff --git a/kernel/printk.c b/kernel/printk.c
+   -bool console_suspend_enabled = 1;
+   +bool console_suspend_enabled = 0;
+ */
+extern int jz_clocks_show(void* args);
+
 static int m200_pm_enter(suspend_state_t state)
 {
 
@@ -724,6 +731,10 @@ static int m200_pm_enter(suspend_state_t state)
 	unsigned int core_ctrl;
 	unsigned int i;
 	unsigned int scpu_start_addr;
+
+#ifdef PRINT_DEBUG
+	jz_clocks_show(NULL);
+#endif /* PRINT_DEBUG */
 
 #ifdef CONFIG_JZ_DMIC_WAKEUP
 	/* if voice identified before deep sleep. just return to wakeup system. */
