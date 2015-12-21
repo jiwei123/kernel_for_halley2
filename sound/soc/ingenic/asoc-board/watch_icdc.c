@@ -58,8 +58,10 @@ static int watch_spk_power(struct snd_soc_dapm_widget *w,
 static const struct snd_soc_dapm_widget watch_dapm_widgets[] = {
 	/* SND_SOC_DAPM_HP("Headphone Jack", NULL), */
 	SND_SOC_DAPM_SPK("Speaker", watch_spk_power),
+#ifndef CONFIG_SND_ASOC_INGENIC_DMIC
 	/* SND_SOC_DAPM_MIC("Mic Jack", NULL), */
-	/* SND_SOC_DAPM_MIC("Mic Buildin", NULL), */
+	SND_SOC_DAPM_MIC("Mic Buildin", NULL),
+#endif
 };
 
 #if 0
@@ -95,12 +97,14 @@ static const struct snd_soc_dapm_route audio_map[] = {
 	{"Speaker", NULL, "AOLON"},
 
 	/* mic is connected to AIP/N1 */
-	/* {"AIP1", NULL, "MICBIAS1"}, */
-	/* {"AIN1", NULL, "MICBIAS1"}, */
+#ifndef CONFIG_SND_ASOC_INGENIC_DMIC
+	{"AIP1", NULL, "MICBIAS1"},
+	{"AIN1", NULL, "MICBIAS1"},
 	/* {"AIP2", NULL, "MICBIAS1"}, */
 
-	/* {"MICBIAS1", NULL, "Mic Buildin"}, */
+	{"MICBIAS1", NULL, "Mic Buildin"},
 	/* {"MICBIAS1", NULL, "Mic Jack"}, */
+#endif
 };
 
 static int watch_dlv_dai_link_init(struct snd_soc_pcm_runtime *rtd)
