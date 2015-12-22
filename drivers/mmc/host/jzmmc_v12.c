@@ -118,7 +118,9 @@ struct jzmmc_host {
 	struct clk		*clk;
 	struct clk		*clk_gate;
 	struct regulator 	*vcc_power;
+#ifdef  CONFIG_REGULATOR_SM5007
 	struct regulator 	*vio_power;
+#endif
 
 	struct mmc_request	*mrq;
 	struct mmc_command	*cmd;
@@ -1236,12 +1238,14 @@ static inline void jzmmc_power_on(struct jzmmc_host *host)
 		}
 
 	}
+#ifdef  CONFIG_REGULATOR_SM5007
 	if (!IS_ERR(host->vio_power)) {
 		if(!regulator_is_enabled(host->vio_power)) {
 			regulator_enable(host->vio_power);
 		}
 
 	}
+#endif
 	if (host->pdata->gpio) {
 		set_pin_status(&host->pdata->gpio->pwr, 1);
 	}
@@ -1257,12 +1261,14 @@ static inline void jzmmc_power_off(struct jzmmc_host *host)
 		}
 
 	}
+#ifdef  CONFIG_REGULATOR_SM5007
 	if (!IS_ERR(host->vio_power)) {
 		if(regulator_is_enabled(host->vio_power)) {
 			regulator_disable(host->vio_power);
 		}
 
 	}
+#endif
 	if (host->pdata->gpio) {
 		set_pin_status(&host->pdata->gpio->pwr, 0);
 	}
@@ -1816,20 +1822,23 @@ static int __init jzmmc_probe(struct platform_device *pdev)
 		goto err_ioremap;
 	mmc_set_drvdata(pdev, host);
 
-	sprintf(regulator_name, "emmc_vcc.%d", pdev->id);
-	host->vcc_power = regulator_get(host->dev, regulator_name);
-	if (IS_ERR(host->vcc_power)) {
-		dev_warn(host->dev, "mmc vcc regulator missing\n");
-	} else {
-		dev_warn(host->dev, "mmc vio regulator ok\n");
-	}
-
+#ifdef  CONFIG_REGULATOR_SM5007
 	sprintf(regulator_name, "emmc_vio.%d", pdev->id);
 	host->vio_power = regulator_get(host->dev, regulator_name);
 	if (IS_ERR(host->vio_power)) {
 		dev_warn(host->dev, "mmc vio regulator missing\n");
 	} else {
 		dev_warn(host->dev, "mmc vio regulator ok\n");
+	}
+	sprintf(regulator_name, "emmc_vcc.%d", pdev->id);
+#else
+	sprintf(regulator_name, "cpu_mem12");
+#endif
+	host->vcc_power = regulator_get(host->dev, regulator_name);
+	if (IS_ERR(host->vcc_power)) {
+		dev_warn(host->dev, "mmc vcc regulator missing\n");
+	} else {
+		dev_warn(host->dev, "mmc vcc regulator ok\n");
 	}
 
 	if (host->pdata->pio_mode)
@@ -1914,7 +1923,9 @@ static int __exit jzmmc_remove(struct platform_device *pdev)
 	jzmmc_gpio_deinit(host);
 	iounmap(host->decshds[0].dma_desc);
 	regulator_put(host->vcc_power);
+#ifdef  CONFIG_REGULATOR_SM5007
 	regulator_put(host->vio_power);
+#endif
 	jzmmc_clk_autoctrl(host, 0);
 
 	clk_put(host->clk);
