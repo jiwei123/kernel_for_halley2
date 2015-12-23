@@ -11,6 +11,13 @@ config TOUCHSCREEN_FOCALTECH
 
 if TOUCHSCREEN_FOCALTECH
 
+config FOCALTECH_GESTRUE
+	 bool "focaltech click wakeup system"
+	 depends on TOUCHSCREEN_FOCALTECH
+	 default n
+	 help
+		just distinguish click action so do not use gestrue lib
+
 config FOCALTECH_EXT_FUNC
 	 bool "focaltech extra function"
 	 depends on TOUCHSCREEN_FOCALTECH

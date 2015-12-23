@@ -47,7 +47,7 @@
 #define LDO4_INIT_UV    1800
 #define LDO5_INIT_UV    2500
 #define LDO6_INIT_UV    2800
-#if defined(CONFIG_AW808_HW_IN901)
+#if defined(CONFIG_SENSORS_PIXART_PAH8001)
 #define LDO7_INIT_UV    3300
 #else
 #define LDO7_INIT_UV    3000
@@ -80,7 +80,11 @@
 #define LDO7_ALWAYS_ON    0
 #define LDO8_ALWAYS_ON    0
 #define LDO9_ALWAYS_ON    0
+#if defined(CONFIG_TOUCHSCREEN_FOCALTECH)
+#define LDO10_ALWAYS_ON   1
+#else
 #define LDO10_ALWAYS_ON   0
+#endif
 #define LDORTC1_ALWAYS_ON 1
 #define LDORTC2_ALWAYS_ON 1
 /* ****************************PMU DC/LDO ALWAYS ON END********************** */
