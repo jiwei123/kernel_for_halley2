@@ -53,6 +53,11 @@
 #include "frizz_chip_orientation.h"
 #define ERR_FILE_BAD_FORM -77
 int frizz_irq, frizz_reset, frizz_wakeup;
+static int irq_number = 0;
+static char *irq_button = "irq_button";
+static char *reset_button = "reset_button";
+static char *wakeup_button = "wakeup_button";
+int irq_error = 0;
 struct mutex burn_lock;
  const uint8_t Firmware_hex[] ={
  #include "frizz_firmware.h"
@@ -1617,12 +1622,6 @@ int frizz_download_firmware(struct i2c_client *i2c_client,unsigned int g_chip_or
 
 int init_frizz_gpio(struct frizz_platform_data *frizz_pdata)
 {
-	static int irq_number = 0;
-	static char *irq_button = "irq_button";
-	static char *reset_button = "reset_button";
-	static char *wakeup_button = "wakeup_button";
-	int irq_error = 0;
-
 	int ret = 0;
 	frizz_irq = frizz_pdata->irq_gpio;
 	irq_number = gpio_to_irq(frizz_irq);
@@ -1738,16 +1737,6 @@ static int frizz_input_probe(struct i2c_client *client,
 		goto gyro_sensor_register_failed;
 	}
 
-
-	ret = request_threaded_irq(client->irq, NULL, mpu6500_input_irq_thread,
-		IRQF_TRIGGER_FALLING | IRQF_ONESHOT, "frizz_input", data);
-	if (ret < 0) {
-		pr_err("[SENSOR] %s: - can't allocate irq.\n", __func__);
-		goto exit_reactive_irq;
-	}
-
-	disable_irq(client->irq);
-
 	pr_info("[SENSOR] %s: success\n", __func__);
 	return 0;
 
@@ -1775,17 +1764,69 @@ static int  frizz_input_remove(struct i2c_client *client)
 	struct frizz_input_data *data = i2c_get_clientdata(client);
 	if (data == NULL)
 		return 0;
+	input_unregister_device(data->accel_input);
+	input_unregister_device(data->gyro_input);
 
-	if (client->irq > 0) {
-		free_irq(client->irq, data);
-		input_unregister_device(data->accel_input);
-		input_unregister_device(data->gyro_input);
-	}
-
+	gpio_direction_output(frizz_wakeup, 0);
+	if(irq_number > 0)
+		free_irq(irq_number, irq_button);
+	if(tx_buff)
+		kfree(tx_buff);
+	if(rx_buff)
+		kfree(rx_buff);
 	kfree(data);
 
 	return 0;
 }
+
+static int frizz_input_suspend(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct frizz_input_data *data = i2c_get_clientdata(client);
+
+#ifdef CONFIG_INPUT_MPU6500_POLLING
+	if (atomic_read(&data->enable) & 0x01){
+		cancel_delayed_work_sync(&data->accel_work);
+		ret = enable_sensor_id(data,0x80,0x01);
+		if(ret < 0)
+			return -1;
+		udelay(1000);
+	}
+#endif
+	gpio_direction_output(frizz_wakeup, 0);
+	return 0;
+}
+
+static int frizz_input_resume(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct frizz_input_data *data = i2c_get_clientdata(client);
+
+	if (client == NULL)
+		return 0;
+	data = i2c_get_clientdata(client);
+	if (data == NULL)
+		return 0;
+
+#ifdef CONFIG_INPUT_MPU6500_POLLING
+	if (atomic_read(&data->enable) & 0x01){
+		schedule_delayed_work(&data->accel_work, 0);
+		ret = enable_sensor_id(data,0x80,0x01);
+		if(ret < 0)
+			return -1;
+		udelay(1000);
+	}
+#endif
+	gpio_direction_output(frizz_wakeup, 1);
+	return 0;
+}
+
+
+
+static const struct dev_pm_ops frizz_dev_pm_ops = {
+	.suspend = frizz_input_suspend,
+	.resume = frizz_input_resume,
+};
 
 static const struct i2c_device_id frizz_input_id[] = {
 	{"frizz_input", 0},
@@ -1796,6 +1837,7 @@ static struct i2c_driver frizz_input_driver = {
 	.driver = {
 		   .owner = THIS_MODULE,
 		   .name = "frizz_input",
+		   .pm = &frizz_dev_pm_ops
 		   },
 	.class = I2C_CLASS_HWMON,
 	.id_table = frizz_input_id,
