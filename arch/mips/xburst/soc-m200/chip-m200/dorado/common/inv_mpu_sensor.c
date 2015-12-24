@@ -77,7 +77,7 @@ static int inv_mpu_power_on(void)
 	if (!atomic_read(&inv_mpu_powered)) {
 		if (!IS_ERR(inv_mpu_power_vdd)) {
 			res = regulator_enable(inv_mpu_power_vdd);
-			udelay(10000);//Forbidding imitating add like this,because v21 Using GPIO extended chip simulation i2c
+			udelay(30000);//Forbidding imitating add like this,because v21 Using GPIO extended chip simulation i2c
 		} else {
 			pr_err("inv mpu VDD power unavailable!\n");
 			res = -ENODEV;
