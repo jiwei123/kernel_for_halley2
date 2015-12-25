@@ -532,8 +532,6 @@ static ssize_t enable_store(struct device *dev,
 	int ret;
 	int value = simple_strtoul(buf, NULL, 10);
 
-	pr_info("[SENSOR] %s : enable = %d  read:%d  value&0x02:%x)\n", __func__, value,atomic_read(&data->enable),value & 0x02);
-
 	mutex_lock(&data->mutex);
 
 #ifdef CONFIG_INPUT_FRIZZ_POLLING
@@ -555,11 +553,16 @@ static ssize_t enable_store(struct device *dev,
 	}
 #endif
 	if (!value && atomic_read(&data->enable)) {
-		enable_sensor_id(data,0x80,0x00);
 		cancel_delayed_work_sync(&data->accel_work);
+		ret = enable_sensor_id(data,0x80,0x00);
+		if(ret < 0)
+			return -1;
+		udelay(1000);
+#if 0
 		cancel_delayed_work_sync(&data->gyro_work);
 		enable_sensor_id(data,0x82,0x00);
 		if (atomic_read(&data->reactive_enable)){}
+#endif
 	}
 #else
 	if (value && !atomic_read(&data->enable)) {
