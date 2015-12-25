@@ -68,6 +68,18 @@ static int showFPS = 0;
 static int uboot_inited;
 static struct jzfb *jzfb;
 
+/* test for fps start */
+static unsigned int fps_frame_num = 600;
+static int fps_check_flag = 0;
+static s64 fps_start_time = 0;
+static s64 fps_end_time = 0;
+static s64 fps = 0;
+static int fresh_mode = 1;  // 1:continue, 0:dma once
+static int fps_value = 30;  //HZ
+static void fresh_timer_handler( unsigned long dummy );
+DEFINE_TIMER(fresh_timer, fresh_timer_handler, 0, 0);
+/* test for fps end */
+
 #ifdef CONFIG_FB_DISPLAY_ALWAYS_ON
 __weak int fb_always_on = 1;
 #else
@@ -951,7 +963,7 @@ static int jzfb_set_par(struct fb_info *info)
 		cfg |= LCDC_CFG_DEP;
 
 	/* configure LCDC control register */
-	ctrl = LCDC_CTRL_BST_64 | LCDC_CTRL_OFUM;
+	ctrl = LCDC_CTRL_BST_64 | LCDC_CTRL_OFUM | LCDC_CTRL_EOFM;
 	if (pdata->pinmd)
 		ctrl |= LCDC_CTRL_PINMD;
 
@@ -1916,6 +1928,24 @@ static irqreturn_t jzfb_irq_handler(int irq, void *data)
 
 		}
 		else {
+            if (fps_check_flag == 1) {
+                fps_start_time = 0;
+                fps_end_time = 0;
+                fps_frame_num = -1;
+                fps_check_flag = 2;
+            }
+            if (fps_check_flag == 2) {
+                fps_frame_num++;
+                if (fps_start_time == 0) {
+                    fps_start_time = ktime_to_ms(ktime_get());
+                }
+                fps_end_time = ktime_to_ms(ktime_get());
+                fps = fps_end_time - fps_start_time;
+                if ( fps >= 10000 ) {
+                    printk("the fps = %d/10 HZ\n", fps_frame_num);
+                    fps_check_flag = 0;
+                }
+            }
 #ifdef DEBUG_DDR_CLOCK_POWER_NOTIFY
 			if ( ! IS_ERR(jzfb->ddr_clk) ) {
 				//printk(KERN_DEBUG " %s \n", __FUNCTION__);
@@ -2657,6 +2687,84 @@ fb_always_on_w(struct device *dev, struct device_attribute *attr, const char *bu
 #ifdef CONFIG_JZ_MIPI_DSI
 static char *current_mipi_command = NULL;
 
+static void fresh_timer_handler( unsigned long dummy )
+{
+    int smart_ctrl = 0;
+    smart_ctrl = reg_read(jzfb, SLCDC_CTRL);
+    smart_ctrl |= SLCDC_CTRL_DMA_START; //trigger a new frame
+    reg_write(jzfb, SLCDC_CTRL, smart_ctrl);
+    if (fps_value != 0)
+        mod_timer(&fresh_timer, jiffies + HZ / fps_value);
+}
+
+    static ssize_t
+setfps_r(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    struct jzfb *jzfb = dev_get_drvdata(dev);
+    if (fresh_mode == 1) {
+        sprintf(buf, "fps is %d/10 HZ\n", fps_frame_num);
+    }
+    if (fresh_mode == 0) {
+        sprintf(buf, "fps is %dHZ\n", fps_value/10);
+    }
+    return 20;
+}
+
+    static ssize_t
+setfps_w(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+    struct jzfb *jzfb = dev_get_drvdata(dev);
+    int smart_ctrl = 0, rc;
+    unsigned long fps_value_tmp;
+    rc = kstrtoul(buf, 0, &fps_value_tmp);
+    if (rc)
+        return rc;
+    if (fps_value_tmp >= 60) {
+        if (fresh_mode) del_timer(&fresh_timer);
+        fresh_mode = 0;
+        printk("set to continue mode\n");
+        jzfb_disable(jzfb->fb);
+        smart_ctrl = reg_read(jzfb, SLCDC_CTRL);
+        smart_ctrl &= ~SLCDC_CTRL_DMA_MODE; //trigger a new frame
+        reg_write(jzfb, SLCDC_CTRL, smart_ctrl);
+        jzfb_enable(jzfb->fb);
+    } else {
+        if (fresh_mode == 0) add_timer(&fresh_timer);
+        fresh_mode = 1;
+        printk("set to %ldHZ\n", fps_value_tmp);
+        jzfb_disable(jzfb->fb);
+        smart_ctrl = reg_read(jzfb, SLCDC_CTRL);
+        smart_ctrl |= SLCDC_CTRL_DMA_MODE; //trigger a new frame
+        reg_write(jzfb, SLCDC_CTRL, smart_ctrl);
+        jzfb_enable(jzfb->fb);
+        fps_value = fps_value_tmp;
+        mod_timer(&fresh_timer, jiffies + HZ / fps_value);
+    }
+    return count;
+}
+
+    static ssize_t
+checkfps_r(struct device *dev, struct device_attribute *attr, char *buf)
+{
+    struct jzfb *jzfb = dev_get_drvdata(dev);
+    sprintf(buf, "the fps = %d/10 HZ\n", fps_frame_num);
+    return 20;
+}
+
+    static ssize_t
+checkfps_w(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+    struct jzfb *jzfb = dev_get_drvdata(dev);
+    if (buf[0] == '0') {
+        /* printk("set 0\n"); */
+        fps_check_flag = 0;
+    } else if (buf[0] == '1') {
+        printk("checking fps ...\n");
+        fps_check_flag = 1;
+    }
+    return count;
+}
+
 static ssize_t
 mipi_command_r(struct device *dev, struct device_attribute *attr, char *buf)
 {
@@ -2797,6 +2905,8 @@ static DEVICE_ATTR(ulps, S_IRUGO|S_IWUGO, NULL, ulps_w);
 #endif
 static DEVICE_ATTR(fb_blank, S_IRUGO|S_IWUGO, NULL, fb_blank_w);
 static DEVICE_ATTR(lcd_blank, S_IRUGO|S_IWUGO, NULL, lcd_blank_w);
+static DEVICE_ATTR(check_fps, S_IRUGO|S_IWUGO, checkfps_r, checkfps_w);
+static DEVICE_ATTR(set_fps, S_IRUGO|S_IWUGO, setfps_r, setfps_w);
 
 
 static struct attribute *lcd_debug_attrs[] = {
@@ -2814,6 +2924,8 @@ static struct attribute *lcd_debug_attrs[] = {
 #endif
 	&dev_attr_fb_blank.attr,
 	&dev_attr_lcd_blank.attr,
+	&dev_attr_check_fps.attr,
+	&dev_attr_set_fps.attr,
 	NULL,
 };
 
@@ -2888,7 +3000,10 @@ static int refresh_pixclock_auto_adapt(struct fb_info *info)
 	vde = vds + mode->yres;
 	vt = vde + mode->lower_margin;
 
-	if(mode->refresh){
+    if(mode->pixclock){
+        rate = PICOS2KHZ(mode->pixclock) * 1000;
+        mode->refresh = rate / vt / ht;
+    }else if(mode->refresh){
 		if (pdata->lcd_type == LCD_TYPE_8BIT_SERIAL) {
 			rate = mode->refresh * (vt + 2 * mode->xres) * ht;
 		} else {
@@ -2897,9 +3012,6 @@ static int refresh_pixclock_auto_adapt(struct fb_info *info)
 		mode->pixclock = KHZ2PICOS(rate / 1000);
 
 		var->pixclock = mode->pixclock;
-	}else if(mode->pixclock){
-		rate = PICOS2KHZ(mode->pixclock) * 1000;
-		mode->refresh = rate / vt / ht;
 	}else{
 		dev_err(jzfb->dev,"+++++++++++%s error:lcd important config info is absenced\n",__func__);
 		return -EINVAL;
