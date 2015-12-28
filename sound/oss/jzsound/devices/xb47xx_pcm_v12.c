@@ -516,6 +516,14 @@ static long pcm_ioctl(unsigned int cmd, unsigned long arg)
 	case SND_MIXER_DUMP_REG:
 		dump_pcm_reg();
 		break;
+	case SND_DSP_SET_REPLAY_VOL:
+		break;
+	case SND_DSP_GET_HP_DETECT:
+		break;
+	case SND_DSP_SET_DEVICE:
+		break;
+	case SND_DSP_SET_RECORD_VOL:
+		break;
 	default:
 		printk("SOUND_ERROR: %s(line:%d) unknown command!",
 				__func__, __LINE__);
@@ -779,7 +787,7 @@ static int pcm_init(struct platform_device *pdev)
 	}
 	pcm_priv->irq = pcm_resource->start;
 	ret = request_irq(pcm_resource->start, pcm_irq_handler,
-			IRQF_DISABLED, "pcm_irq", NULL);
+			IRQF_DISABLED, "pcm_irq", &pdev->dev);
 	if (ret < 0) {
 		printk("pcm:request irq fail\n");
 		goto __err_irq;

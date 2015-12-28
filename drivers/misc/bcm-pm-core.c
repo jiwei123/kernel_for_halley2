@@ -174,7 +174,6 @@ static int bcm_power_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	struct bcm_power_platform_data *pdata;
-
 	pdata = pdev->dev.platform_data;
 	bcm_power = kzalloc(sizeof(struct bcm_power), GFP_KERNEL);
 	if (!bcm_power) {
@@ -198,7 +197,9 @@ static int bcm_power_probe(struct platform_device *pdev)
 
 	mutex_init(&bcm_power->mutex);
 
-#ifdef CONFIG_BOARD_WATCH
+#if defined(CONFIG_BOARD_WATCH) && defined(CONFIG_WATCH_SOLAR_SAMSUNG)
+	bcm_power->regulator = regulator_get(NULL, "emmc_vio.0");
+#elif defined(CONFIG_BOARD_WATCH)
 	bcm_power->regulator = regulator_get(NULL, "blvss");
 #else
 	bcm_power->regulator = regulator_get(NULL, "wifi_vddio_1v8");
