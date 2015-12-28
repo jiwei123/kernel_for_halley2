@@ -189,16 +189,16 @@
 #define ACTIVE_LOW_BACK		0
 //elink_zqb add for gpio key 20151121
 #define GPIO_VOLUMEDOWN_KEY       GPIO_PA(8)
-#define ACTIVE_LOW_VOLUMEDOWN	0
+#define ACTIVE_LOW_VOLUMEDOWN	1
 
 #define GPIO_VOLUMEUP_KEY        GPIO_PA(9)
-#define ACTIVE_LOW_VOLUMEUP	0
+#define ACTIVE_LOW_VOLUMEUP	1
 
 #define GPIO_LEFT_KEY       GPIO_PA(10)
-#define ACTIVE_LOW_LEFT	0
+#define ACTIVE_LOW_LEFT	1
 
 #define GPIO_RIGHT_KEY        GPIO_PA(11)
-#define ACTIVE_LOW_RIGHT	0
+#define ACTIVE_LOW_RIGHT	1
 //elink_zqb add for gpio key 20151121
 
 #define GPIO_ENDCALL_KEY            GPIO_PA(30)
