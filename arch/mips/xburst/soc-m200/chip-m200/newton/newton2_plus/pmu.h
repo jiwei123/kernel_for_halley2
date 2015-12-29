@@ -65,7 +65,7 @@
 #define PS1_ALWAYS_ON     1
 #define PS2_ALWAYS_ON     1
 #define PS3_ALWAYS_ON     1
-#define PS4_ALWAYS_ON     1
+#define PS4_ALWAYS_ON     0
 #define PS5_ALWAYS_ON     1
 /* ****************************PMU DC/LDO ALWAYS ON END********************** */
 
@@ -86,7 +86,7 @@
 #define PS1_BOOT_ON     1
 #define PS2_BOOT_ON     1
 #define PS3_BOOT_ON     1
-#define PS4_BOOT_ON     1
+#define PS4_BOOT_ON     0
 #define PS5_BOOT_ON     1
 /* ****************************PMU DC/LDO BOOT ON END************************ */
 
