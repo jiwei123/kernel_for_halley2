@@ -89,8 +89,8 @@ static struct bt_rfkill_platform_data  bt_gpio_data = {
 		.bt_reg_on = BT_REG_EN,
 		.bt_wake = HOST_WAKE_BT,
 		.bt_int = BT_WAKE_HOST,
-		.bt_uart_rts = BT_UART_RTS,
 #if 0
+		.bt_uart_rts = BT_UART_RTS,
 		.bt_int_flagreg = -1,
 		.bt_int_bit = -1,
 #endif
