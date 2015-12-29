@@ -48,7 +48,7 @@ struct gpio_keys_button __attribute__((weak)) board_buttons[] = {
 #ifdef GPIO_LEFT_KEY
 	{
 		.gpio				= GPIO_LEFT_KEY,
-		.code   			= KEY_LEFT,
+		.code   			= KEY_NEXTSONG,
 		.desc				= "left key",
 		.active_low			= ACTIVE_LOW_LEFT,
 	//	.debounce_interval	= 10,
@@ -57,7 +57,7 @@ struct gpio_keys_button __attribute__((weak)) board_buttons[] = {
 #ifdef GPIO_RIGHT_KEY
 	{
 		.gpio				= GPIO_RIGHT_KEY,
-		.code   			= KEY_RIGHT,
+		.code   			= KEY_PREVIOUSSONG,
 		.desc				= "right key",
 		.active_low			= ACTIVE_LOW_RIGHT,
 	//	.debounce_interval	= 10,
