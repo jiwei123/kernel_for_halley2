@@ -24,6 +24,8 @@ struct boe_hsx0154b24b_data {
 	int lcd_power;
 	struct lcd_device *lcd;
 	struct lcd_platform_data *ctrl;
+	struct regulator *vccio_regulator;
+	struct regulator *vcc_regulator;
 };
 
 static int boe_hsx0154b24b_set_power(struct lcd_device *lcd, int power)
@@ -60,6 +62,35 @@ static struct lcd_ops boe_hsx0154b24b_ops = {
 	.set_mode = boe_hsx0154b24b_set_mode,
 };
 
+static int boe_hsx0154b24b_regulator_get(struct boe_hsx0154b24b_data *dev)
+{
+	int err = 0;
+	dev->vccio_regulator = regulator_get(NULL, "lcd_1v8");
+	if(IS_ERR(dev->vccio_regulator)) {
+		printk("get vccio_regulator failed!\n");
+		err = PTR_ERR(dev->vccio_regulator);
+		goto err_get_regulator_vccio;
+	}
+
+	dev->vcc_regulator = regulator_get(NULL, "lcd_2v8");
+	if(IS_ERR(dev->vcc_regulator)) {
+		printk("get vcc_regulator failed!\n");
+		err = PTR_ERR(dev->vcc_regulator);
+		goto err_get_regulator_vcc;
+	}
+
+	regulator_enable(dev->vccio_regulator);
+	regulator_enable(dev->vcc_regulator);
+
+	return 0;
+
+
+err_get_regulator_vcc:
+	regulator_put(dev->vccio_regulator);
+err_get_regulator_vccio:
+	return err;
+}
+
 static int boe_hsx0154b24b_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -84,10 +115,19 @@ static int boe_hsx0154b24b_probe(struct platform_device *pdev)
 	} else {
 		dev_info(&pdev->dev, "lcd device(BOE HSX0154B24B) register success\n");
 	}
+	ret = boe_hsx0154b24b_regulator_get(dev);
+	if( ret != 0) {
+		printk("boe hsx0154b24b regulator get failed!\n");
+		goto err_regulator_get;
+	}
 
 	dev_set_drvdata(&pdev->dev, dev);
 
 	return 0;
+
+err_regulator_get:
+	lcd_device_unregister(dev->lcd);
+	return ret;
 }
 
 static int boe_hsx0154b24b_remove(struct platform_device *pdev)
@@ -99,6 +139,10 @@ static int boe_hsx0154b24b_remove(struct platform_device *pdev)
 
 	lcd_device_unregister(dev->lcd);
 	dev_set_drvdata(&pdev->dev, NULL);
+
+	regulator_put(dev->vccio_regulator);
+	regulator_put(dev->vcc_regulator);
+
 	kfree(dev);
 
 	return 0;
@@ -109,26 +153,38 @@ static int boe_hsx0154b24b_suspend(struct platform_device *pdev,
 		pm_message_t state)
 {
 	struct boe_hsx0154b24b_data *dev;
+
 	dev = (struct boe_hsx0154b24b_data *)dev_get_drvdata(&pdev->dev);
-	if(dev) {
+	if(IS_ERR(dev)) {
 		printk("boe hsx0154b24b suspend dev get drvdata failed !\n");
 		return 0;
 	}
 	boe_hsx0154b24b_set_power(dev->lcd, 0);
+
+	regulator_force_disable(dev->vccio_regulator);
+	regulator_force_disable(dev->vcc_regulator);
+
 	dev->lcd_power = 0;
+
 	return 0;
 }
 
 static int boe_hsx0154b24b_resume(struct platform_device *pdev)
 {
 	struct boe_hsx0154b24b_data *dev;
+
 	dev = (struct boe_hsx0154b24b_data *)dev_get_drvdata(&pdev->dev);
-	if(dev) {
+	if(IS_ERR(dev)) {
 		printk("boe hsx0154b24b suspend dev get drvdata failed !\n");
 		return 0;
 	}
 	boe_hsx0154b24b_set_power(dev->lcd, 1);
+
+	regulator_enable(dev->vccio_regulator);
+	regulator_enable(dev->vcc_regulator);
+
 	dev->lcd_power = 1;
+
 	return 0;
 }
 #else
