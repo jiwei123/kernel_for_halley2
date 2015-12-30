@@ -26,6 +26,7 @@
 #include <linux/mutex.h>
 #include <linux/module.h>
 #include <linux/gpio.h>
+#include <linux/fb.h>
 #include <linux/syscalls.h>
 #include <linux/unistd.h>
 #include <linux/uaccess.h>
@@ -115,6 +116,7 @@ struct ft6x0x_ts_data {
 	struct mutex rwlock;
 	struct input_dev *input_dev;
 	struct ts_event event;
+	struct notifier_block tp_notify;
 	struct ft6x0x_platform_data *pdata;
 	struct ft6x0x_gpio gpio;
 	struct regulator *power;
@@ -624,14 +626,85 @@ static int ft6x0x_ts_enable(struct ft6x0x_ts_data *ft6x0x_ts)
 	return 0;
 }
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-static void ft6x0x_ts_resume(struct early_suspend *handler);
-static void ft6x0x_ts_suspend(struct early_suspend *handler);
-#endif
-
 #if defined(CONFIG_FT6X0X_EXT_FUNC)
 #include "ft6x06_ex_fun.c"
 #endif
+
+static void ft6x0x_ts_do_suspend(struct ft6x0x_ts_data *ft6x0x_ts)
+{
+	int ret = 0;
+
+	mutex_lock(&ft6x0x_ts->lock);
+	ft6x0x_ts->is_suspend = 1;
+	disable_irq_nosync(ft6x0x_ts->client->irq);
+	ret = ft6x0x_ts_disable(ft6x0x_ts);
+	mutex_unlock(&ft6x0x_ts->lock);
+	if (ret < 0)
+		dev_dbg(&ft6x0x_ts->client->dev, "[FTS]ft6x0x suspend failed! \n");
+
+	dev_dbg(&ft6x0x_ts->client->dev, "[FTS]ft6x0x suspend\n");
+	return;
+}
+
+static void ft6x0x_ts_do_resume(struct ft6x0x_ts_data *ft6x0x_ts)
+{
+	int ret = 0;
+
+	mutex_lock(&ft6x0x_ts->lock);
+	ret = ft6x0x_ts_enable(ft6x0x_ts);
+	if (ret < 0)
+		dev_info(&ft6x0x_ts->client->dev, "-------tsc resume failed!------\n");
+	ft6x0x_ts->is_suspend = 0;
+	mutex_unlock(&ft6x0x_ts->lock);
+
+	enable_irq(ft6x0x_ts->client->irq);
+	return;
+}
+
+static int tp_notifier_callback(struct notifier_block *self,unsigned long event, void *data)
+{
+	struct fb_event *evdata = data;
+	int mode;
+
+	/* If we aren't interested in this event, skip it immediately ... */
+	switch (event) {
+		case FB_EVENT_BLANK:
+		case FB_EVENT_MODE_CHANGE:
+		case FB_EVENT_MODE_CHANGE_ALL:
+		case FB_EARLY_EVENT_BLANK:
+		case FB_R_EARLY_EVENT_BLANK:
+			break;
+		default:
+			return 0;
+	}
+
+	mode = *(int *)evdata->data;
+//	ft6x0x_ts = container_of(self, struct ft6x0x_ts_data, tp_notif);
+
+	if(event == FB_EVENT_BLANK){
+		if(mode)
+			ft6x0x_ts_do_suspend(ft6x0x_ts);
+		else
+			ft6x0x_ts_do_resume(ft6x0x_ts);
+	}
+	return 0;
+}
+
+static void ft6x0x_ts_register_notifier(struct ft6x0x_ts_data *ft6x0x_ts)
+{
+	memset(&ft6x0x_ts->tp_notify, 0,sizeof(ft6x0x_ts->tp_notify));
+
+	ft6x0x_ts->tp_notify.notifier_call = tp_notifier_callback;
+	/* register on the fb notifier  and work with fb*/
+	fb_register_client(&ft6x0x_ts->tp_notify);
+	return;
+}
+
+static void ft6x0x_ts_unregister_notifier(struct ft6x0x_ts_data *ft6x0x_ts)
+{
+	fb_unregister_client(&ft6x0x_ts->tp_notify);
+	return;
+}
 
 static int ft6x0x_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
@@ -799,12 +872,7 @@ static int ft6x0x_ts_probe(struct i2c_client *client, const struct i2c_device_id
 		goto exit_input_register_device_failed;
 	}
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	ft6x0x_ts->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
-	ft6x0x_ts->early_suspend.suspend = ft6x0x_ts_suspend;
-	ft6x0x_ts->early_suspend.resume	= ft6x0x_ts_resume;
-	register_early_suspend(&ft6x0x_ts->early_suspend);
-#endif
+	ft6x0x_ts_register_notifier(ft6x0x_ts);
 
 #if defined(CONFIG_FT6X0X_EXT_FUNC)
 	ft6x0x_create_sysfs(client);
@@ -843,42 +911,6 @@ exit_pdata_is_null:
 	return err;
 }
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-static void ft6x0x_ts_suspend(struct early_suspend *handler)
-{
-	int ret = 0;
-	struct ft6x0x_ts_data *ft6x0x_ts;
-	ft6x0x_ts = container_of(handler, struct ft6x0x_ts_data,
-						early_suspend);
-
-	mutex_lock(&ft6x0x_ts->lock);
-	ft6x0x_ts->is_suspend = 1;
-	disable_irq_nosync(ft6x0x_ts->client->irq);
-	ret = ft6x0x_ts_disable(ft6x0x_ts);
-	mutex_unlock(&ft6x0x_ts->lock);
-	if (ret < 0)
-		dev_dbg(&ft6x0x_ts->client->dev, "[FTS]ft6x0x suspend failed! \n");
-
-	dev_dbg(&ft6x0x_ts->client->dev, "[FTS]ft6x0x suspend\n");
-}
-
-static void ft6x0x_ts_resume(struct early_suspend *handler)
-{
-	int ret = 0;
-	struct ft6x0x_ts_data *ft6x0x_ts = container_of(handler, struct ft6x0x_ts_data,
-						early_suspend);
-
-	mutex_lock(&ft6x0x_ts->lock);
-	ret = ft6x0x_ts_enable(ft6x0x_ts);
-	if (ret < 0)
-		dev_info(&ft6x0x_ts->client->dev, "-------tsc resume failed!------\n");
-	ft6x0x_ts->is_suspend = 0;
-	mutex_unlock(&ft6x0x_ts->lock);
-
-	enable_irq(ft6x0x_ts->client->irq);
-}
-#endif
-
 static int ft6x0x_ts_remove(struct i2c_client *client)
 {
 	struct ft6x0x_ts_data *ft6x0x_ts;
@@ -890,7 +922,10 @@ static int ft6x0x_ts_remove(struct i2c_client *client)
 	ft6x0x_ts_power_off(ft6x0x_ts);
 	if (!IS_ERR(ft6x0x_ts->power))
 		regulator_put(ft6x0x_ts->power);
+
+	ft6x0x_ts_unregister_notifier(ft6x0x_ts);
 	kfree(ft6x0x_ts);
+
 	return 0;
 }
 
