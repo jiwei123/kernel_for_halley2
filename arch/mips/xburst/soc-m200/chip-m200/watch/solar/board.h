@@ -399,4 +399,14 @@
 #endif
 #endif
 /* ****************************GPIO DRV2605 END****************************** */
+
+/* ****************************SensorHub ICM30630 START********************** */
+#ifdef CONFIG_SENSORHUB_ICM30630
+#define GPIO_ICM30630_GPIO0_INT             GPIO_PC(24)
+#define GPIO_ICM30630_GPIO1_NOWAKE_INT      GPIO_PC(16)
+#define GPIO_ICM30630_GPIO2_WAKEUP_GPIO     GPIO_PC(12)
+#define ICM30630_VDD_ANA                    LDO5_NAME
+#define ICM30630_VCC_I2C                    BUCK3_NAME
+#endif
+/* ****************************SensorHub ICM30630 END************************ */
 #endif /* __BOARD_H__ */

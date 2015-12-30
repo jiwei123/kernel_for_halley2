@@ -590,6 +590,37 @@ static struct em30719_platform_data em30719_pdata = {
 #endif
 /* *****************************em30719 end******************************* */
 
+/* *****************************SensorHub ICM30630 start****************** */
+#ifdef CONFIG_SENSORHUB_ICM30630
+#include <linux/iio/imu/mpu.h>
+
+struct mpu_platform_data __weak icm30630_platform_data = {
+    .accel_orient = {
+            -1, 0, 0,
+            0, 1, 0,
+            0, 0, -1
+    },
+//    .magn_orient = {
+//            -1, 0, 0,
+//            0, 1, 0,
+//            0, 0, -1
+//    },
+    .gyro_orient = {
+            -1, 0, 0,
+            0, 1, 0,
+            0, 0, -1
+    },
+    .irq_gpio = GPIO_ICM30630_GPIO1_NOWAKE_INT,
+    .wake_gpio = GPIO_ICM30630_GPIO2_WAKEUP_GPIO,
+    .wake_delay_min = 1000,
+    .wake_delay_max = 100000,
+    .vdd_ana_name = ICM30630_VDD_ANA,
+    .vdd_i2c_name = ICM30630_VCC_I2C,
+};
+
+#endif
+/* *****************************SensorHub ICM30630 end******************** */
+
 #if (defined(CONFIG_I2C_GPIO) || defined(CONFIG_I2C0_V12_JZ))
 struct i2c_board_info jz_i2c0_devs[] __initdata = {
 #ifdef CONFIG_TOUCHSCREEN_GWTC9XXXB
@@ -703,6 +734,13 @@ struct i2c_board_info jz_i2c2_devs[] __initdata = {
         .platform_data = &mma955xl_pdata,
     },
 #endif
+#ifdef CONFIG_SENSORHUB_ICM30630
+    {
+        I2C_BOARD_INFO("icm30628", 0x6a),
+        .irq = (IRQ_GPIO_BASE + GPIO_ICM30630_GPIO0_INT),
+        .platform_data = &icm30630_platform_data,
+    },
+#endif /*CONFIG_SENSORHUB_ICM30630*/
 };
 #endif  /*I2C2*/
 
