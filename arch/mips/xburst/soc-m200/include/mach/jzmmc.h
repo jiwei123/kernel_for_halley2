@@ -88,8 +88,8 @@ static void inline rtc_write_reg(int reg,int value)
         while(!(inl(RTC_IOBASE + RTC_RTCCR) & RTCCR_WRDY));
 }
 
-#define jzrtc_enable_clk32k()	rtc_write_reg(RTC_CKPCR,ENABLE_CLK32K)
-
-#define jzrtc_disable_clk32k()	rtc_write_reg(RTC_CKPCR,DISABLE_CLK32K)
+// The next two functions defined in <drivers/mmc/host/jzmmc_v11.c + drivers/mmc/host/jzmmc_v12.c>
+extern int jzrtc_enable_clk32k(void);
+extern int jzrtc_disable_clk32k(void);
 
 #endif
