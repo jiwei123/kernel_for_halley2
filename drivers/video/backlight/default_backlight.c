@@ -30,7 +30,12 @@ static void do_backlight_set_brightness(struct backlight_device *bd, unsigned in
 	}
 
 	bd->props.brightness = brightness;
-	backlight_update_status(bd);
+	if (bd->ops && bd->ops->update_status)
+		bd->ops->update_status(bd);
+}
+
+unsigned int get_brightness_of_default_backlight(void) {
+	return default_backlight ? default_backlight->props.brightness : 0;
 }
 
 void set_brightness_of_default_backlight(unsigned int brightness) {

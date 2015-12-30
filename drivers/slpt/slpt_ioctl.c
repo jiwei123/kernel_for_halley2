@@ -34,7 +34,6 @@
 #define SLPT_CMD_DISABLE_FW  _IOW('S', 0x123, int)
 
 #define TAG_SIZE 4
-
 struct slpt_data {
 	char tag[TAG_SIZE];
 	unsigned int hdr_len;
@@ -164,7 +163,7 @@ static long slpt_ioctl(struct file *filp, unsigned int cmd, unsigned long args)
 	if (head.mem_len != 0) {
 		if (head.mem_len > PAGE_SIZE)
 			mem = vmalloc(head.mem_len);
-	    else
+		else
 			mem = kmalloc(head.mem_len, GFP_KERNEL);
 
 		if (mem == NULL) {

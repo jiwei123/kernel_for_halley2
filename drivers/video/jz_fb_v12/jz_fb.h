@@ -182,7 +182,7 @@ struct jzfb {
 	unsigned int pan_display_count;
 
 	atomic_t is_pan_display_locked;
-	int save_next_frm;
+	int current_pan_display_frm;
 
 	struct slcd_te slcd_te;
 };

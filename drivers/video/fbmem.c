@@ -32,6 +32,7 @@
 #include <linux/device.h>
 #include <linux/efi.h>
 #include <linux/fb.h>
+#include <linux/suspend_state.h>
 
 #include <asm/fb.h>
 
@@ -1191,14 +1192,21 @@ static long do_fb_ioctl(struct fb_info *info, unsigned int cmd,
 #ifdef CONFIG_SLPT
 		wait_slpt_linux_release_fb();
 #endif
-		if (!lock_fb_info(info))
+		/* notify to suspend state helper function the fb blank event */
+		fb_early_notify_suspend_state(arg);
+
+		if (!lock_fb_info(info)) {
+			fb_late_notify_suspend_state(arg);
 			return -ENODEV;
+		}
 		console_lock();
 		info->flags |= FBINFO_MISC_USEREVENT;
 		ret = fb_blank(info, arg);
 		info->flags &= ~FBINFO_MISC_USEREVENT;
 		console_unlock();
 		unlock_fb_info(info);
+
+		fb_late_notify_suspend_state(arg);
 		break;
 	default:
 		if (!lock_fb_info(info))

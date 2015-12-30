@@ -3,6 +3,7 @@
 
 #include <linux/backlight.h>
 
+extern unsigned int get_brightness_of_default_backlight(void);
 extern void set_brightness_of_default_backlight(unsigned int brightness);
 extern void register_default_backlight(struct backlight_device *bd);
 extern void unregister_default_backlight(struct backlight_device *bd);

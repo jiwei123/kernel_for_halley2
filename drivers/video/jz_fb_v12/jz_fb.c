@@ -1278,7 +1278,7 @@ static int jzfb_alloc_devmem(struct jzfb *jzfb)
 		}
 	}
 
-	dev_dbg(jzfb->dev, "Frame buffer size: %d bytes\n", jzfb->vidmem_size);
+	dev_err(jzfb->dev, "Frame buffer size: %p %d bytes\n", jzfb->vidmem, jzfb->vidmem_size);
 
 	return 0;
 }
@@ -1418,6 +1418,8 @@ static int jzfb_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 		}
 	} else
 		next_frm = var->yoffset / var->yres;
+
+	jzfb->current_pan_display_frm = next_frm;
 
 	if (atomic_read(&jzfb->is_pan_display_locked)) {
 		printk(KERN_DEBUG "pan display is locked\n");
@@ -1936,7 +1938,7 @@ void dump_cpm_reg(void)
 static void jzfb_do_suspend(struct jzfb *jzfb)
 {
 	/* can not pan display by ioctl when fb suspend */
-	atomic_set(&jzfb->is_pan_display_locked, 1);
+	/* atomic_set(&jzfb->is_pan_display_locked, 1); */
 
 	mutex_lock(&jzfb->suspend_lock);
 	if ((jzfb->is_suspend == 1) || (fb_is_always_on() && !jzfb->is_shutdown))
@@ -2000,7 +2002,7 @@ static void jzfb_do_resume(struct jzfb *jzfb)
 unlock:
 	mutex_unlock(&jzfb->suspend_lock);
 
-	atomic_set(&jzfb->is_pan_display_locked, 0);
+	/* atomic_set(&jzfb->is_pan_display_locked, 0); */
 
 #if 0
 	printk("----lcd early resume:\n");
@@ -2011,13 +2013,13 @@ unlock:
 void jzfb_power_on_fb(struct fb_ctrl *fb_ctrl) {
 	struct jzfb *jzfb = container_of(fb_ctrl, struct jzfb, fb_ctrl);
 
-	jzfb_do_blank(jzfb, FB_BLANK_UNBLANK);
+	jzfb_do_resume(jzfb);
 }
 
 void jzfb_power_off_fb(struct fb_ctrl *fb_ctrl) {
 	struct jzfb *jzfb = container_of(fb_ctrl, struct jzfb, fb_ctrl);
 
-	jzfb_do_blank(jzfb, FB_BLANK_POWERDOWN);
+	jzfb_do_suspend(jzfb);
 }
 
 static void jzfb_change_dma_desc(struct fb_info *info)
@@ -2727,10 +2729,8 @@ lock_fb_pan_display_w(struct device *dev, struct device_attribute *attr, const c
 	on = *buf - '0';
 
 	atomic_set(&jzfb->is_pan_display_locked, on);
-	if (on == 0 && jzfb->save_next_frm != -1) {
-		jzfb_do_pan_display(jzfb, jzfb->save_next_frm);
-		jzfb->save_next_frm = -1;
-	}
+	if (on == 0)
+		jzfb_do_pan_display(jzfb, jzfb->current_pan_display_frm);
 
 	return count;
 }
@@ -2746,6 +2746,16 @@ pan_display_w(struct device *dev, struct device_attribute *attr, const char *buf
 	jzfb_do_pan_display(jzfb, frm);
 
 	return count;
+}
+
+static ssize_t
+current_pan_display_frm_r(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct jzfb *jzfb = dev_get_drvdata(dev);
+
+	sprintf(buf, "%d", jzfb->current_pan_display_frm);
+
+	return 2;
 }
 
 /**********************lcd_debug***************************/
@@ -2764,6 +2774,7 @@ static DEVICE_ATTR(ulps, S_IRUGO|S_IWUGO, NULL, ulps_w);
 static DEVICE_ATTR(lcd_power_on, S_IRUGO|S_IWUGO, lcd_power_on_r, lcd_power_on_w);
 static DEVICE_ATTR(lock_fb_pan_display, S_IRUGO|S_IWUGO, lock_fb_pan_display_r, lock_fb_pan_display_w);
 static DEVICE_ATTR(pan_display, S_IRUGO|S_IWUGO, NULL, pan_display_w);
+static DEVICE_ATTR(current_pan_display_frm, S_IRUGO|S_IWUGO, current_pan_display_frm_r, NULL);
 
 static struct attribute *lcd_debug_attrs[] = {
 	&dev_attr_dump_lcd.attr,
@@ -2781,6 +2792,7 @@ static struct attribute *lcd_debug_attrs[] = {
 	&dev_attr_lcd_power_on.attr,
 	&dev_attr_lock_fb_pan_display.attr,
 	&dev_attr_pan_display.attr,
+	&dev_attr_current_pan_display_frm.attr,
 	NULL,
 };
 
@@ -2917,7 +2929,7 @@ static int __devinit jzfb_probe(struct platform_device *pdev)
 	jzfb->pdata = pdata;
 	jzfb->mem = mem;
 	jzfb->current_buffer = 0;
-	jzfb->save_next_frm = -1;
+	jzfb->current_pan_display_frm = -1;
 	atomic_set(&jzfb->is_pan_display_locked, 0);
 
 	if (pdata->lcd_type != LCD_TYPE_INTERLACED_TV &&

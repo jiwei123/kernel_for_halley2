@@ -10,6 +10,12 @@
 #define SAMPLE_ADC_FOR_KERNEL 0
 #endif
 
+#ifdef CONFIG_DEVICE_VENDOR_NAME
+#define BOARD_NAME CONFIG_DEVICE_VENDOR_NAME
+#else
+#define BOARD_NAME "aw808"
+#endif
+
 #undef KEY
 #define KEY(index, n, v) [index] = {.id = index, .name = n, .val = (unsigned long)(v)}
 
@@ -36,6 +42,7 @@ struct slpt_key slpt_key_list[SLPT_K_NUMS] = {
 	KEY(SLPT_K_IOCTL, "ioctl", NULL),
 	KEY(SLPT_K_FB_ON, "fb_on", 0),
 	KEY(SLPT_K_SAMPLE_ADC_FOR_KERNEL, "sample_adc_for_kernel", SAMPLE_ADC_FOR_KERNEL),
+	KEY(SLPT_K_BOARD_NAME, "board_name", BOARD_NAME),
 };
 
 static inline int slpt_find_key_id_internal(const char *name) {

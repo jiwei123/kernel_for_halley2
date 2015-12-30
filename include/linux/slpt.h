@@ -155,6 +155,7 @@ enum slpt_key_id {
 	SLPT_K_IOCTL,
 	SLPT_K_FB_ON,
 	SLPT_K_SAMPLE_ADC_FOR_KERNEL,
+	SLPT_K_BOARD_NAME,
 
 	/* keep last */
 	SLPT_K_NUMS,
@@ -348,6 +349,20 @@ static inline int slpt_get_sample_adc_for_kernel(void) {
 
 static inline void slpt_set_sample_adc_for_kernel(int yes_or_no) {
 	SLPT_SET_KEY(SLPT_K_SAMPLE_ADC_FOR_KERNEL, yes_or_no);
+}
+
+/*
+ * board name
+ */
+static inline const char *slpt_get_board_name(void) {
+	const char *name;
+
+	SLPT_GET_KEY(SLPT_K_BOARD_NAME, &name);
+	return name;
+}
+
+static inline void slpt_set_board_name(const char *name) {
+	SLPT_SET_KEY(SLPT_K_BOARD_NAME, name);
 }
 
 #define SLPT_LIMIT_SIZE (6 * 1024 * 1024)
