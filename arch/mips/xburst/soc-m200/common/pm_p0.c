@@ -575,9 +575,9 @@ static inline void powerdown_wait(void)
 	REG32(0xb0000000 + CPM_OPCR) = opcr;
 
 	/* read the register to flush it to cpm controller */
-	/* opcr = REG32(0xb0000000 + CPM_OPCR); */
-	/* opcr = REG32(0xb0000000 + CPM_OPCR); */
-	/* opcr = REG32(0xb0000000 + CPM_OPCR); */
+	opcr = REG32(0xb0000000 + CPM_OPCR);
+	opcr = REG32(0xb0000000 + CPM_OPCR);
+	opcr = REG32(0xb0000000 + CPM_OPCR);
 
 	//serial_put_hex(opcr);
 	TCSM_PCHAR('e');
@@ -788,6 +788,15 @@ static noinline void cpu_resume(void)
 		val = ddr_readl(DDRC_CTRL);
 		val |= (1 << 17);   // enter to hold ddr state
 		ddr_writel(val,DDRC_CTRL);
+
+		/*
+		 * (1) SCL_SRC source clock changes APLL to EXCLK
+		 * (2) AH0/2 source clock changes MPLL to EXCLK
+		 * (3) set PDIV H2DIV H0DIV L2CDIV CDIV = 0
+		 */
+		REG32(0xb0000000) = 0x95800000;
+		while((REG32(0xB00000D4) & 7))
+			TCSM_PCHAR('w');
 
 		powerdown_wait();
 #endif
