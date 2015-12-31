@@ -72,7 +72,7 @@ static void set_pin_status(int bt_power_state)
 	}
 #endif
 }
-#if 0
+
 static void restore_pin_status(int bt_power_state)
 {
 
@@ -82,7 +82,7 @@ static void restore_pin_status(int bt_power_state)
 	/*set PCM0_DO ,PCM0_CLK, PCM0_SYN ,PCM0_DI 4 pins to FUNC*/
 	//jzgpio_set_func(GPIO_PORT_F, GPIO_FUNC_0, 0xF << 12);
 }
-#endif
+
 static struct bt_rfkill_platform_data  bt_gpio_data = {
 	.gpio = {
 		.bt_rst_n = -1,
@@ -97,11 +97,9 @@ static struct bt_rfkill_platform_data  bt_gpio_data = {
 	},
 
 	.set_pin_status = set_pin_status,
-#if 0
 	.restore_pin_status = restore_pin_status,
-	.suspend_gpio_set = NULL,
-	.resume_gpio_set = NULL,
-#endif
+	/* .suspend_gpio_set = NULL, */
+	/* .resume_gpio_set = NULL, */
 };
 
 struct platform_device bt_power_device  = {

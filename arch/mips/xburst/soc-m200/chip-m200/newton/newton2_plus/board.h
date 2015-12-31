@@ -249,6 +249,11 @@
 
 /* ****************************GPIO BLUETOOTH START************************** */
 /* BT gpio */
+
+#define BLUETOOTH_UART_GPIO_PORT        GPIO_PORT_D
+#define BLUETOOTH_UART_GPIO_FUNC        GPIO_FUNC_2
+#define BLUETOOTH_UART_FUNC_SHIFT       (1 << 28)
+
 #define HOST_WAKE_BT	GPIO_PD(5)
 #define BT_WAKE_HOST	GPIO_PD(10)
 #define BT_REG_EN	GPIO_PD(9)
