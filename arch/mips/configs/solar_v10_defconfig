@@ -928,6 +928,7 @@ CONFIG_JZ_EFUSE_V12=y
 # Altera FPGA firmware download module
 #
 # CONFIG_ALTERA_STAPL is not set
+CONFIG_BCM4774_ENABLE_SYS=y
 CONFIG_HAVE_IDE=y
 # CONFIG_IDE is not set
 

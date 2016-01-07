@@ -409,4 +409,11 @@
 #define ICM30630_VCC_I2C                    BUCK3_NAME
 #endif
 /* ****************************SensorHub ICM30630 END************************ */
+
+/* ****************************SensorHub BCM4774 END************************ */
+#ifdef CONFIG_BCM4774_ENABLE_SYS
+#define GPIO_nSTANDBY                       GPIO_PC(22)
+#define BCM4774_POWER                       BUCK3_NAME
+#endif
+/* ****************************SensorHub BCM4774 END************************ */
 #endif /* __BOARD_H__ */

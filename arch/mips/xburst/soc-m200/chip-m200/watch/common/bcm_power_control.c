@@ -429,3 +429,56 @@ start:
 }
 EXPORT_SYMBOL(bcm_wlan_power_off);
 #endif
+
+/*For SensorHub gps*/
+#ifdef CONFIG_BCM4774_ENABLE_SYS
+#include <linux/bcm4774_pm.h>
+static int bcm4774_enable(struct bcm4774_platform_data *pdata, int enable)
+{
+	int ret = -1;
+
+	switch (enable) {
+	case BCM4774_POWER_ON:
+		ret = gpio_direction_output(pdata->nSTANDBY_enable, 1);
+		if(ret < 0) return -1;
+		break;
+	case BCM4774_POWER_OFF:
+		ret = gpio_direction_output(pdata->nSTANDBY_enable, 0);
+		if(ret < 0) return -1;
+		break;
+	default:
+		break;
+	}
+	return 0;
+}
+static void bcm4774_enable_clk32k(void)
+{
+	jzrtc_enable_clk32k();
+
+	return;
+}
+
+static void bcm4774_disable_clk32k(void)
+{
+	jzrtc_disable_clk32k();
+
+	return;
+}
+
+struct bcm4774_platform_data bcm4774_pdata = {
+	.regulator_name = BUCK3_NAME,
+	.nSTANDBY_enable = GPIO_nSTANDBY,
+	.enable = bcm4774_enable,
+	.clk_enable = bcm4774_enable_clk32k,
+	.clk_disable = bcm4774_disable_clk32k,
+};
+
+struct platform_device	bcm4774_platform_device = {
+	.name = "bcm4774_pm",
+	.id = -1,
+	.num_resources = 0,
+	.dev = {
+		.platform_data = &bcm4774_pdata,
+	},
+};
+#endif
