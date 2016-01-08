@@ -1,0 +1,7 @@
+config BCM4774_ENABLE_SYS
+    bool "bcm4774 create sysfs to control nSTANDBY pin"
+    default n
+    help
+      Say Y here to include support for lhd process pull nSTANDBY
+      GPIO up and enable clk32 to enable bcm4774 ic when starts.
+      if use the ic module, the conf must be chosen.

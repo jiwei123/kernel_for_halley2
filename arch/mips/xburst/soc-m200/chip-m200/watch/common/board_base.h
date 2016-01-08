@@ -61,6 +61,9 @@ extern struct platform_device bluesleep_device;
 #if IS_ENABLED(CONFIG_BCMDHD_1_141_66)
 extern struct platform_device wlan_device;
 #endif
+#ifdef CONFIG_BCM4774_ENABLE_SYS
+extern struct platform_device bcm4774_platform_device;
+#endif
 #ifdef CONFIG_BCM2079X_NFC
 extern struct bcm2079x_platform_data bcm2079x_pdata;
 #endif

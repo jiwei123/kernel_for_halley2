@@ -114,6 +114,10 @@ static struct jz_platform_device platform_devices_array[] __initdata = {
 #if IS_ENABLED(CONFIG_BCMDHD_1_141_66)
 	DEF_DEVICE(&wlan_device, 0, 0),
 #endif /* CONFIG_BCM43438 */
+
+#ifdef CONFIG_BCM4774_ENABLE_SYS
+	DEF_DEVICE(&bcm4774_platform_device, 0, 0),
+#endif /* CONFIG_BCM4774 */
 #ifdef CONFIG_JZ_IPU_V12
 	DEF_DEVICE(&jz_ipu_device, 0, 0),
 #endif
