@@ -238,6 +238,12 @@
 #define HOST_WAKE_WL		(-1)
 /* ****************************GPIO WIFI END********************************* */
 
+#ifdef CONFIG_ANDROID_TIMED_REGULATOR
+#define REG_VDDIO   PS4_NAME
+#define MAX_TIMEOUT 18000
+#endif
+
+
 /* ****************************GPIO NFC START******************************** */
 /*
  * For BCM2079X NFC

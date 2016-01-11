@@ -231,6 +231,13 @@ static struct jz_platform_device platform_devices_array[] __initdata = {
 #if defined(CONFIG_SND_ASOC_JZ_DMIC_DUMP_CDC)
 	DEF_DEVICE(&jz_dmic_dump_cdc_device,0,0),
 #endif
+#ifdef	CONFIG_ANDROID_TIMED_GPIO
+	DEF_DEVICE(&jz_timed_gpio_device, 0, 0),
+#endif
+#ifdef  CONFIG_ANDROID_TIMED_REGULATOR
+	DEF_DEVICE(&jz_timed_regulator_device, 0, 0),
+#endif
+
 };
 
 static int __init board_base_init(void)

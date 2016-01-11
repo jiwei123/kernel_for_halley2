@@ -22,3 +22,5 @@ obj-$(CONFIG_I2C3_V12_JZ)		+= i2c_bus.o
 obj-$(CONFIG_SPI_GPIO)			+= spi_bus.o
 obj-$(CONFIG_SPI0_V12_JZ)		+= spi_bus.o
 obj-$(CONFIG_SPI1_V12_JZ)		+= spi_bus.o
+obj-$(CONFIG_ANDROID_TIMED_GPIO)	+= vibrator.o
+obj-$(CONFIG_ANDROID_TIMED_REGULATOR)	+= vibrator.o
