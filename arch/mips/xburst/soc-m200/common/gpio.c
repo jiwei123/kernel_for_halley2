@@ -551,8 +551,10 @@ static unsigned int gpio_startup_irq(struct irq_data *data)
 	int pin  = data->irq - jz->irq_base;
 
 	/* gpio must be requested */
-	if(test_bit(pin, jz->gpio_map))
+	if(test_bit(pin, jz->gpio_map)) {
+		printk(KERN_WARNING "---%s : gpio have not request!!---\n", __func__);
 		return -EINVAL;
+	}
 
 	set_bit(pin, jz->irq_map);
 	writel(BIT(pin), jz->reg + PXINTS);
