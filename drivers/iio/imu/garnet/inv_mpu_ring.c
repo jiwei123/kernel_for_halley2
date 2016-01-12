@@ -260,8 +260,12 @@ int inv_mpu_configure_ring(struct iio_dev *indio_dev)
             inv_read_fifo_wake,
             IRQF_TRIGGER_RISING | IRQF_SHARED | IRQF_ONESHOT, "inv_mpu_wake",
             st);
-    if (ret)
+    if (ret) {
         goto error_databuf_free;
+    } else {
+        enable_irq_wake(st->irq);
+    }
+
     if (st->irq_nowake >= 0) {
         ret = request_threaded_irq(st->irq_nowake, inv_irq_handler_nowake,
                 inv_read_fifo_nowake,

@@ -167,7 +167,11 @@ static int inv_mpu_probe(struct i2c_client *client,
     st = iio_priv(indio_dev);
     st->dev = &client->dev;
     st->spi_mode = false;
-    st->irq = client->irq;
+
+    /* Ingenic's platform do not support enable_irq_wake() when have not request gpio.
+     * See more in < gpio.c gpio_startup_irq() >
+     */
+//    st->irq = client->irq;
     st->write = inv_i2c_write;
     st->read = inv_i2c_read;
     mutex_init(&st->lock);
@@ -235,12 +239,32 @@ static int inv_mpu_probe(struct i2c_client *client,
     } else
         st->irq_nowake = -1;
 
+    /* Configure wake up data interrupt */
+    if (gpio_is_valid(pdata->wakeup_irq_gpio)) {
+        result = gpio_request(pdata->wakeup_irq_gpio, "inv_mpu-wakeup_irq");
+        if (result) {
+            dev_err(&client->dev, "cannot request wakeup_irq gpio\n");
+            goto out_irq_gpio_free;
+        }
+        result = gpio_direction_input(pdata->wakeup_irq_gpio);
+        if (result) {
+            dev_err(&client->dev, "cannot configure wakeup_irq gpio\n");
+            goto out_wakeup_irq_gpio_free;
+        }
+        st->irq = gpio_to_irq(pdata->wakeup_irq_gpio);
+        if (st->irq < 0) {
+            dev_err(&client->dev, "cannot get irq from wakeup_irq gpio\n");
+            goto out_wakeup_irq_gpio_free;
+        }
+    } else
+        st->irq = -1;
+
     /* Power on device */
     inv_init_power(st);
     result = inv_set_power_on(st);
     if (result < 0) {
         dev_err(&client->dev, "power_on failed: %d\n", result);
-        goto out_irq_gpio_free;
+        goto out_wakeup_irq_gpio_free;
     }
     dev_info(&client->dev, "power on\n");
     /* Check chip type */
@@ -292,6 +316,9 @@ out_unreg_ring:
     inv_mpu_unconfigure_ring(indio_dev);
 out_power_off:
     inv_set_power_off(st);
+out_wakeup_irq_gpio_free:
+    if (gpio_is_valid(pdata->wakeup_irq_gpio))
+        gpio_free(pdata->wakeup_irq_gpio);
 out_irq_gpio_free:
     if (gpio_is_valid(pdata->irq_gpio))
         gpio_free(pdata->irq_gpio);
@@ -343,8 +370,6 @@ static int inv_mpu_suspend(struct device *dev)
     dev_dbg(dev, "%s inv_mpu_suspend\n", st->hw->name);
 
     ret = inv_proto_set_power(st, false);
-    enable_irq_wake(st->irq);
-    disable_irq(st->irq);
     if (st->irq_nowake >= 0)
     disable_irq(st->irq_nowake);
 
@@ -362,10 +387,8 @@ static int inv_mpu_resume(struct device *dev)
     st->timesync.prev_ts = 0;
 
     ret = inv_proto_set_power(st, true);
-    enable_irq(st->irq);
     if (st->irq_nowake >= 0)
     enable_irq(st->irq_nowake);
-    disable_irq_wake(st->irq);
 
     return ret;
 }

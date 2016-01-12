@@ -39,6 +39,7 @@ struct mpu_platform_data {
     s8 accel_orient[9];
     s8 magn_orient[9];
     s8 gyro_orient[9];
+    int wakeup_irq_gpio;
     int irq_gpio;
     int wake_gpio;
     unsigned long wake_delay_min;

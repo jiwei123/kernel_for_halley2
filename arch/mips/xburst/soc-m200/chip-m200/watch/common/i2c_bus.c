@@ -596,9 +596,9 @@ static struct em30719_platform_data em30719_pdata = {
 
 struct mpu_platform_data __weak icm30630_platform_data = {
     .accel_orient = {
-            -1, 0, 0,
-            0, 1, 0,
-            0, 0, -1
+            0, -1, 0,
+            1, 0, 0,
+            0, 0, 1
     },
 //    .magn_orient = {
 //            -1, 0, 0,
@@ -606,10 +606,11 @@ struct mpu_platform_data __weak icm30630_platform_data = {
 //            0, 0, -1
 //    },
     .gyro_orient = {
-            -1, 0, 0,
-            0, 1, 0,
-            0, 0, -1
+            0, -1, 0,
+            1, 0, 0,
+            0, 0, 1
     },
+    .wakeup_irq_gpio = GPIO_ICM30630_GPIO0_INT,
     .irq_gpio = GPIO_ICM30630_GPIO1_NOWAKE_INT,
     .wake_gpio = GPIO_ICM30630_GPIO2_WAKEUP_GPIO,
     .wake_delay_min = 1000,
