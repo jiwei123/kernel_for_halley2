@@ -299,7 +299,7 @@ unsigned int fg_get_soc(struct i2c_client *client)
 		soc = soc + (((ret&0x00ff)*10)/256);
 	}
 
-	fuelgauge->info.batt_soc = 0;
+	fuelgauge->info.batt_soc = soc;
 #ifdef CONFIG_SM5007_FG_DEBUG_LOG
 	printk("%s: read = 0x%x, soc = %d\n", __func__, ret, soc);
 #endif

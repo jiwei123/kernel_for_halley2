@@ -269,9 +269,10 @@ struct ovisp_camera_format *ovisp_camera_find_format(struct v4l2_mbus_framefmt *
 		}
 	}
 
-	if (i == num)
+	if (i == num) {
+		printk("%s, %d, [enum fmt] not find fomat \n");
 		return NULL;
-
+	}
 	return fmt;
 }
 
@@ -579,6 +580,7 @@ static int ovisp_camera_start_streaming(struct ovisp_camera_dev *camdev)
 //	capture->running = 0;
 	capture->active[0] = NULL;
 	capture->active[1] = NULL;
+
 
 	ISP_PRINT(ISP_WARNING,"Set format(%s).\n", camdev->snapshot ? "snapshot" : "preview");
 	/*1. get camera's format */
@@ -1003,8 +1005,9 @@ static int ovisp_vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
 	ISP_PRINT(ISP_INFO,"%s==========%d\n", __func__, __LINE__);
 	if (csd->bypass) {
 		ret = v4l2_subdev_call(csd->sd, video, enum_mbus_fmt, f->index, &mbus.code);
-		if (ret && ret != -ENOIOCTLCMD)
+		if (ret && ret != -ENOIOCTLCMD) {
 			return -EINVAL;
+		}
 		fmt = ovisp_camera_find_format(&mbus, NULL, -1);
 	} else {
 		fmt = ovisp_camera_find_format(NULL, NULL, f->index);
@@ -1103,6 +1106,31 @@ static int ovisp_vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
+int ovisp_vidioc_enum_framesizes(struct file *file, void *fh,
+		struct v4l2_frmsizeenum *fsize)
+{
+	struct ovisp_camera_dev *camdev = video_drvdata(file);
+	struct ovisp_camera_subdev *csd = &camdev->csd[camdev->input];
+	int ret = 0;
+
+	ret = v4l2_subdev_call(csd->sd, video, enum_framesizes, fsize);
+
+	return ret;
+
+}
+
+int ovisp_vidioc_enum_frameintervals(struct file *file, void *fh,
+		struct v4l2_frmivalenum *fival)
+{
+	struct ovisp_camera_dev *camdev = video_drvdata(file);
+	struct ovisp_camera_subdev *csd = &camdev->csd[camdev->input];
+	int ret = 0;
+
+	ret = v4l2_subdev_call(csd->sd, video, enum_frameintervals, fival);
+
+	return ret;
+}
+
 static int ovisp_vidioc_reqbufs(struct file *file, void *priv,
 		struct v4l2_requestbuffers *p)
 {
@@ -1182,6 +1210,10 @@ static int ovisp_vidioc_streamoff(struct file *file, void *priv,
 {
 	struct ovisp_camera_dev *camdev = video_drvdata(file);
 	ISP_PRINT(ISP_INFO,"%s==========%d\n", __func__, __LINE__);
+	if(camdev->isp->tlb_flag){
+		isp_dev_call(camdev->isp, tlb_unmap_all_vaddr);
+	}
+
 	return vb2_streamoff(&camdev->vbq, i);
 }
 
@@ -1606,6 +1638,9 @@ static const struct v4l2_ioctl_ops ovisp_v4l2_ioctl_ops = {
 	.vidioc_g_fmt_vid_cap		= ovisp_vidioc_g_fmt_vid_cap,
 	.vidioc_try_fmt_vid_cap		= ovisp_vidioc_try_fmt_vid_cap,
 	.vidioc_s_fmt_vid_cap		= ovisp_vidioc_s_fmt_vid_cap,
+
+	.vidioc_enum_framesizes 	= ovisp_vidioc_enum_framesizes,
+	.vidioc_enum_frameintervals	= ovisp_vidioc_enum_frameintervals,
 
 	/*frame management*/
 	.vidioc_reqbufs             = ovisp_vidioc_reqbufs,

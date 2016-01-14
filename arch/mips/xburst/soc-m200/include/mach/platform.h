@@ -135,6 +135,8 @@
 #define MCLK_PORTE_BIT2                 \
 { .name = "mclk", .port = GPIO_PORT_E, .func = GPIO_FUNC_3, .pins = 1 << 2, }
 
+#define MCLK_PORTD_BIT8                 \
+{ .name = "mclk1", .port = GPIO_PORT_D, .func = GPIO_FUNC_2, .pins = 1 << 8, }
 /*******************************************************************************************************************/
 
 #define MII_PORTBDF							\

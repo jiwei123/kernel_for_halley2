@@ -81,9 +81,11 @@ config MIPI_CAMERA
 choice
 	depends on MIPI_CAMERA
 		prompt "select mclk gpio"
-	default MCLK_GPIO_PE02
+	default MCLK_GPIO_PD08
 config MCLK_GPIO_PE02
 	bool "select pe02 as mclk pin."
+config MCLK_GPIO_PD08
+	bool "select pD08 as mclk pin."
 config MCLK_GPIO_PC24
 	bool "select pc24 as mclk pin."
 endchoice

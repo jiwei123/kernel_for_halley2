@@ -79,6 +79,9 @@ struct jz_gpio_func_def platform_devio_array[] = {
 #ifdef CONFIG_MCLK_GPIO_PE02
 	MCLK_PORTE_BIT2,
 #endif
+#ifdef CONFIG_MCLK_GPIO_PD08
+	MCLK_PORTD_BIT8,
+#endif
 #endif
 
 #if (defined(CONFIG_DVP_CAMERA0))

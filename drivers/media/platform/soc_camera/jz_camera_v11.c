@@ -1240,8 +1240,7 @@ static int __init jz_camera_probe(struct platform_device *pdev) {
 	pcdev->soc_host.ops             = &jz_soc_camera_host_ops;
 	pcdev->soc_host.priv            = pcdev;
 	pcdev->soc_host.v4l2_dev.dev    = &pdev->dev;
-	//pcdev->soc_host.nr              = pdev->id;
-	pcdev->soc_host.nr              = 0; /* use one cim0 or cim1 */
+	pcdev->soc_host.nr              = pdev->id;
 	pcdev->poll_flag		= 0;
 	pcdev->vb_address_flag		= 0;
 

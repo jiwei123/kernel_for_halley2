@@ -642,7 +642,8 @@ static int jz_set_ipu_csc_cfg(struct jz_ipu *ipu, int outW,
 	out_fmt_tmp = out_fmt;
 	if (in_fmt == IN_FMT_YUV422) {
 		/*it may be "in_fmt_tmp |= IN_OFT_VY1UY0;" at some time */
-		in_fmt_tmp |= IN_OFT_VY1UY0;
+		//in_fmt_tmp |= IN_OFT_VY1UY0;
+		in_fmt_tmp |= IN_OFT_Y1VY0U;
 	}
 	if (out_fmt == OUT_FMT_YUV422) {
 		out_fmt_tmp |= YUV_PKG_OUT_OFT_VY1UY0;

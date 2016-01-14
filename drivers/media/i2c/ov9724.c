@@ -11,7 +11,6 @@
 #include <mach/ovisp-v4l2.h>
 #include "ov9724.h"
 
-
 #define OV9724_CHIP_ID_H	(0x97)
 #define OV9724_CHIP_ID_L	(0x24)
 
@@ -126,7 +125,14 @@ static struct ov9724_win_setting {
 		.mbus_code	= V4L2_MBUS_FMT_SGRBG10_1X10,
 		.colorspace	= V4L2_COLORSPACE_SRGB,
 		.regs 		= ov9724_init_720p_raw10_regs,
-	}
+	},
+	{
+		.width		= 640,
+		.height		= 480,
+		.mbus_code	= V4L2_MBUS_FMT_SGRBG10_1X10,
+		.colorspace	= V4L2_COLORSPACE_SRGB,
+		.regs 		= ov9724_init_720p_raw10_regs,
+	},
 };
 #define N_WIN_SIZES (ARRAY_SIZE(ov9724_win_sizes))
 
