@@ -840,4 +840,52 @@ DEF_GPIO_I2C(2);
 #ifdef CONFIG_SOFT_I2C3_GPIO_V12_JZ
 DEF_GPIO_I2C(3);
 #endif
+
+struct client_i2c_data{
+	unsigned int bus_num;
+	int scl_gpio;
+	int sda_gpio;
+};
+
+static struct client_i2c_data i2c_bus[] = {
+#if defined(CONFIG_I2C0_V12_JZ)
+	{0, GPIO_PD(31), GPIO_PD(30)},
+#endif
+
+#if defined(CONFIG_I2C1_V12_JZ)
+	{1, GPIO_PE(31), GPIO_PE(30)},
+#endif
+
+#if defined(CONFIG_I2C2_V12_JZ)
+	{2, GPIO_PE(3), GPIO_PE(0)},
+#endif
+
+#if defined(CONFIG_I2C3_V12_JZ)
+	{3, GPIO_PB(8), GPIO_PB(7)},
+#endif
+
+#if defined(CONFIG_SOFT_I2C0_GPIO_V12_JZ)
+	{0, GPIO_I2C0_SCK, GPIO_I2C0_SDA},
+#endif
+
+#if defined(CONFIG_SOFT_I2C1_GPIO_V12_JZ)
+	{1, GPIO_I2C1_SCK, GPIO_I2C1_SDA},
+#endif
+
+#if defined(CONFIG_SOFT_I2C2_GPIO_V12_JZ)
+	{2, GPIO_I2C2_SCK, GPIO_I2C2_SDA},
+#endif
+
+#if defined(CONFIG_SOFT_I2C3_GPIO_V12_JZ)
+	{3, GPIO_I2C3_SCK, GPIO_I2C3_SDA},
+#endif
+};
+
+struct client_i2c_data *slpt_kernel_get_i2c_bus(int *size)
+{
+	*size = sizeof(i2c_bus) / sizeof(struct client_i2c_data);
+	return i2c_bus;
+}
+EXPORT_SYMBOL(slpt_kernel_get_i2c_bus);
+
 #endif /*CONFIG_I2C_GPIO*/
