@@ -277,8 +277,8 @@ static struct ricoh619_battery_platform_data ricoh619_battery_data = {
 		.ch_ilim_adp 	= 0x1D,	/* ILIM_ADP	= 0 - 0x1D (100mA - 3000mA) */
 		.ch_ilim_usb 	= 0x1D,	/* ILIM_USB	= 0 - 0x1D (100mA - 3000mA) */
 		.ch_icchg 	= (CONFIG_RICOH61X_CHARGE_DONE_LIMIT),	/* ICCHG	= 0 - 3 (50mA 100mA 150mA 200mA) */
-		.fg_target_vsys = 3500,	/* This value is the target one to DSOC=0% */
-		.fg_target_ibat = 100, /* This value is the target one to DSOC=0% */
+		.fg_target_vsys = 3300,	/* This value is the target one to DSOC=0% */
+		.fg_target_ibat = 150, /* This value is the target one to DSOC=0% */
 		.fg_poff_vbat 	= 0, 	/* setting value of 0 per Vbat */
 		.fg_rsense_val	= 100,	/* setting value of R Sense */
 		.jt_en 		= 0,	/* JEITA Enable	  = 0 or 1 (1:enable, 0:disable) */
@@ -299,8 +299,8 @@ static struct ricoh619_battery_platform_data ricoh619_battery_data = {
 		.ch_ilim_adp 	= 0x1D,	/* ILIM_ADP	= 0 - 0x1D (100mA - 3000mA) */
 		.ch_ilim_usb 	= 0x1D,	/* ILIM_USB	= 0 - 0x1D (100mA - 3000mA) */
 		.ch_icchg 	= (CONFIG_RICOH61X_CHARGE_DONE_LIMIT),	/* ICCHG	= 0 - 3 (50mA 100mA 150mA 200mA) */
-		.fg_target_vsys = 3500,	/* This value is the target one to DSOC=0% */
-		.fg_target_ibat = 100, /* This value is the target one to DSOC=0% */
+		.fg_target_vsys = 3300,	/* This value is the target one to DSOC=0% */
+		.fg_target_ibat = 150, /* This value is the target one to DSOC=0% */
 		.fg_poff_vbat 	= 0, 	/* setting value of 0 per Vbat */
 		.fg_rsense_val	= 50,	/* setting value of R Sense */
 		.jt_en 		= 0,	/* JEITA Enable	  = 0 or 1 (1:enable, 0:disable) */
@@ -321,8 +321,8 @@ static struct ricoh619_battery_platform_data ricoh619_battery_data = {
 		.ch_ilim_adp 	= 0x1D,	/* ILIM_ADP	= 0 - 0x1D (100mA - 3000mA) */
 		.ch_ilim_usb 	= 0x1D,	/* ILIM_USB	= 0 - 0x1D (100mA - 3000mA) */
 		.ch_icchg 	= 0x03,	/* ICCHG	= 0 - 3 (50mA 100mA 150mA 200mA) */
-		.fg_target_vsys = 3500,	/* This value is the target one to DSOC=0% */
-		.fg_target_ibat = 100, /* This value is the target one to DSOC=0% */
+		.fg_target_vsys = 3300,	/* This value is the target one to DSOC=0% */
+		.fg_target_ibat = 150, /* This value is the target one to DSOC=0% */
 		.fg_poff_vbat 	= 0, 	/* setting value of 0 per Vbat */
 		.fg_rsense_val	= 50,	/* setting value of R Sense */
 		.jt_en 		= 0,	/* JEITA Enable	  = 0 or 1 (1:enable, 0:disable) */
@@ -334,7 +334,7 @@ static struct ricoh619_battery_platform_data ricoh619_battery_data = {
 		.jt_ichg_h 	= 0x04,	/* ICHG Hi   	= 0 - 0x1D (100mA - 3000mA) */
 		.jt_ichg_l 	= 0x01,	/* ICHG Low   	= 0 - 0x1D (100mA - 3000mA) */
 	},
-	/*the battery for wakeup 320mah 4.2v, aw808 320mah 4.2v*/
+	/*the battery for wakeup 320mah 4.2v; aw808 320mah 4.2v; gyenno 300mah 4.2v; imco 270mah 4.2v*/
 	.type[4] = {
 		.ch_vfchg 	= 0x03,	/* VFCHG	= 0 - 4 (4.05v, 4.10v, 4.15v, 4.20v, 4.35v) */
 		.ch_vrchg 	= 0x04,	/* VRCHG	= 0 - 4 (3.85v, 3.90v, 3.95v, 4.00v, 4.10v) */
@@ -343,8 +343,8 @@ static struct ricoh619_battery_platform_data ricoh619_battery_data = {
 		.ch_ilim_adp 	= 0x1D,	/* ILIM_ADP	= 0 - 0x1D (100mA - 3000mA) */
 		.ch_ilim_usb 	= 0x1D,	/* ILIM_USB	= 0 - 0x1D (100mA - 3000mA) */
 		.ch_icchg 	= 0x00,	/* ICCHG	= 0 - 3 (50mA 100mA 150mA 200mA) */
-		.fg_target_vsys = 3500,	/* This value is the target one to DSOC=0% */
-		.fg_target_ibat = 100, /* This value is the target one to DSOC=0% */
+		.fg_target_vsys = 3300,	/* This value is the target one to DSOC=0% */
+		.fg_target_ibat = 150, /* This value is the target one to DSOC=0% */
 		.fg_poff_vbat 	= 0, 	/* setting value of 0 per Vbat */
 		.fg_rsense_val	= 50,	/* setting value of R Sense */
 		.jt_en 		= 0,	/* JEITA Enable	  = 0 or 1 (1:enable, 0:disable) */
@@ -356,7 +356,7 @@ static struct ricoh619_battery_platform_data ricoh619_battery_data = {
 		.jt_ichg_h 	= 0x04,	/* ICHG Hi   	= 0 - 0x1D (100mA - 3000mA) */
 		.jt_ichg_l 	= 0x01,	/* ICHG Low   	= 0 - 0x1D (100mA - 3000mA) */
 	},
-	/*the battery for oband 300mah 4.35v; oband 310mah 4.35v; inwatch 310mah 4.35v  */
+	/*the battery for oband 300mah 4.35v; oband 310mah 4.35v; inwatch 310mah 4.35v plus v2 */
 	.type[5] = {
 		.ch_vfchg 	= 0x04,	/* VFCHG	= 0 - 4 (4.05v, 4.10v, 4.15v, 4.20v, 4.35v) */
 		.ch_vrchg 	= 0x04,	/* VRCHG	= 0 - 4 (3.85v, 3.90v, 3.95v, 4.00v, 4.10v) */
@@ -365,10 +365,32 @@ static struct ricoh619_battery_platform_data ricoh619_battery_data = {
 		.ch_ilim_adp 	= 0x1D,	/* ILIM_ADP	= 0 - 0x1D (100mA - 3000mA) */
 		.ch_ilim_usb 	= 0x1D,	/* ILIM_USB	= 0 - 0x1D (100mA - 3000mA) */
 		.ch_icchg 	= 0x00,	/* ICCHG	= 0 - 3 (50mA 100mA 150mA 200mA) */
-		.fg_target_vsys = 3500,	/* This value is the target one to DSOC=0% */
-		.fg_target_ibat = 100, /* This value is the target one to DSOC=0% */
+		.fg_target_vsys = 3300,	/* This value is the target one to DSOC=0% */
+		.fg_target_ibat = 150, /* This value is the target one to DSOC=0% */
 		.fg_poff_vbat 	= 0, 	/* setting value of 0 per Vbat */
 		.fg_rsense_val	= 50,	/* setting value of R Sense */
+		.jt_en 		= 0,	/* JEITA Enable	  = 0 or 1 (1:enable, 0:disable) */
+		.jt_hw_sw 	= 1,	/* JEITA HW or SW = 0 or 1 (1:HardWare, 0:SoftWare) */
+		.jt_temp_h 	= 50,	/* degree C */
+		.jt_temp_l 	= 12,	/* degree C */
+		.jt_vfchg_h 	= 0x03,	/* VFCHG High  	= 0 - 4 (4.05v, 4.10v, 4.15v, 4.20v, 4.35v) */
+		.jt_vfchg_l 	= 0,	/* VFCHG High  	= 0 - 4 (4.05v, 4.10v, 4.15v, 4.20v, 4.35v) */
+		.jt_ichg_h 	= 0x04,	/* ICHG Hi   	= 0 - 0x1D (100mA - 3000mA) */
+		.jt_ichg_l 	= 0x01,	/* ICHG Low   	= 0 - 0x1D (100mA - 3000mA) */
+	},
+	/*the battery for 4.35v battery and the rsense is 100 */
+	.type[6] = {
+		.ch_vfchg 	= 0x04,	/* VFCHG	= 0 - 4 (4.05v, 4.10v, 4.15v, 4.20v, 4.35v) */
+		.ch_vrchg 	= 0x04,	/* VRCHG	= 0 - 4 (3.85v, 3.90v, 3.95v, 4.00v, 4.10v) */
+		.ch_vbatovset 	= 0x1,	/* VBATOVSET	= 0 or 1 (0 : 4.38v(up)/3.95v(down) 1: 4.53v(up)/4.10v(down)) */
+		.ch_ichg 	= 0x09,	/* ICHG		= 0 - 0x1D (100mA - 3000mA) */
+		.ch_ilim_adp 	= 0x1D,	/* ILIM_ADP	= 0 - 0x1D (100mA - 3000mA) */
+		.ch_ilim_usb 	= 0x1D,	/* ILIM_USB	= 0 - 0x1D (100mA - 3000mA) */
+		.ch_icchg 	= 0x00,	/* ICCHG	= 0 - 3 (50mA 100mA 150mA 200mA) */
+		.fg_target_vsys = 3300,	/* This value is the target one to DSOC=0% */
+		.fg_target_ibat = 150, /* This value is the target one to DSOC=0% */
+		.fg_poff_vbat 	= 0, 	/* setting value of 0 per Vbat */
+		.fg_rsense_val	= 100,	/* setting value of R Sense */
 		.jt_en 		= 0,	/* JEITA Enable	  = 0 or 1 (1:enable, 0:disable) */
 		.jt_hw_sw 	= 1,	/* JEITA HW or SW = 0 or 1 (1:HardWare, 0:SoftWare) */
 		.jt_temp_h 	= 50,	/* degree C */

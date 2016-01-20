@@ -1,3 +1,4 @@
+#include <linux/kernel.h>
 #include <linux/printk.h>
 #include <linux/time.h>
 #include <linux/rtc.h>
@@ -102,6 +103,15 @@ void show_gpio_wakeup_sources(int port);
 
 struct rtc_time tm_suspend;
 unsigned long total_suspend_time = 0;
+unsigned long current_suspned_time = 0;
+
+void clear_current_suspned_time(void) {
+	current_suspned_time = 0;
+}
+
+unsigned long get_current_suspned_time(void) {
+	return current_suspned_time;
+}
 
 unsigned int mask_rtc_wakeup = 0;
 core_param(mask_rtc_wakeup, mask_rtc_wakeup, int, 0644);
@@ -139,6 +149,7 @@ void show_suspend_time(void) {
 	minutes = delta / 60 % 60;
 	seconds = delta % 60;
 
+	current_suspned_time = delta;
 	total_suspend_time += delta;
 
 	pr_err("Total suspend: %ddays %dhours %dmintues %dseconds\n", days, hours, minutes, seconds);

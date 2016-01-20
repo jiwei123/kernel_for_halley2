@@ -14,6 +14,10 @@ config POWER_SUPPLY_DEBUG
 	  Say Y here to enable debugging messages for power supply class
 	  and drivers.
 
+config REBOOT_IF_CHARGER_ONLINE_WHEN_SYSTEM_SHUTDOWN
+	bool "Reboot if charger online when system shutdown"
+	default y
+
 config PDA_POWER
 	tristate "Generic PDA/phone power driver"
 	depends on !S390
@@ -438,26 +442,31 @@ config RICOH61X_CHARGE_DONE_LIMIT
 
 config LARGE_CAPACITY_BATTERY
 	  bool "Large capacity battery for 2000mA 4000mA"
+	  depends on !BATTERY_TYPE_LIST
 	  help
 	  Say "Y" to enable large capacity battery.
 
 config 300MAH_CAPACITY_BATTERY
 	  bool "Used 300mAh capacity battery"
+	  depends on !BATTERY_TYPE_LIST
 	  help
 	  Say "Y" to enable 300mAh capacity battery.
 
 config 320MAH_CAPACITY_BATTERY
 	  bool "Used 320mAh capacity battery"
+	  depends on !BATTERY_TYPE_LIST
 	  help
 	  Say "Y" to enable 320mAh capacity battery.
 
 config 200MAH_CAPACITY_BATTERY
 	  bool "Used 200mAh capacity battery"
+	  depends on !BATTERY_TYPE_LIST
 	  help
 	  Say "Y" to enable 200mAh capacity battery.
 
 config SMALL_CAPACITY_BATTERY
 	  bool "Small capacity battery for 260mA 500mA"
+	  depends on !BATTERY_TYPE_LIST
 	  help
 	  Say "Y" to enable small capacity battery.
 
@@ -498,6 +507,21 @@ config BATTERY_INWATCH_310MAH_4350MV
         bool "Inwatch 310MAH 4.35V battery"
         help
           Say Y to enable support for Inwatch 310mah 4.35v battery.
+
+config BATTERY_INWATCH_310MAH_4350MV_V2
+        bool "Inwatch 310MAH 4.35V battery v2"
+        help
+          Say Y to enable support for Inwatch 310mah 4.35v battery version 2.
+
+config BATTERY_GYENNO_300MAH_4200MV
+        bool "Gyenno 300MAH 4.2V battery"
+        help
+          Say Y to enable support for Gyenno 300mah 4.2v battery.
+
+config BATTERY_IMCO_270MAH_4200MV
+	bool "Imco 270MAH 4.2V battery"
+        help
+          Say Y to enable support for Imco 270mah 4.2v battery.
 endif
 endif
 

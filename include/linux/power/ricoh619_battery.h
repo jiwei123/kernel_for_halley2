@@ -136,7 +136,7 @@ struct ricoh619_battery_type_data {
 	int	jt_ichg_l;
 };
 
-#define BATTERY_TYPE_NUM 6
+#define BATTERY_TYPE_NUM 7
 struct ricoh619_battery_platform_data {
 	int	irq;
 	int	alarm_vol_mv;
