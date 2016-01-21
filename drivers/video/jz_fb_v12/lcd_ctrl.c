@@ -131,4 +131,14 @@ unsigned long slpt_get_jzfb_param(int id, const char *param) {
 	return 0;
 }
 EXPORT_SYMBOL(slpt_get_jzfb_param);
+
+int slpt_get_kernel_pixel_align(void)
+{
+#if defined(PIXEL_ALIGN)
+	return PIXEL_ALIGN;
+#else
+	return -1;
+#endif
+}
+EXPORT_SYMBOL(slpt_get_kernel_pixel_align);
 #endif
