@@ -522,6 +522,11 @@ config BATTERY_IMCO_270MAH_4200MV
 	bool "Imco 270MAH 4.2V battery"
         help
           Say Y to enable support for Imco 270mah 4.2v battery.
+
+config BATTERY_IMCO_300MAH_4200MV
+	bool "Imco 300MAH 4.2V battery"
+	help
+		Say Y to enable support for Imco 300mah 4.2v battery.
 endif
 endif
 
