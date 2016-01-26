@@ -14,6 +14,8 @@
 #include <asm/atomic.h>
 #include <linux/i2c/i2c_power_manager.h>
 
+#include "led_ctrl.h"
+
 #define PAH8001
 #ifndef PAH8001
 #define PAJ3007			//choose PAH8001 or PAJ3007
@@ -58,10 +60,22 @@
 
 #define PIXART_IOC_MAGIC 'h'
 #define PIXART_IOCTL_ENABLE_DISABLE (0)
-#define PIXART_IOC_MAXNR 1
+#define PIXART_IOCTL_FACTORY_TEST_START (1)
+#define PIXART_IOCTL_FACTORY_TEST_GET (2)
+#define PIXART_IOCTL_FACTORY_TEST_END (3)
+#define PIXART_IOC_MAXNR 4
+
+#define FACTORY_TESTING_CHECK_MECHANICAL_ASSEMBLY   0x01
+#define FACTORY_TESTING_CHECK_FRAME_AVERAGE         0x02
 
 #define PIXART_IOCTL_SENSOR_ENABLE_DISABLE \
             _IOW(PIXART_IOC_MAGIC, PIXART_IOCTL_ENABLE_DISABLE, int)
+#define PIXART_IOCTL_SENSOR_FACTORY_TEST_START \
+            _IOW(PIXART_IOC_MAGIC, PIXART_IOCTL_FACTORY_TEST_START, int)
+#define PIXART_IOCTL_SENSOR_FACTORY_TEST_GET \
+            _IOW(PIXART_IOC_MAGIC, PIXART_IOCTL_FACTORY_TEST_GET, int)
+#define PIXART_IOCTL_SENSOR_FACTORY_TEST_END \
+            _IOW(PIXART_IOC_MAGIC, PIXART_IOCTL_FACTORY_TEST_END, int)
 
 #define OFN_REGITER_BANK_SEL 127
 #define OFN_BANK0 0
@@ -93,6 +107,15 @@ typedef struct {
 	int abs_y;
 	int enabled;
 } ofn_data_t;
+
+/*
+ * abstract a register of PAH8001
+ */
+struct pah8001_reg {
+	unsigned char bank;
+	unsigned char reg_addr;
+	unsigned char reg_val;
+};
 
 typedef struct {
 	struct i2c_client *client;
@@ -130,6 +153,28 @@ static int ofn_release(struct inode *inode, struct file *filp);
 static void resume_work_func(struct work_struct *work);
 static void open_device(void);
 static void resume_open_device(void);
+static int ofn_bank_select(bank_e bank);
+static void pah8001_power_down(u8 yes);
+
+static void pah8001_power_down(u8 yes)
+{
+    u8 data = 0 ;
+    u8 read_back = 0;
+
+    ofn_bank_select(0);
+    udelay(100);
+
+    if(yes) {
+        data = 0x0a;
+        ofn_write_reg(0x06, data);
+        ofn_read_reg(0x06, &read_back);
+    } else {
+        data = 0x02;
+        ofn_write_reg(0x06, data);
+        ofn_write_reg(0x05, 0x99);
+    }
+    udelay(100);
+}
 
 static struct file_operations ofn_fops = {
 	.owner = THIS_MODULE,
@@ -162,6 +207,9 @@ void PAJ3007_led_ctrl(uint8_t touch)
 
 void PAH8001_led_ctrl(uint8_t touch)
 {
+    led_ctrl(touch);
+
+/*
 	if (touch == 0x80) {
 		__write_reg(0x05, 0x98);
 		__write_reg(0x7f, 0x01);	//for bank1
@@ -172,6 +220,7 @@ void PAH8001_led_ctrl(uint8_t touch)
 		__write_reg(0x7f, 0x01);	//for bank1
 		__write_reg(0x42, 0xA0);
 	}
+*/
 }
 
 
@@ -303,10 +352,7 @@ static int ofn_set_reg(u8 reg, u8 data)
 static int ofn_bank_select(bank_e bank)
 {
     int ret = 0;
-	// printk("%s (%d) : ofn bank selection\n", __func__, __LINE__);
 
-	//if(ofndata.bank != bank)
-	//{
 	switch (bank) {
 	case BANK0:
 		ret = ofn_set_reg(OFN_REGITER_BANK_SEL, OFN_BANK0);	// OFN_REGITER_BANK_SEL = OX7F
@@ -320,7 +366,6 @@ static int ofn_bank_select(bank_e bank)
 		break;
 	default:
 		break;
-		//      }
 
 		ofndata.bank = bank;
 	}
@@ -407,6 +452,9 @@ static int ppg_1000_init(void)
 	int ret = -1;
 	int bank = 0;
 	u8 data = 0;
+
+	__write_reg(0x06, 0x82);
+	msleep(2);
 
 	for (i = 0; i < INIT_PPG_REG_ARRAY_SIZE_1000; i++) {
 		if (init_ppg_register_array_1000[i][0] == 0x7F)
@@ -528,6 +576,7 @@ static int ofn_init_reg(void)
 	if ((data0 != 0x30) || ((data1 & 0xF0) != 0xD0)) {
 		return -1;
 	}
+
 #ifdef PAH8001
 	ret = ppg_1000_init();
 #else
@@ -563,12 +612,9 @@ static void ofn_ppg(void)
 		__func__, __LINE__, touch_flag);*/
 
 		touch_flag &= 0x80;
-#ifdef PAJ3007
-		PAJ3007_led_ctrl(touch_flag);
-#else
+
 #ifdef PAH8001
-		PAH8001_led_ctrl(touch_flag);
-#endif
+        PAH8001_led_ctrl(touch_flag);
 #endif
 
 		ret = ofn_bank_select(BANK1);
@@ -588,6 +634,7 @@ static void ofn_ppg(void)
 #if (RAW_TO_HAL == 0)
 			int tmp = 0;
 #endif
+			_ppg_mems_data[_write_index].HRD_Data[0] = 1;
 			ofn_i2c_burst_read(0x64,
 					   &(_ppg_mems_data[_write_index].
 					     HRD_Data[1]), 4);
@@ -600,7 +647,9 @@ static void ofn_ppg(void)
 			_ppg_mems_data[_write_index].HRD_Data[9] =
 			    jiffies_to_msecs(end_jiffies - start_jiffies);
 			start_jiffies = end_jiffies;
-			_ppg_mems_data[_write_index].HRD_Data[10] = 0;
+
+			_ppg_mems_data[_write_index].HRD_Data[10] = get_led_current_change_flag();
+
 			_ppg_mems_data[_write_index].HRD_Data[11] =
 			    touch_flag;
 			_ppg_mems_data[_write_index].HRD_Data[12] =
@@ -641,7 +690,7 @@ static void ofn_ppg(void)
 			tmp &= FIFO_SIZE_M1;
 
 			if (tmp == _read_index) {
-				printk("Buffer over flow!!!\n");
+//				printk("Buffer over flow!!!\n");
 			} else
 				_write_index = tmp;
 #endif
@@ -1101,33 +1150,22 @@ static int ofn_init_chip(struct pah8001_platform_data *pdata)
 
     if (pdata->gpio_pd >= 0) {
         gpio_set_value(pdata->gpio_pd, 1);
-        msleep(10);
+        msleep(2);
     }
 
     gpio_set_value(pdata->gpio_reset, 0);
-    msleep(10);
+    msleep(2);
     gpio_set_value(pdata->gpio_reset, 1);
-    msleep(10);
-
-    //Software Power Down Mode
-    ofn_bank_select(BANK0);
-    if (err < 0) {
-        printk("%s : ofn_bank_select error\n", __func__);
-        return err;
-    }
-
-    err = __write_reg(0x06, 0x0a);
-    if (err < 0) {
-        printk("ofn write reg error\n");
-        return err;
-    }
-    msleep(5);
+    msleep(2);
 
     err = ofn_init_reg();
     if (err < 0) {
         printk("ofn_init_reg error\n");
         return err;
     }
+
+    //Software Power Down Mode
+    pah8001_power_down(1);
 
     return 0;
 }
@@ -1181,7 +1219,7 @@ static int ofn_i2c_probe(struct i2c_client *client,
             goto free_gpio;
         } else {
             gpio_direction_output(pdata->gpio_pd, 1);
-            msleep(10);
+            msleep(2);
         }
     }
 
@@ -1207,7 +1245,7 @@ static int ofn_i2c_probe(struct i2c_client *client,
 	err = register_chrdev(0, ofn_name, &ofn_fops);	//\B9\AE\C0\DA \C0\E5ġ return value\B4\C2 major number \C7Ҵ\E7
 	if (err < 0) {
 		printk(KERN_WARNING "Can't get major\n");
-		goto free_gpio;
+		goto power_off;
 	} else {
 #if (OFN_SUPPORT == 1)
 #if (OFN_MOUSE == 1)
@@ -1363,8 +1401,9 @@ static int ofn_suspend(struct device *dev)
     cancel_delayed_work_sync(&ofndata.resume_work);
     flush_scheduled_work();
 
-    if (pdata->gpio_reset > 0)
+    if (pdata->gpio_reset > 0) {
         gpio_direction_input(pdata->gpio_reset);
+    }
 
     if (pdata->gpio_pd > 0) {
         gpio_direction_input(pdata->gpio_pd);
@@ -1388,45 +1427,10 @@ static int ofn_suspend(struct device *dev)
 static void resume_work_func(struct work_struct *work)
 {
     struct pah8001_platform_data *pdata = NULL;
-    int err = 0;
 
     pdata = ofndata.pdata;
 
     i2c_power_device_on(device);
-
-    if (pdata->gpio_reset > 0) {
-        gpio_direction_output(pdata->gpio_reset, 1);
-    }
-
-    if (pdata->gpio_pd > 0) {
-        gpio_direction_output(pdata->gpio_pd, 1);
-        msleep(10);
-    }
-
-    if (pdata->gpio_reset > 0) {
-        gpio_direction_output(pdata->gpio_reset, 0);
-        msleep(10);
-        gpio_direction_output(pdata->gpio_reset, 1);
-        msleep(10);
-    }
-
-    //Software Power Down Mode
-    err = ofn_bank_select(BANK0);
-    if (err < 0) {
-        printk("%s : ofn_bank_select error\n", __func__);
-    }
-    err = __write_reg(0x06, 0x0a);
-    if (err < 0) {
-        printk("ofn write reg error\n");
-        return;
-    }
-    msleep(5);
-
-    err = ofn_init_reg();
-    if (err < 0) {
-        printk("ofn_init_reg error\n");
-        return;
-    }
 
     atomic_set(&devices_configed, 1);
 
@@ -1497,11 +1501,9 @@ static void resume_open_device(void)
     ofndata.hr = 0;
     ofndata.run_hrd = true;
 
-    ofn_bank_select(BANK0);
-    __write_reg(0x06, 0x02);
     if (ofndata.pdata->gpio_pd >= 0)
         gpio_direction_output(ofndata.pdata->gpio_pd, 0);
-    msleep(5);
+    pah8001_power_down(0);
 
 #if (OFN_SUPPORT == 0)
 #if (INTERRUPT_MODE == 0)
@@ -1530,42 +1532,96 @@ static void open_device(void) {
     ofndata.hr = 0;
     ofndata.run_hrd = true;
 
-    ofn_bank_select(BANK0);
-    __write_reg(0x06, 0x02);
     if (ofndata.pdata->gpio_pd >= 0)
         gpio_direction_output(ofndata.pdata->gpio_pd, 0);
-    msleep(5);
+    pah8001_power_down(0);
 
 #if (OFN_SUPPORT == 0)
 #if (INTERRUPT_MODE == 0)
-    schedule_delayed_work(&ofndata.x_work, msecs_to_jiffies(100));
+    schedule_delayed_work(&ofndata.x_work, msecs_to_jiffies(10));
 #endif
 #endif
 }
 
 static void close_device(void) {
-    unsigned char val = 0;
     unsigned long timeout = 0;
 
     atomic_dec(&device_working_flag);
     timeout = jiffies + (HZ / 4);
     while(time_before(jiffies, timeout) && !atomic_read(&devices_configed));
 
-    ofn_bank_select(BANK0);
-    do {
-        __write_reg(0x06, 0x0a);
-        __read_reg(0x06, &val);
-    } while (val != 0x0a);
     if (ofndata.pdata->gpio_pd >= 0)
         gpio_direction_output(ofndata.pdata->gpio_pd, 1);
-    msleep(5);
+    pah8001_power_down(1);
     ofndata.run_hrd = false;
+}
+
+/*
+ * Loading initial setting, used for 'PAH8001 Factory Testing'
+ */
+static void load_initial_setting(void)
+{
+	u8 temp = 0;
+
+	/*
+	 * PD: Hardware control to enter power down mode
+	 * Build-in 1M ohm pull-down resistor
+	 * Level High: enter power down mode
+	 * Level Low: leave power down mode
+	 * Set to low when not used
+	 */
+	if (ofndata.pdata->gpio_pd >= 0) {
+		gpio_direction_output(ofndata.pdata->gpio_pd, 0);
+		msleep(10);
+	}
+
+	__write_reg(0x7F,0x00);
+	__write_reg(0x06,0x82);   /* Initial setting Start */
+	udelay(20 * 1000); /* about 10ms */
+	__write_reg(0x09,0x5A);
+	__write_reg(0x05,0x99);
+	__read_reg(0x17, &temp);
+	__write_reg(0x17,temp|0x80);
+	__write_reg(0x27,0xFF);
+	__write_reg(0x28,0xFA);
+	__write_reg(0x29,0x0A);
+	__write_reg(0x2A,0xC8);
+	__write_reg(0x2B,0xA0);
+	__write_reg(0x2C,0x8C);
+	__write_reg(0x2D,0x64);
+	__write_reg(0x42,0x20);
+	__write_reg(0x48,0x00);
+	__write_reg(0x4D,0x1A); 	/* for wrist application */
+	__write_reg(0x4D,0x18); 	/* for no mechanical cover test only */
+	__write_reg(0x7A,0xB5);
+	__write_reg(0x7F,0x01);
+	__write_reg(0x07,0x48);
+	__write_reg(0x23,0x3C);
+	__write_reg(0x26,0x0F);
+	__write_reg(0x2E,0x48);
+	__write_reg(0x38,0xEA);
+	__write_reg(0x42,0xA4);
+	__write_reg(0x43,0x41);
+	__write_reg(0x44,0x41);
+	__write_reg(0x45,0x24);
+	__write_reg(0x46,0xC0);
+	__write_reg(0x52,0x32);
+	__write_reg(0x53,0x28);
+	__write_reg(0x56,0x60);
+	__write_reg(0x57,0x28);
+	__write_reg(0x6D,0x02);
+	__write_reg(0x0F,0xC8);
+	__write_reg(0x7F,0x00);
+	__write_reg(0x5D,0x81);   /* Initial setting End */
 }
 
 static long ofn_ioctl(struct file *file, unsigned int cmd,
 		      unsigned long arg)
 {
     int retval = 0;
+    u8 val = 0;
+    int testcase = 0;
+    struct pah8001_reg reg;
 
     if (_IOC_TYPE(cmd) != PIXART_IOC_MAGIC)
         return -EINVAL;
@@ -1600,9 +1656,84 @@ static long ofn_ioctl(struct file *file, unsigned int cmd,
         }
         break;
 
+    case PIXART_IOCTL_SENSOR_FACTORY_TEST_START:
+        if (get_user(testcase, (int __user *)arg))
+            return -EFAULT;
+
+        /*
+         * Factory Testing include two test cases:
+         * 1. Factory Testing_Check Mechanical Assembly
+         * 2. Factory Testing_Check Frame Average
+         */
+        if (testcase == FACTORY_TESTING_CHECK_MECHANICAL_ASSEMBLY) {
+            load_initial_setting();
+
+            __write_reg(0x7F, 0x00);
+            __read_reg(0x59, &val);
+            val = val & 0x80;
+            led_ctrl(val);
+            if (val != 0x80) {
+                __write_reg(0x7f, 0x00);
+                __write_reg(0x0B, 0x00);
+            }
+
+            udelay(2 * 1000 * 1000);
+            __write_reg(0x7f, 0x00);
+            __read_reg(0x08, &val);
+            val = val & 0x7;
+            printk(KERN_ERR "%s %d reg[0x0B]=0x%x\n", __FUNCTION__, __LINE__, val);
+
+        } else if (testcase == FACTORY_TESTING_CHECK_FRAME_AVERAGE) {
+            //Factory Testing_Check Frame Average
+            load_initial_setting();
+
+            //Disable AE
+            __write_reg(0x7f, 0x00);
+            __write_reg(0x20, 0x0E);
+
+            //Turn off LED
+            __write_reg(0x7f, 0x01);
+            __write_reg(0x38, 0xE0);
+
+            //Read FRAME_AVERAGE
+            __write_reg(0x7f, 0x01);
+            __read_reg(0x1B, &val);
+
+            udelay(2 * 1000 * 1000);
+
+            //Turn on LED
+            __write_reg(0x7f, 0x01);
+            __write_reg(0x38, 0xFF);
+        } else {
+            retval = -EINVAL;
+            dev_err(&ofndata.client->dev, "Unsupport IO command\n");
+        }
+        break;
+
+    case PIXART_IOCTL_SENSOR_FACTORY_TEST_GET:
+        if (copy_from_user(&reg, (struct pah8001_reg __user *)arg, sizeof(reg)))
+            return -EFAULT;
+
+        ofn_bank_select(reg.bank);
+        __read_reg(reg.reg_addr, &reg.reg_val);
+
+        if (copy_to_user((struct pah8001_reg __user *)arg, (void *)&reg, sizeof(reg)))
+            return -EFAULT;
+        break;
+
+    case PIXART_IOCTL_SENSOR_FACTORY_TEST_END:
+        ofn_bank_select(BANK0);
+        do {
+            __write_reg(0x06, 0x0a);
+            __read_reg(0x06, &val);
+        } while (val != 0x0a);
+        if (ofndata.pdata->gpio_pd >= 0)
+            gpio_direction_output(ofndata.pdata->gpio_pd, 1);
+        break;
+
     default:
-       dev_err(&ofndata.client->dev, "Unsupport IO command\n");
-       return -EINVAL;
+           dev_err(&ofndata.client->dev, "Unsupport IO command\n");
+           return -EINVAL;
     }
 
     return retval;
@@ -1624,14 +1755,6 @@ static int __init ofn_init(void)
 {
 	int retval;
 
-/*	retval = i2c_add_driver(&mems_i2c_driver);   //for gsenosor LIS3DH
-	if(retval < 0)
-	{
-		printk(KERN_WARNING "Can't add 8001 driver\n");
-		return retval;
-	}
-*/
-
 	retval = i2c_add_driver(&ofn_i2c_driver);
 	if (retval) {
 		printk
@@ -1648,163 +1771,7 @@ static void __exit ofn_exit(void)
 	class_destroy(ofndata.ofn_class);	//delete class created by us
 	unregister_chrdev(ofndata.major_id, ofn_name);
 	i2c_del_driver(&ofn_i2c_driver);
-//	i2c_del_driver(&mems_i2c_driver);       //for gsenosor LIS3DH
 }
-
-//////******************************************************************************************************************///////////////////
-/*                                                               //for gsenosor LIS3DH
-static int mems_i2c_write(u8 reg, u8 *data, int len)
-{
-	u8  buf[20];
-	int rc;
-	int ret = 0;
-	int i;
-
-	buf[0] = reg;
-	if (len >= 20) {
-		printk("%s (%d) : FAILED: buffer size is limitted(20) %d\n", __func__, __LINE__, len);
-		dev_err(&memsdata.client->dev, "mems_i2c_write FAILED: buffer size is limitted(20)\n");
-		return -1;
-	}
-
-	for(i = 0; i < len; i++ ) {
-		buf[i+1] = data[i];
-	}
-
-	rc = i2c_master_send(memsdata.client, buf, len+1);
-
-	if (rc != len+1) {
-		printk("%s (%d) : FAILED: writing to reg 0x%x\n", __func__, __LINE__, reg);
-		ret = -1;
-	}
-
-	return ret;
-}
-
-static int mems_i2c_read(u8 reg, u8 *data, u8 len)
-{
-	u8  buf[256];
-	int rc;
-
-	if(len>1)
-		reg |= 0x80;
-
-	buf[0] = reg;
-
-	rc = i2c_master_send(memsdata.client, buf, 1);    // Returns negative errno, or else the number of bytes written.
-	if (rc != 1) {
-		printk("%s (%d) : FAILED: writing to address 0x%x\n", __func__, __LINE__, reg);
-		return -1;
-	}
-
-	rc = i2c_master_recv(memsdata.client, data, len);
-	if (rc != len) {
-		printk("%s (%d) : FAILED: reading data %d\n", __func__, __LINE__, rc);
-		return -1;
-	}
-
-	return 0;
-}
-
-static int mems_init_reg(void)
-{
-	u8 who_am_i = 0;
-	u8 data;
-	int ret = -1;
-
-	printk("%s (%d) : \n", __func__, __LINE__);
-
-	ret = mems_i2c_read(0x0F, &who_am_i, 1);
-	if(ret) {
-		return ret;
-	}
-
-	printk("who_ami_i = 0x%x\n", who_am_i);
-	if(who_am_i != 0x33) {
-		return -1;
-	}
-
-	data = 0x67;
-	ret = mems_i2c_write(0x20, &data, 1);
-	if(ret) {
-		return ret;
-	}
-
-	data = 0x10;
-	ret = mems_i2c_write(0x22, &data, 1);
-	if(ret) {
-		return ret;
-	}
-
-	printk("%s (%d) \n", __func__, __LINE__);
-
-	return 0;
-}
-
-static int mems_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id)
-{
-	int err = 0;
-
-	struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
-
-	printk("%s (%d) : probe module\n", __func__, __LINE__);
-
-	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_BYTE)) {
-		err = -EIO;
-		return err;
-	}
-
-	memsdata.client = client;
-
-	err = mems_init_reg();
-	if (err < 0) {
-		return err;
-	}
-
-	return err;
-}
-
-static int mems_i2c_remove(struct i2c_client *client)
-{
-	printk("%s (%d) : \n", __func__, __LINE__);
-	return 0;
-}
-
-static int mems_suspend(struct device *dev)
-{
-	printk("%s (%d) : \n", __func__, __LINE__);
-	return 0;
-}
-
-static int mems_resume(struct device *dev)
-{
-	printk("%s (%d) :  \n", __func__, __LINE__);
-	return 0;
-}
-
-
-static const struct i2c_device_id mems_device_id[] = {
-	{"st_mems", 0},
-	{}
-};
-
-MODULE_DEVICE_TABLE(i2c, mems_device_id);
-
-static const struct dev_pm_ops mems_pm_ops = {
-	.suspend = mems_suspend,
-	.resume = mems_resume
-};
-
-static struct i2c_driver mems_i2c_driver = {
-	.driver = {
-		.name = "st_mems",
-		.owner = THIS_MODULE,
-		.pm = &mems_pm_ops},
-		.probe = mems_i2c_probe,
-		.remove = mems_i2c_remove,
-		.id_table = mems_device_id,
-};
-*/
 
 module_init(ofn_init);
 module_exit(ofn_exit);
