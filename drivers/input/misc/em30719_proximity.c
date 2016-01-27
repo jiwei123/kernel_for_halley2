@@ -449,7 +449,7 @@ static int em30719_i2c_probe(struct i2c_client *client,
     em30719data.irq = gpio_to_irq(pdata->gpio_int);
     if (em30719data.irq > 0) {
         err = request_any_context_irq(em30719data.irq, em30719_irq_func,
-                IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING, "em30719_irq",
+                IRQF_TRIGGER_LOW, "em30719_irq",
                 &em30719data);
 
         if (err) {
