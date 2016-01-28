@@ -145,6 +145,7 @@ static long slpt_ioctl(struct file *filp, unsigned int cmd, unsigned long args)
 		return -EFAULT;
 	}
 
+#if 0
 	if (head.hdr_len != 0) {
 		hdr = kmalloc(head.hdr_len, GFP_KERNEL);
 		if (hdr == NULL) {
@@ -178,6 +179,7 @@ static long slpt_ioctl(struct file *filp, unsigned int cmd, unsigned long args)
 			goto out_mem;
 		}
 	}
+#endif
 
 	switch (cmd) {
 	case SLPT_CMD_LOAD_FW:

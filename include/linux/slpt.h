@@ -23,6 +23,7 @@
 #include <linux/ioctl.h>
 #include <linux/suspend.h>
 #include <linux/slpt_cache.h>
+#include <linux/time.h>
 
 /* Define pm_entry function argument */
 #define SLPTARG 'S'
@@ -382,6 +383,7 @@ extern int (*slpt_save_pm_enter_func)(suspend_state_t state);
 
 extern void slpt_set_suspend_ops(struct platform_suspend_ops *ops);
 extern int slpt_suspend_in_kernel(suspend_state_t state);
+extern void set_suspend_time(struct timespec suspend_time);
 extern int slpt_printf(const char *fmt, ...);
 extern int fb_is_always_on(void);
 extern void wlan_pw_en_disable(void);

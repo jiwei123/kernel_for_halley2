@@ -17,6 +17,7 @@
 #include <linux/mm.h>
 #include <linux/slab.h>
 #include <linux/suspend.h>
+#include <linux/time.h>
 
 #define TCSM_SAVE_SIZE   4096
 #define TCSM_BASE        (0xb3422000)
@@ -59,3 +60,22 @@ void __weak wlan_pw_en_disable(void) {
 
 }
 
+
+static struct timespec suspend_time;
+
+void slpt_set_suspend_time(void)
+{
+	getnstimeofday(&suspend_time);
+}
+
+int slpt_get_suspend_time(long int *tv_sec, long int *tv_nsec)
+{
+	if (tv_sec == NULL || tv_nsec == NULL)
+		return -EINVAL;
+
+	*tv_sec = suspend_time.tv_sec;
+	*tv_nsec = suspend_time.tv_nsec;
+
+	return 0;
+}
+EXPORT_SYMBOL(slpt_get_suspend_time);

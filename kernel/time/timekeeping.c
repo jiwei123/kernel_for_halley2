@@ -966,14 +966,23 @@ static void timekeeping_resume(void)
 	hrtimers_resume();
 }
 
+#ifdef CONFIG_SLPT
+extern void slpt_set_suspend_time(void);
+#endif
+
 static int timekeeping_suspend(void)
 {
 	struct timekeeper *tk = &timekeeper;
 	unsigned long flags;
 	struct timespec		delta, delta_delta;
 	static struct timespec	old_delta;
+	struct timespec sys_suspend_time;
 
 	read_persistent_clock(&timekeeping_suspend_time);
+
+#ifdef CONFIG_SLPT
+	slpt_set_suspend_time();
+#endif
 
 	/*
 	 * On some systems the persistent_clock can not be detected at
