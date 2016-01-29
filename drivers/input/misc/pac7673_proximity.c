@@ -400,7 +400,7 @@ static int pac7673_i2c_probe(struct i2c_client *client,
     pac7673data.irq = gpio_to_irq(pdata->gpio_int);
     if (pac7673data.irq > 0) {
         err = request_any_context_irq(pac7673data.irq, pac7673_irq_func,
-                IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING, "pac7673_irq",
+                IRQF_TRIGGER_LOW, "pac7673_irq",
                 &pac7673data);
 
         if (err) {
