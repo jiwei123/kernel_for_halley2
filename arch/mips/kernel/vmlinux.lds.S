@@ -116,6 +116,13 @@ SECTIONS
 		__mips_machines_end = .;
 	}
 
+	. = ALIGN(4);
+	.runtime_module_init : AT(ADDR(.runtime_module_init) - LOAD_OFFSET) {
+	__runtime_module_init_start = .;
+		KEEP(*(.runtime_module_init));
+	__runtime_module_init_end = .;
+	}
+
 	/* .exit.text is discarded at runtime, not link time, to deal with
 	 * references from .rodata
 	 */

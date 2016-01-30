@@ -596,4 +596,14 @@ source "drivers/misc/altera-stapl/Kconfig"
 source "drivers/misc/mei/Kconfig"
 source "drivers/misc/vmw_vmci/Kconfig"
 source "drivers/misc/bcm4774_sensorhub/Kconfig"
+
+config RUNTIME_MODULE_INIT
+	bool "runtime module init"
+	depends on !EARLY_INIT_RUN
+	default n
+	help
+	  Say Y to enable it to speed up the kernel boot time.
+	  If your driver use "module_init" and takes a lot of time, try enable thi macro, and replace
+	  "module_init" with "runtime_module_initcall".
+
 endmenu
