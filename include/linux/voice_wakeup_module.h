@@ -31,7 +31,7 @@ struct sleep_buffer {
 #define SYS_NEED_DATA		(0x3)
 
 
-#define TCSM_DATA_BUFFER_ADDR	(0xb3425000) /* bank0 */
+#define TCSM_DATA_BUFFER_ADDR	(0xb3422000) /* bank0 */
 #define TCSM_DATA_BUFFER_SIZE	(4096)
 
 int wakeup_module_open(int mode);

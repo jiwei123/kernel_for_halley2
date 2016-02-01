@@ -526,7 +526,7 @@ LABLE1:
 	 * (2) AH0/2 source clock changes MPLL to EXCLK
 	 * (3) set PDIV H2DIV H0DIV L2CDIV CDIV = 0
 	 */
-	REG32(0xb0000000) = 0x95800000;
+	REG32(0xb0000000) = 0x95f00000;
 	while((REG32(0xB00000D4) & 7))
 		TCSM_PCHAR('w');
 
