@@ -26,6 +26,7 @@
 #include <sound/jack.h>
 #include <linux/gpio.h>
 #include <mach/jzsnd.h>
+#include <linux/kthread.h>
 #include "icodec/icdc_d1.h"
 
 static struct snd_codec_data *codec_platform_data = NULL;
@@ -232,21 +233,46 @@ static struct snd_soc_dai_link watch_dais[] = {
 	},
 };
 
-static struct snd_soc_card watch = {
-	.name = "watch",
-	.owner = THIS_MODULE,
-	.dai_link = watch_dais,
-	.num_links = ARRAY_SIZE(watch_dais),
+struct watch_snd_soc_card {
+	struct snd_soc_card card;
+	struct platform_device *pdev;
+	struct mutex lock;
+	int probe_init;
 };
+
+static struct watch_snd_soc_card watch = {
+	.card = {
+		.name = "watch",
+		.owner = THIS_MODULE,
+		.dai_link = watch_dais,
+		.num_links = ARRAY_SIZE(watch_dais),
+	},
+};
+
+static int snd_watch_initialize(void) {
+	int ret;
+	struct platform_device *pdev = watch.pdev;
+    codec_platform_data = (struct snd_codec_data *)watch.card.dev->platform_data;
+    ret = snd_soc_register_card(&watch.card);
+    if (ret) {
+        dev_err(&pdev->dev, "snd_soc_register_card failed %d\n", ret);
+		platform_device_unregister(pdev);
+	}
+	return ret;
+}
 
 static int snd_watch_probe(struct platform_device *pdev)
 {
-    int ret = 0;
-    watch.dev = &pdev->dev;
-    codec_platform_data = (struct snd_codec_data *)watch.dev->platform_data;
-    ret = snd_soc_register_card(&watch);
-    if (ret)
-        dev_err(&pdev->dev, "snd_soc_register_card failed %d\n", ret);
+	int ret = 0;
+
+	mutex_lock(&watch.lock);
+    watch.card.dev = &pdev->dev;
+	watch.pdev = pdev;
+	if (watch.probe_init) {
+		pr_err("%s: snd_watch_initialize in probe\n");
+		ret = snd_watch_initialize();
+	}
+	mutex_unlock(&watch.lock);
     return ret;
 }
 
@@ -266,7 +292,25 @@ static struct platform_driver snd_watch_driver = {
 	.probe = snd_watch_probe,
 	.remove = snd_watch_remove,
 };
-module_platform_driver(snd_watch_driver);
+
+int snd_watch_init(void) {
+	mutex_init(&watch.lock);
+	watch.probe_init = 0;
+	platform_driver_register(&snd_watch_driver);
+
+	/* because of runtime module_init, need lock here */
+	mutex_lock(&watch.lock);
+	if (watch.pdev) {
+		pr_err("%s: snd_watch_initialize\n", __func__);
+		snd_watch_initialize();
+	} else {
+		watch.probe_init = 1;
+	}
+	mutex_unlock(&watch.lock);
+
+	return 0;
+}
+runtime_module_initcall(snd_watch_init);
 
 MODULE_AUTHOR("cli<chen.li@ingenic.com>");
 MODULE_DESCRIPTION("ALSA SoC Watch Snd Card");

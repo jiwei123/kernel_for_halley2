@@ -707,7 +707,11 @@ static ssize_t inv_fifo_rate_store(struct device *dev,
 	if (result)
 		return result;
 	/* wait for the sampling rate change to stabilize */
-	mdelay(INV_MPU_SAMPLE_RATE_CHANGE_STABLE);
+	if (INV_MPU_SAMPLE_RATE_CHANGE_STABLE < 10) {
+		mdelay(INV_MPU_SAMPLE_RATE_CHANGE_STABLE);
+	} else {
+		msleep(INV_MPU_SAMPLE_RATE_CHANGE_STABLE);
+	}
 
 	st->chip_config.fifo_rate = fifo_rate;
 	result = inv_set_lpf(st, fifo_rate);
@@ -2292,7 +2296,7 @@ static void __exit inv_mpu_exit(void)
 	i2c_del_driver(&inv_mpu_driver);
 }
 
-module_init(inv_mpu_init);
+runtime_module_initcall(inv_mpu_init);
 module_exit(inv_mpu_exit);
 
 MODULE_AUTHOR("Invensense Corporation");

@@ -965,7 +965,7 @@ static void __exit ft6x0x_ts_exit(void)
 	i2c_del_driver(&ft6x0x_ts_driver);
 }
 
-module_init(ft6x0x_ts_init);
+runtime_module_initcall(ft6x0x_ts_init);
 module_exit(ft6x0x_ts_exit);
 
 MODULE_AUTHOR("hfwang@ingenic.cn");
