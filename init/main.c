@@ -100,6 +100,10 @@ static inline void mark_rodata_ro(void) { }
 extern void tc_init(void);
 #endif
 
+#ifdef CONFIG_RUNTIME_MODULE_INIT
+extern int do_runtime_module_initcalls(void);
+#endif
+
 /*
  * Debug helper: via this flag we know that we are in 'early bootup code'
  * where only the boot processor is running with IRQ disabled.  This means
@@ -811,6 +815,9 @@ static noinline void __init kernel_init_freeable(void);
 static int __ref kernel_init(void *unused)
 {
 	kernel_init_freeable();
+#ifdef CONFIG_RUNTIME_MODULE_INIT
+       do_runtime_module_initcalls();
+#endif
 	/* need to finish all async __init code before freeing the memory */
 	async_synchronize_full();
 	free_initmem();

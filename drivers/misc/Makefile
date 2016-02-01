@@ -62,3 +62,4 @@ obj-$(CONFIG_LATTICE_ECP3_CONFIG)	+= lattice-ecp3-config.o
 obj-$(CONFIG_SRAM)		+= sram.o
 obj-$(CONFIG_JZ_EFUSE)		+= efuse/
 obj-$(CONFIG_BCM4774_ENABLE_SYS)	+= bcm4774_sensorhub/
+obj-$(CONFIG_RUNTIME_MODULE_INIT) += runtime_module_init.o

@@ -336,4 +336,11 @@ void __init parse_early_options(char *cmdline);
 #define __exit_p(x) NULL
 #endif
 
+#ifdef CONFIG_RUNTIME_MODULE_INIT
+#define runtime_module_initcall(fn)                                 \
+    static initcall_t runtime_module_init_##fn __attribute__ ((__used__, __section__(".runtime_module_init"))) = fn
+#else
+#define runtime_module_initcall module_init
+#endif
+
 #endif /* _LINUX_INIT_H */
