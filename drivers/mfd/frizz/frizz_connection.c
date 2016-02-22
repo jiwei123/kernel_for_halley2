@@ -65,7 +65,7 @@ int process_connection(packet_t packet) {
 	int i, j;
 	int ret = 0;
 	int res = 0;
-
+	keep_frizz_wakeup();
 	mutex_lock(&lock);
 
 	DEBUG_PRINT("packet header %x %x %x\n", packet.header.w, packet.data[0],
@@ -139,9 +139,11 @@ int process_connection(packet_t packet) {
 	}
 
 	mutex_unlock(&lock);
+	release_frizz_wakeup();
 	return ret;
 I2CERROR:
 	mutex_unlock(&lock);
+	release_frizz_wakeup();
 	return ERR_NOSENSOR;
 }
 
@@ -155,6 +157,7 @@ int read_fifo() {
 
 	if (down_interruptible(&frizz_fifo_sem)) {
 		kprint("%s: Error!!!!", __func__);
+		release_frizz_wakeup();
 		return -ERESTARTSYS;
 	}
 
@@ -189,8 +192,10 @@ int read_fifo() {
 			case RESPONSE_HUB_MGR_GESTURE_INTER:
 			case RESPONSE_HUB_MGR_ACC_ORI:
 			case RESPONSE_HUB_MGR_GYRO_ORI:
+			case RESPONSE_HUB_MGR_GYRO_LPF:
 			case RESPONSE_HUB_MGR_MAGN_ORI:
 			case RESPONSE_HUB_MGR_FALL_PARA:
+			case RESPONSE_HUB_MGR_ISP:
 				interrupt_flag = RESPONSE_HUB_MGR;
 				hub_res = (int)fifo_data[i + 2];
 				break;

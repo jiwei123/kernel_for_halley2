@@ -25,11 +25,16 @@ void interrupt_poll(void)
 	struct list_head *plist;
 	struct file_id_node *node = NULL;
 	mutex_lock(&close_lock);
+
 	list_for_each(plist,&head)
 	{
 		node = list_entry(plist, struct file_id_node, list);
-		node->poll_condition = 1;
+		if (node->sdc.mflag || node->sdc.aflag){
+		    node->poll_condition = 1;
+		}
 	}
+
 	wake_up_interruptible_all(&(read_q));
+
 	mutex_unlock(&close_lock);
 }

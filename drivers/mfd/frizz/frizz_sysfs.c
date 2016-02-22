@@ -69,9 +69,7 @@ static ssize_t set_g_chip_orientation(struct kobject *kobj, struct kobj_attribut
 		return -EINVAL;
 	if(cmd > 7 || cmd < 0)
 		return -EINVAL;
-	keep_frizz_wakeup();
 	init_g_chip_orientation(cmd);
-	release_frizz_wakeup();
 	return count;
 }
 
@@ -83,9 +81,7 @@ static ssize_t set_right_hand_wear(struct kobject *kobj, struct kobj_attribute *
 		return -EINVAL;
 	if(cmd > 1 || cmd < 0)
 		return -EINVAL;
-	keep_frizz_wakeup();
 	ret = right_hand_wear(cmd);
-	release_frizz_wakeup();
 	if(ret < 0) {
 		hand_right = -ENODEV;
 		return ret;

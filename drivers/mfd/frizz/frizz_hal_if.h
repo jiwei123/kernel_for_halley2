@@ -4,6 +4,8 @@
 #ifndef __FRIZZ_HAL_H__
 #define __FRIZZ_HAL_H__
 
+#include "frizz_reg.h"
+
 enum{
 	ERR_UNKNOW = -1,
 	ERR_NOSENSOR = -2,
@@ -15,13 +17,16 @@ enum{
 #define FRIZZ_IOCTL_MCC      32  /*!< Start Index of MCC IOCTL */
 #define FRIZZ_IOCTL_HARDWARE 64  /*!< Start Index of Hardware IOCTL */
 
+#define FRIZZ_MAX_PACKET_SIZE 66
+
 typedef struct{
     uint32_t sensor_id;
     uint32_t test_loop;
+    uint32_t raw_data[MAX_HWFRIZZ_FIFO_SIZE];
 } sensor_info;
 
 /*! @struct sensor_enable_t
- *  @brief  
+ *  @brief
  */
 typedef struct {
     int code; /*!< Android Sensor type*/
@@ -58,10 +63,10 @@ typedef struct {
     struct timeval time;
 
     union {
-    uint32_t u32_value;
+    uint32_t u32_value[6];
 	float    f32_value[6];
 	uint64_t u64_value;
-	
+
 	struct {
 	    float rpos[2];
 	    float velo[2];
@@ -111,6 +116,11 @@ typedef struct {
 #define FRIZZ_IOCTL_GET_FIRMWARE_VERSION    _IOR(IOC_MAGIC, FRIZZ_IOCTL_SENSOR + 9, firmware_version_t*)
 
 #define FRIZZ_IOCTL_SET_PEDO_COUNTER        _IOW(IOC_MAGIC, FRIZZ_IOCTL_SENSOR + 10, pedometer_counter_t*)
+
+#define FRIZZ_IOCTL_ANALYSIS_FIFO           _IOW(IOC_MAGIC, FRIZZ_IOCTL_SENSOR + 11, void*)
+
+#define FRIZZ_IOCTL_SENSOR_SET_FRIZZ_COMMAND _IOW(IOC_MAGIC, FRIZZ_IOCTL_SENSOR + 12, unsigned int*)
+
 /*!< set enable or disable.*/
 #define FRIZZ_IOCTL_MCC_SET_ENABLE       _IOW(IOC_MAGIC, FRIZZ_IOCTL_MCC,     sensor_enable_t*)
 

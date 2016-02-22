@@ -27,6 +27,8 @@ int frizz_ioctl_enable_gpio_interrupt(void);
 
 int frizz_ioctl_sensor_get_version(void);
 
+unsigned int set_sensor_active(int sensor_id);
+
 /*!
  * IOCTL of Android Sensor type
  *
@@ -80,12 +82,15 @@ int set_pedo_interval(int interval);
 /*!
  * Test whether frizz and sensor work normally?
  */
-void frizz_fw_command_test(uint32_t sensor_id, uint32_t test_loop);
+int frizz_fw_command_test(uint32_t sensor_id, uint32_t test_loop, unsigned long arg);
 
 int set_gesture_state(unsigned int gesture);
+int set_sensor_delay(int sensor_id, int delay);
 int init_g_chip_orientation(unsigned int position);
 int right_hand_wear(unsigned int isrighthand);
 int set_fall_parameter(void);
+int set_motion_report();
+int get_frizz_data(int);
 /*!< This macro copies data from user area. */
 #define COPY_FROM_USER(type)                                                    \
 	int copy_from_user_ ## type(unsigned int cmd, void* arg, type *data){       \

@@ -4,10 +4,15 @@
 #include <linux/slab.h>
 #include <linux/workqueue.h>
 #include <linux/delay.h>
+#include <linux/gpio.h>
+#include <linux/reboot.h>
 #include "frizz_connection.h"
 #include "frizz_debug.h"
 #include "frizz_ioctl_hardware.h"
 #include "frizz_i2c.h"
+#include "frizz_sensor_list.h"
+
+extern int frizz_reset, frizz_wakeup;
 
 typedef struct {
     struct work_struct work;
@@ -32,7 +37,22 @@ void function_read_fifo(struct work_struct *work) {
 
 void function_download_work(struct work_struct *work) {
 	frizz_download_work_t *frizz_work = (frizz_download_work_t *)work;
-	frizz_download_firmware(frizz_work->g_chip_orientation);
+	int i;
+	for (i = 0; i < 3; i++){
+	    frizz_download_firmware(frizz_work->g_chip_orientation);
+
+	    if (!probe_sensors());
+	        break;
+
+	    gpio_direction_output(frizz_reset, 0);
+	    mdelay(2);
+	    gpio_direction_output(frizz_reset, 1);
+	    kprint("Frizz: probe sensors failed !!! try again !!!");
+	}
+	if (i == 3) {
+	    kprint("Frizz: probe sensors 3 times failed !!! reboot now !!!");
+	    kernel_restart(NULL);
+	}
 }
 
 void function_process_connection(struct work_struct *work) {
@@ -124,6 +144,10 @@ int workqueue_download_firmware(unsigned int chip_orientation) {
 }
 
 int create_frizz_workqueue(void *data) {
+    if(work_pending( (struct work_struct *)frizz_work_process_connection) == 1) {
+        flush_work((struct work_struct *)frizz_work_process_connection);
+    }
+
     int ret = 0;
     ret = process_connection(*(packet_t*)data);
 
@@ -131,4 +155,13 @@ int create_frizz_workqueue(void *data) {
 }
 int send_wakeup_cmd(void) {
 	return queue_work(frizz_workqueue, (struct work_struct *)frizz_work_wakeup_by_raise);
+}
+
+int workqueue_process_connection(void *data) {
+    if(work_pending( (struct work_struct *)frizz_work_process_connection) == 1) {
+        flush_work((struct work_struct *)frizz_work_process_connection);
+    }
+
+    frizz_work_process_connection->data = *(packet_t*)data;
+    return queue_work(frizz_workqueue, (struct work_struct *)frizz_work_process_connection);
 }

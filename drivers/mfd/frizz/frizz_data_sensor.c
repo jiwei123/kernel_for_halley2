@@ -153,6 +153,31 @@ static void remap_motion_code(int sensor_type, int* origin)
 	}
 }
 
+int fiter_reported_events(packet_t *packet){
+    static int reportISP = 1;
+    int index = get_struct_index(packet->header.sen_id);
+
+    if(struct_list[index].data.code == SENSOR_TYPE_ACTIVITY){
+        if(packet->data[2] == ACTIVITY_DEEP_SLEEP || packet->data[2] == ACTIVITY_SLEEP) {
+            reportISP = 0;
+            return 1;
+        }
+        else {
+            reportISP = 1;
+            return 0;
+        }
+    }
+    else if(struct_list[index].data.code == SENSOR_TYPE_ISP){
+        int data = packet->data[1];
+        remap_motion_code(SENSOR_TYPE_ISP, &data);
+        if(reportISP && (data != struct_list[index].data.u32_value[0]))
+            return 1;
+        else
+            return 0;
+    }
+    return 1;
+}
+
 int update_data_sensor(packet_t *packet)
 {
 
@@ -194,6 +219,9 @@ int update_data_sensor(packet_t *packet)
         break;
 
     case 0xff80:
+        if (!fiter_reported_events(packet)){
+            break;
+        }
         //add the changed flag when the data is been changed.
         i = convert_id_to_code(packet->header.sen_id);
 
@@ -206,20 +234,24 @@ int update_data_sensor(packet_t *packet)
 				node->sdc.aflag |= BIT(i);
 
 		}
-        struct_list[index].data.time.tv_sec = packet->data[0] / 1000;
-        struct_list[index].data.time.tv_usec = packet->data[0] * 1000;
+
+		if (struct_list[index].data.code == SENSOR_TYPE_ACTIVITY
+				&& (packet->data[2] == ACTIVITY_DEEP_SLEEP
+						|| packet->data[2] == ACTIVITY_SLEEP)) {
+			packet->data[0] = packet->data[1];
+		}
+		struct_list[index].data.time.tv_sec = packet->data[0] / 1000;
+		struct_list[index].data.time.tv_usec = (packet->data[0] % 1000) * 1000;
 
 //重定义 跌倒，睡眠检测的编码，因为android只监听motion，
-		if(struct_list[index].data.code == SENSOR_TYPE_ACCEL_FALL_DOWN || 
-				struct_list[index].data.code == SENSOR_TYPE_ACCEL_POS_DET) {
-			packet->data[1] = MOTION_FALL;
-		}
-		if(struct_list[index].data.code == SENSOR_TYPE_ACTIVITY) {
+		if (struct_list[index].data.code == SENSOR_TYPE_ACTIVITY) {
 			remap_motion_code(SENSOR_TYPE_ACTIVITY, &(packet->data[2]));
-            packet->data[1] = packet->data[2];
+
+			struct_list[index].data.u32_value[0] = packet->data[2]; //activity
+			struct_list[index].data.u32_value[1] = packet->data[4]; //tossAndTurn_cnt
 		}
 //结束
-        if(struct_list[index].data.code == SENSOR_TYPE_PDR) {
+		else if(struct_list[index].data.code == SENSOR_TYPE_PDR) {
             struct_list[index].data.count = packet->data[1];
 	        convert_float(packet->data[2], &struct_list[index].data.rpos[0]);
 	        convert_float(packet->data[3], &struct_list[index].data.rpos[1]);
@@ -229,7 +261,7 @@ int update_data_sensor(packet_t *packet)
         } else if (struct_list[index].data.code == SENSOR_TYPE_STEP_COUNTER) {
 			//store the pedo data in kernel for SLPT to show
 			pedo_data = packet->data[1];
-            struct_list[index].data.u32_value = packet->data[1];
+            struct_list[index].data.u32_value[0] = packet->data[1];
         } else if (struct_list[index].data.code == SENSOR_TYPE_STEP_DETECTOR) {
             struct_list[index].data.f32_value[0] = 1;
         } else if (struct_list[index].data.code == SENSOR_TYPE_GESTURE) {
@@ -237,9 +269,10 @@ int update_data_sensor(packet_t *packet)
 				send_wakeup_cmd();
 			}
 			printk("Frizz debug: gesture report: %d \n", packet->data[1]);
-			struct_list[index].data.u32_value = packet->data[1];
+			struct_list[index].data.u32_value[0] = packet->data[1];
 		} else if (struct_list[index].data.code == SENSOR_TYPE_ISP) {
-			struct_list[index].data.u32_value = packet->data[1];
+			remap_motion_code(SENSOR_TYPE_ISP, &(packet->data[1]));
+			struct_list[index].data.u32_value[0] = packet->data[1];
 		} else {
             for (i = 0; i < packet->header.num - 1; i++) {
                 convert_float(packet->data[i + 1],

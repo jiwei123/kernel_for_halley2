@@ -104,7 +104,6 @@ static long frizz_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
     unsigned int cmd_id = cmd & 0xFF;
 	struct file_id_node *node = (struct file_id_node*)(file->private_data);
 
-    keep_frizz_wakeup();
 
     if ((FRIZZ_IOCTL_SENSOR <= cmd_id) && (cmd_id < FRIZZ_IOCTL_MCC)) {
 
@@ -123,7 +122,6 @@ static long frizz_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
         ret = frizz_ioctl_hardware(cmd, arg);
     }
 
-    release_frizz_wakeup();
 
     return ret;
 }

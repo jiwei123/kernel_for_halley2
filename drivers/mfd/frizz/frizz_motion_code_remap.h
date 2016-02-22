@@ -7,11 +7,8 @@ enum report_code {
     MOTION_STOP = 1,
     MOTION_WALK = 2,
     MOTION_RUN = 3,
-    MOTION_VEHICLE = 4,
-    MOTION_MAX = 5,
-	MOTION_SLEEP = 6,
-	MOTION_DEEP_SLEEP = 7,
-    MOTION_FALL = 64,	
+    MOTION_SLEEP = 4,
+    MOTION_DEEP_SLEEP = 5,
 };
 
 enum Activity_code {
@@ -20,7 +17,13 @@ enum Activity_code {
 	ACTIVITY_RESET,
 	ACTIVITY_WALK,
 	ACTIVITY_RUN,
-	ACTIVITY_STOP,
+};
+
+enum ISP_code {
+	ISP_STOP = 0,
+	ISP_RESET,
+	ISP_WALK,
+	ISP_RUN,
 };
 
 struct
@@ -34,7 +37,11 @@ struct
 	{SENSOR_TYPE_ACTIVITY, ACTIVITY_RESET,      MOTION_RESET},
 	{SENSOR_TYPE_ACTIVITY, ACTIVITY_WALK,       MOTION_WALK},
 	{SENSOR_TYPE_ACTIVITY, ACTIVITY_RUN,        MOTION_RUN},
-	{SENSOR_TYPE_ACTIVITY, ACTIVITY_STOP,       MOTION_STOP},
+
+	{SENSOR_TYPE_ISP,      ISP_STOP,            MOTION_STOP},
+	{SENSOR_TYPE_ISP,      ISP_RESET,           MOTION_RESET},
+	{SENSOR_TYPE_ISP,      ISP_WALK,            MOTION_WALK},
+	{SENSOR_TYPE_ISP,      ISP_RUN,             MOTION_RUN},
 };
 
 #define MAX_MOTION_CODE_COUNT (sizeof motion_code_remap / sizeof motion_code_remap[0])

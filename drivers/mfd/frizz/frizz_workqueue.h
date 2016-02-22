@@ -39,3 +39,4 @@ int workqueue_analysis_fifo(void);
 int workqueue_read_fifo(void);
 int workqueue_download_firmware(unsigned int chip_orientation);
 int send_wakeup_cmd(void);
+int workqueue_process_connection(void *data);

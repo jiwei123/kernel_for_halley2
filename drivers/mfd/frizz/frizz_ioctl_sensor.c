@@ -13,6 +13,7 @@
 #include "frizz_hal_if.h"
 #include <linux/delay.h>
 #include "frizz_serial.h"
+#include "frizz_gpio.h"
 #include "sensors.h"
 #include "frizz_chip_orientation.h"
 
@@ -36,7 +37,7 @@ int frizz_ioctl_enable_gpio_interrupt(void)
     packet.header.num = 1;
 
     packet.data[0] =
-            HUB_MGR_GEN_CMD_CODE(HUB_MGR_CMD_SET_SETTING, 0x01, 0x00, 0x00);
+            HUB_MGR_GEN_CMD_CODE(HUB_MGR_CMD_SET_SETTING, 0x01, 0x01, 0x00);
 
     create_frizz_workqueue((void*) &packet);
 
@@ -54,13 +55,16 @@ int frizz_ioctl_sensor_get_version() {
 }
 
 unsigned int set_sensor_active(int sensor_id) {
-    if ((sensor_id == SENSOR_ID_ACCEL_MOVE)) {
-        return HUB_MGR_GEN_CMD_CODE(HUB_MGR_CMD_SET_SENSOR_ACTIVATE, sensor_id,
-                0x00, 0x01);
-    } else {
-        return HUB_MGR_GEN_CMD_CODE(HUB_MGR_CMD_SET_SENSOR_ACTIVATE, sensor_id,
-                0x00, 0x01);
-    }
+    switch (sensor_id) {
+    case SENSOR_ID_ACTIVITY:
+    case SENSOR_ID_ISP:
+    case SENSOR_ID_GESTURE:
+    	return HUB_MGR_GEN_CMD_CODE(HUB_MGR_CMD_SET_SENSOR_ACTIVATE, sensor_id,
+		                0x00, 0x01);
+    default:
+    	return HUB_MGR_GEN_CMD_CODE(HUB_MGR_CMD_SET_SENSOR_ACTIVATE, sensor_id,
+		                0x00, 0x00);
+	}
 }
 
 int frizz_ioctl_sensor(struct file_id_node *node, unsigned int cmd, unsigned long arg) {
@@ -69,6 +73,9 @@ int frizz_ioctl_sensor(struct file_id_node *node, unsigned int cmd, unsigned lon
     int status = 0;
     packet_t packet;
     int period_ms;
+    unsigned int packet_hex_data[FRIZZ_MAX_PACKET_SIZE];
+    int frizz_packet_size;
+    int i;
 
     sensor_enable_t sensor_enable = { 0 };
     sensor_delay_t sensor_delay = { 0 };
@@ -115,6 +122,7 @@ int frizz_ioctl_sensor(struct file_id_node *node, unsigned int cmd, unsigned lon
 			}else if(sensor_enable.flag == 0) {
 				gesture_on = 0;
 			}
+			set_sensor_delay(sensor_id, 9); //9*40 ms
 		}
 		//if close the gsensor, set the Gsensor_min_delay to default
 		if(sensor_enable.code == SENSOR_TYPE_ACCELEROMETER && sensor_enable.flag == 0) {
@@ -125,31 +133,17 @@ int frizz_ioctl_sensor(struct file_id_node *node, unsigned int cmd, unsigned lon
 			set_fall_parameter();
 		}
 
+		if(sensor_enable.code == SENSOR_TYPE_ISP) {
+		    set_motion_report();
+		}
+
         break;
 
     case FRIZZ_IOCTL_SENSOR_SET_DELAY:
 
         copy_from_user_sensor_delay_t(cmd, (void*) arg, &sensor_delay);
         sensor_id = convert_code_to_id(sensor_delay.code);
-
-        packet.header.num = 2;
-
-        packet.data[0] = HUB_MGR_GEN_CMD_CODE(HUB_MGR_CMD_SET_SENSOR_INTERVAL,
-                sensor_id, 0x00, 0x00);
-        packet.data[1] = sensor_delay.ms;
-		if(sensor_delay.code == SENSOR_TYPE_ACCELEROMETER) {
-			if(sensor_delay.ms < Gsensor_min_delay) {
-				packet.data[1] = sensor_delay.ms;
-				Gsensor_min_delay = sensor_delay.ms;
-			} else {
-				break;
-			}
-		}
-
-        DEBUG_PRINT("SENSOR_SET_DELAY %d %x\n", sensor_id, packet.data[0]);
-
-        status = create_frizz_workqueue((void*) &packet);
-
+        status = set_sensor_delay(sensor_id, sensor_delay.ms);
         break;
 
     case FRIZZ_IOCTL_SENSOR_GET_ENABLE:
@@ -231,6 +225,31 @@ int frizz_ioctl_sensor(struct file_id_node *node, unsigned int cmd, unsigned lon
 		set_pedo_interval(pedo_counter.counter);
 
 		break;
+	case FRIZZ_IOCTL_ANALYSIS_FIFO:
+        get_frizz_data(SENSOR_ID_ISP);
+		break;
+
+    case FRIZZ_IOCTL_SENSOR_SET_FRIZZ_COMMAND:
+        for( i = 0; i < FRIZZ_MAX_PACKET_SIZE; i++ ) {
+            if( get_user( packet_hex_data[i], ( unsigned int __user * )arg + i ) ) {
+                printk( "set frizz command error !!!\n");
+                return -EFAULT;
+            }
+        }
+
+        packet.header.w = packet_hex_data[0];
+
+        frizz_packet_size = 0x000000ff & packet_hex_data[0];
+        DEBUG_PRINT( "header %x \n", packet.header.w );
+
+        for( i = 0; i < frizz_packet_size; i++ ) {
+            packet.data[i] = packet_hex_data[i + 1];
+            DEBUG_PRINT( "data %x \n", packet.data[i] );
+        }
+
+        status = create_frizz_workqueue( ( void* )&packet );
+        break;
+
 	default:
 		kprint("%s :NONE IOCTL SENSORxxx %x", __func__, cmd);
 		return -1;
@@ -292,6 +311,37 @@ int set_gesture_state(unsigned int gesture) {
 
 	status = create_frizz_workqueue((void*) &packet);
 	return status;
+}
+
+int set_sensor_delay(int sensor_id, int delay) {
+    int status;
+    int sensor_code = convert_id_to_code(sensor_id);
+    packet_t packet;
+
+    packet.header.prefix = 0xFF;
+    packet.header.type = 0x81;
+    packet.header.sen_id = HUB_MGR_ID;
+    packet.header.num = 2;
+
+    packet.data[0] = HUB_MGR_GEN_CMD_CODE(HUB_MGR_CMD_SET_SENSOR_INTERVAL,
+            sensor_id, 0x00, 0x00);
+    packet.data[1] = delay;
+    if(sensor_code == SENSOR_TYPE_ACCELEROMETER) {
+        if(delay < Gsensor_min_delay) {
+            packet.data[1] = delay;
+            Gsensor_min_delay = delay;
+        }
+    }
+
+    if (sensor_code == SENSOR_TYPE_GESTURE) {
+        packet.header.sen_id = 0xA6;
+        packet.data[0] = 0x02000000;
+    }
+
+    DEBUG_PRINT("SENSOR_SET_DELAY %d %x\n", sensor_id, packet.data[0]);
+
+    status = create_frizz_workqueue((void*) &packet);
+    return status;
 }
 
 int init_g_chip_orientation(unsigned int position) {
@@ -399,3 +449,35 @@ int set_fall_parameter(void) {
 	status = create_frizz_workqueue((void*) &packet);
 	return status;
 }
+
+int set_motion_report() {
+    int status;
+    packet_t packet;
+
+    packet.header.prefix = 0xFF;
+    packet.header.type = 0x81;
+    packet.header.sen_id = 0xBD;
+    packet.header.num = 2;
+
+    packet.data[0] = 0x01000000;
+    packet.data[1] = 0x00000001;
+
+    status = create_frizz_workqueue((void*) &packet);
+    return status;
+}
+
+int get_frizz_data(int sensor_id) {
+    int status;
+    packet_t packet;
+
+    packet.header.prefix = 0xFF;
+    packet.header.type = 0x81;
+    packet.header.sen_id = HUB_MGR_ID;
+    packet.header.num = 1;
+
+    packet.data[0] = HUB_MGR_GEN_CMD_CODE(HUB_MGR_CMD_GET_SENSOR_DATA,  sensor_id, 0x00, 0x00);
+
+    status = workqueue_process_connection((void*) &packet);
+    return status;
+}
+

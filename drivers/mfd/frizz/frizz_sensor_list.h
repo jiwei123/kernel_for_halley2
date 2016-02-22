@@ -15,3 +15,4 @@ int convert_code_to_id(int);
  */
 int convert_id_to_code(int);
 
+int probe_sensors();

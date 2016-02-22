@@ -53,4 +53,6 @@ int get_sensor_data(struct file_id_node*, unsigned int, void *);
  * @return 0=sucess, otherwise 0=fail
  */
 int simulate_timeout(unsigned int, void *);
+
+int fiter_reported_events(packet_t *);
 #endif

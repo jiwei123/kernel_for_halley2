@@ -519,17 +519,13 @@ int frizz_i2c_suspend(struct i2c_client * client, pm_message_t mesg) {
   if(pedo_onoff == OFF) {
 	  //do nothing
   } else {
-	keep_frizz_wakeup();
 	set_pedo_interval(pedo_interval);
-	release_frizz_wakeup();
   }
 
   if(gesture_on == OFF) {
      //do nothing
   }else {
-	keep_frizz_wakeup();
 	set_gesture_state(GESTURE_SHAKE_HAND_SILENCE);
-	release_frizz_wakeup();
   }
 
   if(slpt_onoff == OFF) {
@@ -546,16 +542,12 @@ int frizz_i2c_resume(struct i2c_client * client) {
   if(pedo_onoff == OFF) {
 	  //do nothing
   } else {
-	keep_frizz_wakeup();
 	set_pedo_interval(PEDO_REPORT_NORMAL);
-	release_frizz_wakeup();
   }
   if(gesture_on == OFF) {
 	//do nothing
   }else {
-	keep_frizz_wakeup();
 	set_gesture_state(GESTURE_REPORT_ALL);
-	release_frizz_wakeup();
   }
 
   if(slpt_onoff == OFF) {

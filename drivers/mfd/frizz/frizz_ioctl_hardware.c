@@ -17,6 +17,7 @@
 #include "sensors.h"
 #include "frizz_workqueue.h"
 #include "frizz_gpio.h"
+#include "frizz_connection.h"
 
 #define ERR_FILE_BAD_FORM -77
 
@@ -61,57 +62,182 @@ static int serial_read_fifo_size(void) {
     }
 }
 
-void frizz_fw_command_test(uint32_t sensor_id, uint32_t test_loop)
+int frizz_fw_command_test_inner(uint32_t sensor_id, uint32_t test_loop, unsigned long arg)
 {
-    int ret;
-    int iii;
-    int fifo_size;
-    unsigned int fifo_data[MAX_HWFRIZZ_FIFO_SIZE];
+	int ret=0;
+	int iii;
+	int fifo_size,timeout;
+	unsigned int fifo_data[MAX_HWFRIZZ_FIFO_SIZE];
+	sensor_info *p_info = (sensor_info __user *)arg;
+	int count = 0;
+
+	/*  send command to frizz
+	prefix    kind    sen_id    num
+	0xFF      0x81    0xFF      0x01
+	*/
+	printk("RESPONSE_HUB_MGR = 0x%08x\n", RESPONSE_HUB_MGR);
+
+	// ===================== Enable sensor =========================
+	ret = serial_write_reg_32(MES_REG_ADDR, 0xFF81FF01);
+	if (ret == 0)
+		printk("frizz fw command write MES_REG_ADDR successful.\n");
+	else
+		printk("frizz fw command write MES_REG_ADDR failed.\n");
+
+	udelay(1000);
+
+	ret = serial_write_reg_32(MES_REG_ADDR, GEN_CMD_CODE(sensor_id, 0x01));
+	if (ret == 0)
+		printk("frizz fw command write MES_REG_ADDR successful.\n");
+	else
+	{
+		printk("frizz fw command write MES_REG_ADDR failed.\n");
+		return -1;
+	}
+
+	for(timeout = 0; timeout<50; timeout++)
+	{
+		udelay(1000);
+		fifo_size = serial_read_fifo_size();
+		if(fifo_size > 0)
+		{
+			memset(fifo_data, 0, MAX_HWFRIZZ_FIFO_SIZE);
+			serial_read_reg_uint_array(FIFO_REG_ADDR, fifo_data, fifo_size);
+
+			for(iii = 0; iii<fifo_size; iii++)
+			{
+				if(fifo_data[iii] == RESPONSE_HUB_MGR)
+				{
+					if(fifo_data[iii+2] != 0)
+						return -1;		//sensor enable fail
+					else
+					{
+						ret = 1;			// sensor enable pass
+						break;
+					}
+				}
+			}
+			if(ret == 1) {
+				break;
+			}
+		}
+	}
+	// ===================== Sensor Interval =========================
+	ret = serial_write_reg_32(MES_REG_ADDR, 0xFF81FF02);
+	udelay(1000);
+	ret = serial_write_reg_32(MES_REG_ADDR, GEN_CMD_CODE(sensor_id, 0x02));
+	udelay(1000);
+	ret = serial_write_reg_32(MES_REG_ADDR, 1000);   // sameple 1000 --> interval time(unit : msec), min: 10msec
+
+	ret = 0;
+	for(timeout = 0; timeout<50; timeout++)
+	{
+		udelay(1000);
+		fifo_size = serial_read_fifo_size();
+		if(fifo_size > 0)
+		{
+			memset(fifo_data, 0, MAX_HWFRIZZ_FIFO_SIZE);
+			serial_read_reg_uint_array(FIFO_REG_ADDR, fifo_data, fifo_size);
+
+			for(iii = 0; iii<fifo_size; iii++)
+			{
+				if(fifo_data[iii] == RESPONSE_HUB_MGR)
+				{
+					if(fifo_data[iii+2] != 0)
+						return -1;		//sensor enable fail
+					else
+					{
+						printk("sensor interval pass.\n");
+
+						ret = 1;			// sensor enable pass
+						break;
+					}
+				}
+			}
+			if(ret == 1)
+				break;
+		}
+	}
+	// ===================== Get sensor raw data =========================
+	while(test_loop--)
+	{
+		msleep(1000);
+
+		fifo_size = serial_read_fifo_size();
+
+		if(fifo_size > 0)
+		{
+			memset(fifo_data, 0, MAX_HWFRIZZ_FIFO_SIZE);
+			serial_read_reg_uint_array(FIFO_REG_ADDR, fifo_data, fifo_size);
+			print_fifo_data(fifo_data, fifo_size);
+
+			printk("igit (fifo_size > 0)fifo_size = %d\n", fifo_size);
+			//print_fifo_data(fifo_data, fifo_size);
+			for(iii=0; iii<fifo_size; iii++)
+				printk("CQF git (fifo_size > 0)fifo_data[%d] = [%8d]=[0x%08x].\n", iii, fifo_data[iii], fifo_data[iii]);
+			printk(KERN_ERR "p_info->sensor_id = 0x%x\n", p_info->sensor_id);
+			printk(KERN_ERR "p_info->test_loop = 0x%x\n", p_info->test_loop);
+			if (copy_to_user(&p_info->raw_data[0], &fifo_data[0], fifo_size * sizeof(fifo_data[0]))) {
+				printk(KERN_ERR "couldn't copy sensor raw data to user space\n");
+			}
+
+			count = fifo_size;
+			break;
+		}
+		else
+		{
+			printk("git fifo_size = 0\n");
+		}
+	}
 
 
-    /*  send command to frizz
-        prefix    kind    sen_id    num
-        0xFF      0x81    0xFF      0x01
-    */
+	// ===================== Disable sensor =========================
+	ret = serial_write_reg_32(MES_REG_ADDR, 0xFF81FF01);
+	if (ret == 0)
+		printk("frizz fw command write MES_REG_ADDR successful.\n");
+	else
+		printk("frizz fw command write MES_REG_ADDR failed.\n");
 
-    ret = serial_write_reg_32(MES_REG_ADDR, 0xFF81FF01);
-    if (ret == 0)
-        printk("frizz fw command write MES_REG_ADDR successful.\n");
-    else
-        printk("frizz fw command write MES_REG_ADDR failed.\n");
+	udelay(100);
+	ret = serial_write_reg_32(MES_REG_ADDR, GEN_CMD_CODE(sensor_id, 0x00));
 
-    udelay(100);
+	for(timeout = 0; timeout<50; timeout++)
+	{
+		udelay(1000);
+		fifo_size = serial_read_fifo_size();
+		if(fifo_size > 0)
+		{
+			memset(fifo_data, 0, MAX_HWFRIZZ_FIFO_SIZE);
+			serial_read_reg_uint_array(FIFO_REG_ADDR, fifo_data, fifo_size);
 
-    /* SET_SENSOR_ACTIVE, sensor_id, 0x00, 0x00 */
-    if(sensor_id == 0x9F)     //SENSOR_ID_ACCEL_MOVE
-        ret = serial_write_reg_32(MES_REG_ADDR, 0x019F0001);
+			for(iii = 0; iii<fifo_size; iii++)
+			{
+				if(fifo_data[iii] == RESPONSE_HUB_MGR)
+				{
+					if(fifo_data[iii+2] != 0)
+						return -1;		//sensor disable fail
+					else
+					{
+						ret = 1;			// sensor disable pass
+						break;
+					}
+				}
+			}
+			if(ret == 1)
+				break;
+		}
+	}
+	udelay(100);
+    return count;
+}
 
-    ret = serial_write_reg_32(MES_REG_ADDR, GEN_CMD_CODE(sensor_id, 0x01));
-    if (ret == 0)
-        printk("frizz fw command write MES_REG_ADDR successful.\n");
-    else
-        printk("frizz fw command write MES_REG_ADDR failed.\n");
-
-    while(test_loop--) {
-        fifo_size = serial_read_fifo_size();
-
-        if(fifo_size > 0) {
-            memset(fifo_data, 0, MAX_HWFRIZZ_FIFO_SIZE);
-            serial_read_reg_uint_array(FIFO_REG_ADDR, fifo_data, fifo_size);
-            print_fifo_data(fifo_data, fifo_size);
-
-            printk("git (fifo_size > 0)fifo_size = %d\n", fifo_size);
-            //print_fifo_data(fifo_data, fifo_size);
-            for(iii=0; iii<fifo_size; iii++)
-                printk("CQF git (fifo_size > 0)fifo_data[%d] = [%8d]=[0x%08x].\n", iii, fifo_data[iii], fifo_data[iii]);
-
-        }else {
-            printk("git fifo_size = 0\n");
-        }
-        msleep(1000);
-    }
-
-    udelay(100);
+int frizz_fw_command_test(uint32_t sensor_id, uint32_t test_loop, unsigned long arg)
+{
+	int ret;
+	keep_frizz_wakeup();
+	ret = frizz_fw_command_test_inner(sensor_id, test_loop, arg);
+	release_frizz_wakeup();
+	return ret;
 }
 
 int frizz_ioctl_hardware_stall(void) {
@@ -161,7 +287,7 @@ void read_file(struct file *filep, unsigned char* read_data, int read_data_size,
 
     mm_segment_t fs;
 
-    memset(read_data, 0, sizeof(read_data)); 
+    memset(read_data, 0, sizeof(read_data));
 
     fs = get_fs();
     set_fs(get_ds());
@@ -469,9 +595,8 @@ int frizz_ioctl_hardware(unsigned int cmd, unsigned long arg) {
                 sizeof(sensor_info))) {
             return -EFAULT;
         }
-        frizz_fw_command_test(test_sensor_info.sensor_id,
-                test_sensor_info.test_loop);
-        break;
+        return frizz_fw_command_test(test_sensor_info.sensor_id,
+                test_sensor_info.test_loop, arg);
 
     default:
         return -1;

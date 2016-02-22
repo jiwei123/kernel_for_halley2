@@ -15,7 +15,7 @@
 static COPY_FROM_USER(sensor_enable_t)
 static COPY_FROM_USER(sensor_delay_t)
 
-static unsigned int set_sensor_active(int sensor_id) {
+/*static unsigned int set_sensor_active(int sensor_id) {
 
     if((sensor_id == SENSOR_ID_ACCEL_MOVE)) {
 	return  HUB_MGR_GEN_CMD_CODE(HUB_MGR_CMD_SET_SENSOR_ACTIVATE, sensor_id, 0x00, 0x01);
@@ -23,7 +23,7 @@ static unsigned int set_sensor_active(int sensor_id) {
 	return  HUB_MGR_GEN_CMD_CODE(HUB_MGR_CMD_SET_SENSOR_ACTIVATE, sensor_id, 0x00, 0x00);
     }
 
-}
+}*/
 
 int frizz_ioctl_mcc(unsigned int cmd, unsigned long arg) {
 

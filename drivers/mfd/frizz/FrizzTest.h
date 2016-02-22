@@ -3,10 +3,6 @@
 #include "frizz_debug.h"
 #include "frizz_sensor_list.h"
 #include "inc/hub_mgr/hub_mgr_if.h"
-#include "frizz_packet.h"
-#include "frizz_ioctl.h"
-#include "frizz_workqueue.h"
-#include "frizz_gpio.h"
 
 #define INPUT_SENSOR_TYPE_ID(code, id) code, id
 
@@ -34,7 +30,7 @@ struct {
     {INPUT_SENSOR_TYPE_ID(SENSOR_TYPE_GEOMAGNETIC_ROTATION_VECTOR, SENSOR_ID_ROTATION_LPF_VECTOR)},
     {INPUT_SENSOR_TYPE_ID(SENSOR_TYPE_LIGHT,                       SENSOR_ID_LIGHT_RAW)},
     {INPUT_SENSOR_TYPE_ID(SENSOR_TYPE_PROXIMITY,                   SENSOR_ID_PROXIMITY)},
-	{INPUT_SENSOR_TYPE_ID(SENSOR_TYPE_ACTIVITY,                    SENSOR_ID_ACTIVITY)},
+    {INPUT_SENSOR_TYPE_ID(SENSOR_TYPE_ACTIVITY,                    SENSOR_ID_ACTIVITY)},
 
      //Sensor Type of MCC
     {INPUT_SENSOR_TYPE_ID(SENSOR_TYPE_PDR, SENSOR_ID_PDR)},
@@ -91,30 +87,3 @@ int convert_id_to_code(int id)
 
     return -1;
 }
-
-int probe_sensors()
-{
-    packet_t packet;
-    int status;
-    int retval = -1;
-    int i;
-    packet.header.prefix = 0xFF;
-    packet.header.type = 0x81;
-    packet.header.sen_id = HUB_MGR_ID;
-    packet.header.num = 1;
-
-    for (i = 0; i < MAX_SENSOR_LIST_ELEMENT_COUNT; i++) {
-        packet.data[0] = set_sensor_active(sensor_list[i].id);
-        status = create_frizz_workqueue((void*) &packet);
-        if(!status) {
-            retval = 0;
-            packet.data[0] = HUB_MGR_GEN_CMD_CODE(HUB_MGR_CMD_DEACTIVATE_SENSOR,
-                    sensor_list[i].id, 0x00, 0x00);
-            create_frizz_workqueue((void*) &packet);
-        }
-    }
-    return retval;
-}
-
-
-

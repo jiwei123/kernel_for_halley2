@@ -6,7 +6,8 @@
 #include "frizz_debug.h"
 #include "frizz_gpio.h"
 
-static atomic_t v = ATOMIC_INIT(0);
+static int v;
+static struct mutex lock;
 
 int frizz_irq, frizz_reset, frizz_wakeup;
 static int irq_number = 0;
@@ -61,6 +62,11 @@ int init_frizz_gpio(struct frizz_platform_data* frizz_pdata)
 	ret = gpio_request(frizz_wakeup, wakeup_button);
 	gpio_direction_output(frizz_wakeup, 1);
 
+    mutex_init(&lock);
+    mutex_lock(&lock);
+    v = 0;
+    mutex_unlock(&lock);
+
     return ret;
 }
 void enable_irq_gpio(void)
@@ -77,28 +83,29 @@ void enable_irq_gpio(void)
 //REMEBER: one keep_frizz_wakeup stand with one release_frizz_wakeup.
 int keep_frizz_wakeup()
 {
-	atomic_inc(&v);
-	if(atomic_read(&v) >= 1)
-		set_wakeup_gpio(1);
- //when wakeup the frizz need to delay 15ms then to read the data
+    mutex_lock(&lock);
+    if(++v >= 1)
+        set_wakeup_gpio(1);
+ //when wakeup the frizz need to delay 3ms then to read the data
  //but if the frizz has been wakeup, just leave it to save the time.
-	if(atomic_read(&v) == 1)
-		msleep(15);
-	return 0;
+    if(v == 1)
+        msleep(3);
+    mutex_unlock(&lock);
+    return 0;
 }
 int release_frizz_wakeup()
 {
-	atomic_dec(&v);
-	if(atomic_read(&v) < 0) {
-		dump_stack();
-		kprint("Frizz, the atomic value is not designed to be lower than Zero, check it!");
-	}
-	if(atomic_read(&v) <= 0)
-	{
-		atomic_set(&v, 0);
-		set_wakeup_gpio(0);
-	}
-	return 0;
+    mutex_lock(&lock);
+    if(--v < 0) {
+        dump_stack();
+        kprint("Frizz, the atomic value is not designed to be lower than Zero, check it!");
+    }
+    if(v <= 0) {
+        v = 0;
+        set_wakeup_gpio(0);
+    }
+    mutex_unlock(&lock);
+    return 0;
 }
 void set_wakeup_gpio(int mode)
 {
