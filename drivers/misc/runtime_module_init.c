@@ -19,12 +19,12 @@
 
 extern unsigned long __runtime_module_init_start;
 extern unsigned long __runtime_module_init_end;
+struct mutex runtime_module_init_lock;
+initcall_t *runtime_module_init_next = NULL;
 
 struct runtime_module_init_task {
 	struct list_head	node;
-	initcall_t fn;
 	struct completion	done;
-	int ret;
 	struct task_struct *task;
 };
 
@@ -45,43 +45,73 @@ static int __init_or_module do_one_initcall_debug(initcall_t fn)
 	pr_debug("initcall %pF returned %d after %lld msecs\n", fn,
 		ret, duration >> 10);
 
-	return 0;
+	return ret;
 }
 
 static int do_one_runtime_module_initcall(void *data) {
+	int ret = 0;
+	initcall_t fn;
 	struct runtime_module_init_task *runtime_task = data;
-	if (initcall_debug) {
-		runtime_task->ret = !!do_one_initcall_debug(runtime_task->fn);
-	} else {
-		runtime_task->ret = !!runtime_task->fn();
+
+	while (1) {
+		mutex_lock(&runtime_module_init_lock);
+
+		if ((unsigned long)runtime_module_init_next >= (unsigned long)&__runtime_module_init_end) {
+			mutex_unlock(&runtime_module_init_lock);
+			break;
+		}
+		fn = *runtime_module_init_next;
+		runtime_module_init_next++;
+		mutex_unlock(&runtime_module_init_lock);
+
+		if (initcall_debug) {
+			ret = do_one_initcall_debug(fn);
+		} else {
+			ret = fn();
+		}
+
+		if (ret) {
+			pr_err("runtime init %pF failed:%d\n", fn, ret);
+		}
 	}
+
 	complete(&runtime_task->done);
 	return 0;
 }
 
 int do_runtime_module_initcalls(void) {
-	initcall_t *fn;
-	initcall_t *start = (void *)&__runtime_module_init_start;
-	initcall_t *end = (void *)&__runtime_module_init_end;
+	int initcall_num = 0;
 	int i = 0;
 	ktime_t calltime, delta, rettime;
 	unsigned long long duration;
 	struct runtime_module_init_task *task, *next;
-	initcall_debug = 1;
+
+	initcall_num = &__runtime_module_init_end - &__runtime_module_init_start;
+
 	if (initcall_debug) {
 		calltime = ktime_get();
-		pr_debug("start runtime module init calls\n");
+		pr_debug("#####################################################\n");
+		pr_debug("start runtime module init calls, total num:%d\n", initcall_num);
 		pr_debug("calling  %pF @ %i\n", do_runtime_module_initcalls, task_pid_nr(current));
 	}
-	for (fn = start, i = 0; fn < end; fn++, i++) {
+
+	if (runtime_module_init_next == NULL) {
+		runtime_module_init_next = (void *)&__runtime_module_init_start;
+	}
+
+	mutex_init(&runtime_module_init_lock);
+
+	if (initcall_num > CONFIG_RUNTIME_MODULE_INIT_MAX_TASK) {
+		initcall_num = CONFIG_RUNTIME_MODULE_INIT_MAX_TASK;
+	}
+	for (i = 0; i < initcall_num; i++) {
 		task = kzalloc(sizeof(struct runtime_module_init_task), GFP_KERNEL);
 		if (!task) {
 			pr_err("alloc for runtime_module_init_task failed\n");
 			break;
 		}
-
-		task->fn = *fn;
 		init_completion(&task->done);
+
 		task->task = kthread_run(do_one_runtime_module_initcall, task, "runtime_init %d", i);
 		if (IS_ERR(task->task)) {
 			pr_err("failed to create runtime_module_init_task %d:err:%ld\n", i, PTR_ERR(task->task));
@@ -93,12 +123,10 @@ int do_runtime_module_initcalls(void) {
 
 	list_for_each_entry_safe(task, next, &task_list, node) {
 		wait_for_completion(&task->done);
-		if (task->ret) {
-			pr_err("runtime init %pF failed:%d\n", task->fn, task->ret);
-		}
 		list_del(&task->node);
 		kfree(task);
 	}
+	runtime_module_init_next = NULL;
 
 	if (initcall_debug) {
 		rettime = ktime_get();
