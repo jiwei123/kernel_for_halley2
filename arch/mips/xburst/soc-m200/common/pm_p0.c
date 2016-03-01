@@ -326,6 +326,20 @@ static inline void set_gpio_func(int gpio, int type) {
 #define SLEEP_TCSM_RESUME_TEXT     (SLEEP_TCSM_BOOT_TEXT + SLEEP_TCSM_BOOT_LEN)
 #define SLEEP_TCSM_RESUME_DATA     (SLEEP_TCSM_RESUME_TEXT + SLEEP_TCSM_RESUME_LEN)
 
+struct tcsm_resume_data
+{
+	unsigned int reg_ddrc_autosr_en;
+	unsigned int reg_ddrc_dlp;
+	unsigned int pmu_slp_gpio_info;
+	unsigned int reg_ddrp_dxogsr;
+	unsigned int cache_eable;
+	unsigned int cp0_state;
+	unsigned int reg_cpm_cpccr;
+	unsigned int voice_wakeup_enable;
+	unsigned int cache_attr;
+
+};
+static struct tcsm_resume_data *resume_data=(struct tcsm_resume_data *)SLEEP_TCSM_RESUME_DATA;
 
 static int __attribute__((aligned(256))) test_l2cache_handle(int val)
 {
@@ -434,9 +448,9 @@ static noinline void cpu_sleep(void)
 			printk("regulator sleep gpio set output type error!\n");
 			return;
 		}
-		REG32(SLEEP_TCSM_RESUME_DATA + 8) = save_slp;
+		resume_data->pmu_slp_gpio_info = save_slp;
 	} else {
-		REG32(SLEEP_TCSM_RESUME_DATA + 8) = pmu_slp_gpio_info;
+		resume_data->pmu_slp_gpio_info = pmu_slp_gpio_info;
 	}
 
 	config_powerdown_core((unsigned int *)SLEEP_TCSM_BOOT_TEXT);
@@ -447,10 +461,10 @@ static noinline void cpu_sleep(void)
 	/* printk("DDRC_AUTOSR_EN: %x\n",ddr_readl(DDRC_AUTOSR_EN)); */
 	/* printk("DDRC_DLP: %x\n",ddr_readl(DDRC_DLP)); */
 	/* printk("ddr cs %x\n",ddr_readl(DDRP_DX0GSR)); */
-	REG32(SLEEP_TCSM_RESUME_DATA + 12) = ddr_readl(DDRP_DX0GSR) & 3;
-	REG32(SLEEP_TCSM_RESUME_DATA + 16) = read_c0_config();
-	REG32(SLEEP_TCSM_RESUME_DATA + 20) = read_c0_status();
-	REG32(SLEEP_TCSM_RESUME_DATA + 24) = REG32(0xb0000000);
+	resume_data->reg_ddrp_dxogsr = ddr_readl(DDRP_DX0GSR) & 3;
+	resume_data->cache_eable = read_c0_config();
+	resume_data->cp0_state = read_c0_status();
+	resume_data->reg_cpm_cpccr = REG32(0xb0000000);
 
 
 #ifdef CONFIG_JZ_DMIC_WAKEUP
@@ -485,7 +499,7 @@ static noinline void cpu_sleep(void)
 #endif
 
 #ifdef CONFIG_JZ_DMIC_WAKEUP
-	REG32(SLEEP_TCSM_RESUME_DATA + 28) = wakeup_module_is_wakeup_enabled();
+	resume_data->voice_wakeup_enable  = wakeup_module_is_wakeup_enabled();
 #ifdef CONFIG_SLPT
 	slpt_set_voice_trigger_state(!!wakeup_module_is_wakeup_enabled());
 #endif
@@ -503,10 +517,10 @@ static noinline void cpu_sleep(void)
 	__fast_iob();
 LABLE1:
 	val = ddr_readl(DDRC_AUTOSR_EN);
-	REG32(SLEEP_TCSM_RESUME_DATA + 0) = val;
+	resume_data->reg_ddrc_autosr_en  = val;
 	ddr_writel(0,DDRC_AUTOSR_EN);             // exit auto sel-refresh
 	val = ddr_readl(DDRC_DLP);
-	REG32(SLEEP_TCSM_RESUME_DATA + 4) = val;
+	resume_data->reg_ddrc_dlp = val;
 	if(!(ddr_readl(DDRP_PIR) & DDRP_PIR_DLLBYP) && !val)
 	{
 		ddr_writel(0xf003 , DDRC_DLP);
@@ -526,29 +540,59 @@ LABLE1:
 	 * (2) AH0/2 source clock changes MPLL to EXCLK
 	 * (3) set PDIV H2DIV H0DIV L2CDIV CDIV = 0
 	 */
-	REG32(0xb0000000) = 0x95f00000;
-	while((REG32(0xB00000D4) & 7))
-		TCSM_PCHAR('w');
+	val = REG32(0xb0000000);
+	val &= ~(7 << 20);
+	val |= (1 << 22);
+	REG32(0xb0000000) = val;
+
+	val = REG32(0xb0000000);
+	val &= ~((0xf << 28) | (0xff));
+	val |=((0x9 << 28) | 0x00);
+	REG32(0xb0000000) = val;
+
+	val = REG32(0xb0000000);
+	val &= ~(7 << 20);
+	val |= (3 << 20);
+	REG32(0xb0000000) = val;
+
+	while((REG32(0xB00000D4) & 1))
+		TCSM_PCHAR('C');
+
+	val = REG32(0xb0000000);
+	val &= ~((0xf << 24) | (0xfff << 8));
+	val |=((0x5 << 24) | 0x000 << 8);
+	REG32(0xb0000000) = val;
+
+	while((REG32(0xB00000D4) & 6))
+		TCSM_PCHAR('H');
+
+	REG32(0xb0000000) &= ~(0xf << 20);
 
 	if(pmu_slp_gpio_info != -1) {
 		set_gpio_func(pmu_slp_gpio_info & 0xffff,
 				pmu_slp_gpio_info >> 16);
+		TCSM_DELAY(0x1fff);
 	}
 
 #ifdef CONFIG_JZ_DMIC_WAKEUP
 	/* set cache writeback */
-	REG32(SLEEP_TCSM_RESUME_DATA + 32) = __read_32bit_c0_register($12, 2); /* cache attr */
-	__write_32bit_c0_register($12, 2, REG32(SLEEP_TCSM_RESUME_DATA + 32) | (1<<31));
+	resume_data->cache_attr = __read_32bit_c0_register($12, 2); /* cache attr */
+	__write_32bit_c0_register($12, 2, resume_data->cache_attr | (1<<31));
 #endif
 	/* set pdma deep sleep */
 	REG32(0xb00000b8) |= (1<<31);
 	__asm__ volatile(".set mips32\n\t"
+			"sync \n\t"
+			"lw $0, 0(%0)\n\t"
+			"nop\n\t"
 			"wait\n\t"
 			"nop\n\t"
 			"nop\n\t"
 			"nop\n\t"
-			"jr %0\n\t"
-			".set mips32 \n\t" ::"r" (SLEEP_TCSM_BOOT_TEXT));
+			"jr %1\n\t"
+			".set mips32 \n\t"
+			:
+			:"r"(0xa0000000), "r" (SLEEP_TCSM_BOOT_TEXT));
 
 	while(1)
 		TCSM_PCHAR('n');
@@ -654,12 +698,13 @@ static noinline void cpu_resume(void)
 #endif
 	TCSM_PCHAR('O');
 
-	write_c0_config(REG32(SLEEP_TCSM_RESUME_DATA + 16));  // restore cachable
-	write_c0_status(REG32(SLEEP_TCSM_RESUME_DATA + 20));  // restore cp0 statue
+	write_c0_config(resume_data->cache_eable);  // restore cachable
+	write_c0_status(resume_data->cp0_state);  // restore cp0 statue
 
 #ifdef CONFIG_JZ_DMIC_WAKEUP
-	if(REG32(SLEEP_TCSM_RESUME_DATA + 28) == 1) {
+	if(resume_data->voice_wakeup_enable == 1) {
 		/* wakeup module is enabled */
+		__jz_cache_init();
 		temp = *(unsigned int *)WAKEUP_HANDLER_ADDR;
 		func = (int (*)(int))temp;
 		val = func(1);
@@ -673,12 +718,21 @@ static noinline void cpu_resume(void)
 	REG32(0xb0000020) &= ~(1<<31);
 #endif
 
+	val=resume_data->pmu_slp_gpio_info;
+	if(val != -1){
+		set_gpio_func(val & 0xffff, val >> 16);
+		TCSM_DELAY(0x1fff);
+	}
+
 	/* restore  CPM CPCCR */
-	val = REG32(SLEEP_TCSM_RESUME_DATA + 24);
+	val = resume_data->reg_cpm_cpccr;
 	val |= (7 << 20);
 	REG32(0xb0000000) = val;
+
 	while((REG32(0xB00000D4) & 7))
 		TCSM_PCHAR('w');
+
+	REG32(0xb0000000) &= ~(7 << 20);
 
 	bypassmode = ddr_readl(DDRP_PIR) & DDRP_PIR_DLLBYP;
 	if(!bypassmode) {
@@ -732,7 +786,7 @@ static noinline void cpu_resume(void)
 		*(volatile unsigned int *)0xb301102c |= (1 << 4);
 		TCSM_DELAY(0x1ff);
 	}
-	if(!REG32(SLEEP_TCSM_RESUME_DATA + 4) && !bypassmode)
+	if(!resume_data->reg_ddrc_dlp && !bypassmode)
 	{
 		ddr_writel(0x0 , DDRC_DLP);
 		{
@@ -741,7 +795,7 @@ static noinline void cpu_resume(void)
 			ddr_writel(val,DDRP_DSGCR);
 		}
 	}
-	if(REG32(SLEEP_TCSM_RESUME_DATA + 0)) {
+	if(resume_data->reg_ddrc_autosr_en) {
 		ddr_writel(1,DDRC_AUTOSR_EN);   // enter auto sel-refresh
 	}
 	dump_ddr_param();
@@ -782,7 +836,7 @@ static noinline void cpu_resume(void)
 			val |= (1 << 4);
 			ddr_writel(val,DDRP_DSGCR);
 		}
-        /**
+		/*
 		 *  DDR keep selrefresh,when it exit the sleep state.
 		 */
 		val = ddr_readl(DDRC_CTRL);
@@ -812,7 +866,7 @@ static noinline void cpu_resume(void)
 
 #ifdef CONFIG_JZ_DMIC_WAKEUP
 	/* restore cache attribute */
-	__write_32bit_c0_register($12, 2, REG32(SLEEP_TCSM_RESUME_DATA + 32));
+	__write_32bit_c0_register($12, 2, resume_data->cache_attr);
 #endif
 	TCSM_PCHAR('r');
 	__asm__ volatile(".set mips32\n\t"
