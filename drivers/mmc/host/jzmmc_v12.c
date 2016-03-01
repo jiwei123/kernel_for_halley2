@@ -697,7 +697,7 @@ static inline unsigned int get_incr(unsigned int dma_len)
 #undef _CASE
 	}
 #else
-	incr = 1;
+	incr = 0;
 #endif
 	return incr;
 }
