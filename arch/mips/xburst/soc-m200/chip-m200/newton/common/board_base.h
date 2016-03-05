@@ -116,6 +116,12 @@ extern struct platform_device byd_8991_device;
 #ifdef CONFIG_LCD_TRULY_TFT240240_2_E
 extern struct platform_device truly_tft240240_device;
 #endif
+#ifdef CONFIG_LCD_AUO_H139BLN01
+extern struct mipi_dsim_lcd_device  auo_h139bln01_device;
+#endif
+#ifdef CONFIG_LCD_EDO_E1392AM1
+extern struct mipi_dsim_lcd_device  edo_e1392am1_device;
+#endif
 #ifdef CONFIG_JZ_BATTERY
 extern struct jz_adc_platform_data adc_platform_data;
 #endif

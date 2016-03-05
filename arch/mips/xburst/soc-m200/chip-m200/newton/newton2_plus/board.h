@@ -73,6 +73,20 @@
 #define VCC_LCD_1V8_NAME        LDO2_NAME
 #define VCC_LCD_2V8_NAME        LDO4_NAME
 #endif
+#ifdef CONFIG_LCD_AUO_H139BLN01
+#define GPIO_MIPI_RST_N        GPIO_PC(19)
+#define DSI_TE_GPIO            GPIO_PC(18)
+#define GPIO_LCD_BLK_EN        -1
+#define VCC_LCD_1V8_NAME       LDO4_NAME
+#define VCC_LCD_2V8_NAME       LDO6_NAME
+#endif
+#ifdef CONFIG_LCD_EDO_E1392AM1
+#define GPIO_MIPI_RST_N        GPIO_PC(19)
+#define DSI_TE_GPIO            GPIO_PC(18)
+#define GPIO_LCD_BLK_EN        -1
+#define VCC_LCD_1V8_NAME       LDO4_NAME
+#define VCC_LCD_2V8_NAME       LDO6_NAME
+#endif
 
 /* ****************************GPIO LCD END********************************** */
 
@@ -126,6 +140,11 @@
 #define GPIO_TP_INT             GPIO_PC(14)
 #define GPIO_TP_RESET           GPIO_PC(13)
 #endif  /* CONFIG_TOUCHSCREEN_ITE7258 */
+#ifdef  CONFIG_TOUCHSCREEN_FOCALTECH
+#define GPIO_TP_INT             GPIO_PA(12)
+#define GPIO_TP_RESET           GPIO_PA(14)
+#define VCC_TOUCHSCREEN         LDO9_NAME
+#endif  /* CONFIG_TOUCHSCREEN_FOCALTECH */
 
 /* ****************************GPIO TOUCHSCREEN END************************** */
 

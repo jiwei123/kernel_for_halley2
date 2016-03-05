@@ -58,6 +58,17 @@ struct ft6x06_platform_data ft6x06_tsc_pdata = {
 };
 #endif
 
+#ifdef CONFIG_TOUCHSCREEN_FOCALTECH
+#include <linux/i2c/focaltech.h>
+static struct fts_platform_data ft3x0x_tsc_pdata = {
+	.irq_gpio_number   = GPIO_TP_INT,
+	.reset_gpio_number = GPIO_TP_RESET,
+	.TP_MAX_X          = 400,
+	.TP_MAX_Y          = 400,
+	.vdd_name          = VCC_TOUCHSCREEN,
+};
+#endif
+
 #ifdef CONFIG_TOUCHSCREEN_ITE7258
 #include <linux/tsc.h>
 struct jztsc_pin ite7258_tsc_gpio[2] = {
@@ -150,6 +161,13 @@ struct i2c_board_info jz_i2c1_devs[] __initdata = {
 	{
 		I2C_BOARD_INFO("ite7258_ts", 0x46),
 		.platform_data = &ite7258_tsc_pdata,
+	},
+#endif
+
+#ifdef CONFIG_TOUCHSCREEN_FOCALTECH
+	{
+		I2C_BOARD_INFO("focaltech_ts", 0x38),
+		.platform_data = &ft3x0x_tsc_pdata,
 	},
 #endif
 };

@@ -9,3 +9,5 @@ obj-$(CONFIG_LCD_LH155) 	+= lcd-lh155.o
 obj-$(CONFIG_JZ_EPD_V12)	+= epd.o
 obj-$(CONFIG_LCD_X163) += lcd-x163.o
 obj-$(CONFIG_LCD_BOE_TFT320320) += lcd-boe_tft320320.o
+obj-$(CONFIG_LCD_EDO_E1392AM1)  += lcd-edo_e1392am1.o
+obj-$(CONFIG_LCD_AUO_H139BLN01) += lcd-auo_h139bln01.o

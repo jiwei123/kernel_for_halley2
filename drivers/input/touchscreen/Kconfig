@@ -74,6 +74,8 @@ endchoice
 endif
 endif
 
+source "drivers/input/touchscreen/focaltech/Kconfig"
+
 config 	TSC_SWAP_XY
 		bool "swap x and y "
 		depends on INPUT_TOUCHSCREEN

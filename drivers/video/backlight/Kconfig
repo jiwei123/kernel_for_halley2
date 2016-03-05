@@ -189,6 +189,18 @@ config LCD_BOE_TFT320320_ROTATION_180
 	depends on LCD_BOE_TFT320320
 	default n
 
+config LCD_EDO_E1392AM1
+	tristate "EDO 1.39 inch AMOLED mipi-dsi panel(400x4000)"
+	depends on FB && JZ_MIPI_DSI
+	help
+	jz mipi dsi.dpi AMOLED display panel support
+
+config LCD_AUO_H139BLN01
+	tristate "AUO 1.4 inch AMOLED mipi-dsi panel(400x4000)"
+	depends on FB && JZ_MIPI_DSI
+	help
+	jz mipi dsi.dpi AMOLED display panel support
+
 config SLCDC_USE_TE
 	tristate "SLCDC USE TE SIGNAL"
 	depends on BACKLIGHT_CLASS_DEVICE
