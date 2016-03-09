@@ -37,7 +37,7 @@ unsigned int _dma_channel = 5;
 static unsigned int tcu_channel = 5;
 
 unsigned int cpu_wakeup_by = 0;
-unsigned int open_cnt = 0;
+int open_cnt = 0;
 unsigned int current_mode = 0;
 struct sleep_buffer *g_sleep_buffer;
 static int voice_wakeup_enabled = 0;
@@ -328,12 +328,14 @@ int close(int mode)
 	}
 
 
-
 	if((--open_cnt) == 0) {
 		printk("[voice wakeup] wakeup module closed for real. \n");
 		dmic_disable();
 		dma_close();
+	} else if (open_cnt < 0) {
+		open_cnt = 0;
 	}
+
 	return 0;
 }
 
