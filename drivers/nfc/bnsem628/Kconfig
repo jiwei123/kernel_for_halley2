@@ -1,0 +1,11 @@
+config NFC_BNSEM628
+	tristate "MPS BNSEM505-628 driver"
+	depends on NFC
+	select CRC_CCITT
+	default n
+	---help---
+	  bnsem505-628 core driver.
+
+	  To compile this driver as a module, choose m here. The module will
+	  be called bnsem628.
+	  Say N if unsure.

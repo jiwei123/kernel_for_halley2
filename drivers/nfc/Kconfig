@@ -58,5 +58,6 @@ config NFC_MEI_PHY
 
 source "drivers/nfc/pn544/Kconfig"
 source "drivers/nfc/microread/Kconfig"
+source "drivers/nfc/bnsem628/Kconfig"
 
 endmenu

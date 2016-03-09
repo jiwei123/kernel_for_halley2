@@ -400,6 +400,12 @@
 #endif
 /* ****************************GPIO DRV2605 END****************************** */
 
+ /* ****************************NFC BNSEM628 START****************************** */
+#ifdef CONFIG_NFC_BNSEM628
+#define GPIO_NFC_ENABLE		GPIO_PC(12)
+#endif
+ /* ****************************NFC BNSEM628 END****************************** */
+
 /* ****************************SensorHub ICM30630 START********************** */
 #ifdef CONFIG_SENSORHUB_ICM30630
 #define GPIO_ICM30630_GPIO0_INT             GPIO_PC(24)

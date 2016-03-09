@@ -622,6 +622,18 @@ struct mpu_platform_data __weak icm30630_platform_data = {
 #endif
 /* *****************************SensorHub ICM30630 end******************** */
 
+/* *****************************nfc BNSEM628 start************************/
+#ifdef CONFIG_NFC_BNSEM628
+#include <linux/nfc/bnsem628.h>
+
+struct bnsem628_platform_data bnsem628_pdata = {
+    .en_gpio = GPIO_NFC_ENABLE,
+    .power_down_gpio_set = NULL,
+    .power_on_gpio_set = NULL,
+};
+#endif
+/* *****************************nfc BNSEM628 end************************/
+
 #if (defined(CONFIG_I2C_GPIO) || defined(CONFIG_I2C0_V12_JZ))
 struct i2c_board_info jz_i2c0_devs[] __initdata = {
 #ifdef CONFIG_TOUCHSCREEN_GWTC9XXXB
@@ -742,6 +754,12 @@ struct i2c_board_info jz_i2c2_devs[] __initdata = {
         .platform_data = &icm30630_platform_data,
     },
 #endif /*CONFIG_SENSORHUB_ICM30630*/
+#ifdef CONFIG_NFC_BNSEM628
+    {
+        I2C_BOARD_INFO("bnsem628", 0x13),
+        .platform_data = &bnsem628_pdata,
+    },
+#endif /*CONFIG_NFC_BNSEM628*/
 };
 #endif  /*I2C2*/
 
