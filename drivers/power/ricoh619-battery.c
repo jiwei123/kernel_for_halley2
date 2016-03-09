@@ -1967,7 +1967,7 @@ end_flow:
 				//
 				record_debug("PMU:branch - 2\n");
 			}
-			else if(cc_cap > 50 )
+			else if(cc_cap > 100 )
 			{
 				cc_left = cc_cap;
 				soc_diff = cc_cap;
@@ -1975,7 +1975,7 @@ end_flow:
 				soc_diff = (is_charging == true)?soc_diff:-soc_diff;
 				record_debug("PMU:left is %d,diff is %d,inipswr is %d  \n",cc_left,soc_diff,info->soca->init_pswr);
 				info->soca->init_pswr += soc_diff ;
-				info->soca->last_cc_sum = 0;
+				info->soca->last_cc_sum -= cc_left;
 				record_debug("PMU:after init_pswr is %d \n",info->soca->init_pswr);
 				info->soca->init_pswr = min(10000,max(0,info->soca->init_pswr));
 				//err = set_cc_sum_back(info,&cc_left);
@@ -3611,9 +3611,11 @@ static void charger_irq_work(struct work_struct *work)
 	struct ricoh61x_battery_info *info
 		 = container_of(work, struct ricoh61x_battery_info, irq_work.work);
 #endif
-	int ret = 0;
+	int ret = 0, err = 0;
 	uint8_t val = 0;
 	int chg_status;
+	int cc_cap;
+	bool is_charging;
 	//uint8_t adp_current_val = 0x0E;
 	//uint8_t usb_current_val = 0x04;
 
@@ -3631,6 +3633,13 @@ static void charger_irq_work(struct work_struct *work)
 #endif
 
 	mutex_lock(&info->lock);
+
+	/* If charge complete, reset FG & reset init_pswr, clear CC */
+	if ((chg_status & 0x02) == 2) {
+		ret = reset_FG_process(info);
+		info->soca->init_pswr = 10000;
+		err = calc_capacity_in_period(info, &cc_cap, &is_charging, true);
+        }
 
 #if 0
 	if(info->chg_ctr & 0x02) {
