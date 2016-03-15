@@ -171,7 +171,11 @@
 #define GPIO_TP_RESET             GPIO_PA(14)
 #define GPIO_TP_EN			-1
 #define VCC_TOUCHSCREEN LDO10_NAME
+#ifdef  CONFIG_AW808_HW_F1
+#define VIO_TOUCHSCREEN NULL
+#else
 #define VIO_TOUCHSCREEN LDO9_NAME
+#endif
 #endif  /* CONFIG_TOUCHSCREEN_ITE7258 */
 #ifdef CONFIG_TOUCHSCREEN_MSG22S
 #define VCC_TOUCHSCREEN		LDO10_NAME
@@ -323,16 +327,28 @@
 /* ****************************GPIO AUDIO END******************************** */
 
 /* ****************************GPIO WIFI START******************************* */
+#if (defined(CONFIG_AW808_HW_X3) || defined(CONFIG_AW808_HW_IN901) || defined(CONFIG_AW808_HW_F1))
+#define BCM_PWR_EN       (-1)
+#define WL_WAKE_HOST     (-1)
+#define WL_REG_EN        (-1)
+#define HOST_WAKE_WL     (-1)
+#else
 #define BCM_PWR_EN       GPIO_PC(12)
 #define WL_WAKE_HOST     GPIO_PC(17)
 #define WL_REG_EN        GPIO_PC(13)
 #define HOST_WAKE_WL     (-1)
+#endif
 /* ****************************GPIO WIFI END********************************* */
 
 /* ***************************GPIO VIBRATOR START***************************** */
-#ifdef	CONFIG_ANDROID_TIMED_REGULATOR
-#define	REG_VDDIO	LDO4_NAME
-#define	MAX_TIMEOUT	18000
+#ifdef CONFIG_ANDROID_TIMED_REGULATOR
+#if defined(CONFIG_AW808_HW_F1) || defined(CONFIG_AW808_HW_HW1015)
+#define REG_VDDIO   LDO9_NAME
+#define MAX_TIMEOUT 18000
+#else
+#define REG_VDDIO   LDO4_NAME
+#define MAX_TIMEOUT 18000
+#endif
 #endif
 
 #ifdef	CONFIG_ANDROID_TIMED_GPIO
@@ -357,17 +373,32 @@
 //#define NFC_REQ		GPIO_PC(26)
 //#define NFC_REG_PU	GPIO_PC(27)
 //#define HOST_WAKE_NFC   GPIO_PA(11)
+
+/*
+ * For BNSEM628 NFC
+ */
+#ifdef CONFIG_NFC_BNSEM628
+#define GPIO_NFC_ENABLE		GPIO_PC(14)
+#endif
 /* ****************************GPIO NFC END********************************** */
 
 /* ****************************GPIO BLUETOOTH START************************** */
 /* BT gpio */
 #ifdef  CONFIG_BROADCOM_RFKILL
 
+#if defined(CONFIG_AW808_HW_X3) || defined(CONFIG_AW808_HW_IN901) || defined(CONFIG_AW808_HW_F1)
+#define HOST_WAKE_BT	GPIO_PC(15)
+#define BT_WAKE_HOST	GPIO_PC(16)
+#define BT_REG_EN       GPIO_PC(12)
+#define BT_UART_RTS     GPIO_PD(28)
+#define HOST_BT_RST     GPIO_PC(13)
+#else
 #define HOST_WAKE_BT	GPIO_PC(15)
 #define BT_WAKE_HOST	GPIO_PC(16)
 #define BT_REG_EN       GPIO_PC(14)
 #define BT_UART_RTS     GPIO_PD(28)
 #define HOST_BT_RST     -1
+#endif
 
 //#define GPIO_PB_FLGREG      (0x10010058)
 #define GPIO_BT_INT_BIT     (1 << (BT_WAKE_HOST % 32))
