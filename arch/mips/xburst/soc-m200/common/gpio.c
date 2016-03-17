@@ -947,7 +947,7 @@ int __init setup_gpio_pins(void)
 	return 0;
 }
 
-arch_initcall(setup_gpio_pins);
+postcore_initcall(setup_gpio_pins);
 
 int jzgpio_str2gpio(char *str)
 {

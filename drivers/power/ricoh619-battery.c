@@ -5541,7 +5541,7 @@ static int __init ricoh61x_battery_init(void)
 	record_debug("PMU: %s\n", __func__);
 	return platform_driver_register(&ricoh61x_battery_driver);
 }
-module_init(ricoh61x_battery_init);
+arch_initcall(ricoh61x_battery_init);
 
 static void __exit ricoh61x_battery_exit(void)
 {

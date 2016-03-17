@@ -339,4 +339,4 @@ unsigned int get_pmu_slp_gpio_info(void)
 	return pmu_slp_gpio_info;
 }
 
-arch_initcall(board_base_init);
+postcore_initcall(board_base_init);

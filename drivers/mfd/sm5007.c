@@ -738,7 +738,7 @@ static int __init sm5007_i2c_init(void)
 	return ret;
 }
 
-subsys_initcall(sm5007_i2c_init);
+postcore_initcall_sync(sm5007_i2c_init);
 
 static void __exit sm5007_i2c_exit(void)
 {

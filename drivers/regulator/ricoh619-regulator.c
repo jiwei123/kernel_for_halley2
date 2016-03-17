@@ -607,7 +607,7 @@ static int __init ricoh61x_regulator_init(void)
 {
 	return platform_driver_register(&ricoh61x_regulator_driver);
 }
-subsys_initcall(ricoh61x_regulator_init);
+postcore_initcall(ricoh61x_regulator_init);
 
 static void __exit ricoh61x_regulator_exit(void)
 {

@@ -855,7 +855,7 @@ static int __init SM5007_regulator_init(void)
 {
 	return platform_driver_register(&SM5007_regulator_driver);
 }
-subsys_initcall(SM5007_regulator_init);
+postcore_initcall(SM5007_regulator_init);
 
 static void __exit SM5007_regulator_exit(void)
 {

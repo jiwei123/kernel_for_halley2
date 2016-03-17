@@ -430,4 +430,4 @@ static int __init pmu_dev_init(void)
 	return platform_add_devices(fixed_regulator_devices,
 				    ARRAY_SIZE(fixed_regulator_devices));
 }
-subsys_initcall_sync(pmu_dev_init);
+arch_initcall(pmu_dev_init);
