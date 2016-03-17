@@ -23,5 +23,9 @@ config AW808_HW_V11_WISE_SQUARE
        bool "aw808 hardware version v11 for wise square"
        depends on WATCH_AW808
 
+config AW808_HW_F1
+       bool "aw808 hardware version for f1"
+       depends on WATCH_AW808
+
 endchoice
 

@@ -99,7 +99,7 @@ static struct fts_platform_data ft3x0x_tsc_pdata = {
 #include <linux/tsc.h>
 struct jztsc_pin ite7258_tsc_gpio[2] = {
         [0] = {GPIO_TP_INT, LOW_ENABLE},
-#if (defined(CONFIG_AW808_HW_V11_NATURAL_ROUND))
+#if (defined(CONFIG_AW808_HW_V11_NATURAL_ROUND) || defined(CONFIG_AW808_HW_F1))
         [1] = {GPIO_TP_RESET, HIGH_ENABLE},
 #else
         [1] = {GPIO_TP_RESET, LOW_ENABLE},
