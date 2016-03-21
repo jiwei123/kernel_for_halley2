@@ -90,7 +90,8 @@ static int jz_pcm_hw_params(struct snd_pcm_substream *substream,
 #ifdef CONFIG_JZ_ASOC_DMA_HRTIMER_MODE
 	{
 		unsigned long long time_ns;
-		time_ns = 1000 * 1000 * 1000 * params_period_size(params)/params_rate(params);
+		time_ns = 1000LL * 1000 * 1000 * params_period_size(params);
+		do_div(time_ns, params_rate(params));
 		prtd->expires = ns_to_ktime(time_ns);
 	}
 #else
@@ -147,7 +148,6 @@ static void jz_asoc_dma_callback(void *data)
 
 	DMA_SUBSTREAM_MSG(substream,"%s enter stopped_pending == %d\n", __func__,
 			atomic_read(&prtd->stopped_pending));
-
 	if (!atomic_dec_if_positive(&prtd->stopped_pending)) {
 		struct snd_soc_pcm_runtime *rtd = substream->private_data;
 		struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
@@ -275,6 +275,18 @@ static int jz_asoc_dma_prepare_and_submit(struct snd_pcm_substream *substream)
 	return 0;
 }
 
+
+static int jz_pcm_prepare(struct snd_pcm_substream *substream)
+{
+#ifndef CONFIG_JZ_ASOC_DMA_HRTIMER_MODE
+	struct jz_pcm_runtime_data *prtd = substream->runtime->private_data;
+	if (atomic_read(&prtd->stopped_pending))
+		printk("prepare wait dma stopping\n");
+	while(atomic_read(&prtd->stopped_pending));
+#endif
+	return 0;
+}
+
 static int jz_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 {
 	struct jz_pcm_runtime_data *prtd = substream->runtime->private_data;
@@ -292,10 +304,6 @@ static int jz_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-#ifndef CONFIG_JZ_ASOC_DMA_HRTIMER_MODE
-		if (atomic_read(&prtd->stopped_pending))
-			return -EPIPE;
-#endif
 		DMA_SUBSTREAM_MSG(substream,"start trigger\n");
 		ret = jz_asoc_dma_prepare_and_submit(substream);
 		if (ret)
@@ -472,6 +480,7 @@ static int jz_pcm_close(struct snd_pcm_substream *substream)
 struct snd_pcm_ops jz_pcm_ops = {
 	.open		= jz_pcm_open,
 	.close		= jz_pcm_close,
+	.prepare	= jz_pcm_prepare,
 	.ioctl		= snd_pcm_lib_ioctl,
 	.hw_params	= jz_pcm_hw_params,
 	.hw_free	= snd_pcm_lib_free_pages,
