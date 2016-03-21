@@ -63,6 +63,9 @@ __initdata int gpio_ss_table[][2] = {
 	{32*2+27,	GSS_INPUT_PULL		},	/* NC */
 
 	/* GPIO Group - D */
+	{32*3+0,	GSS_OUTPUT_LOW		},
+	{32*3+3,	GSS_OUTPUT_LOW		},
+	{32*3+4,	GSS_IGNORE		},
 	{32*3+14,	GSS_IGNORE 		},	/* CLK32K */
 	{32*3+17,	GSS_INPUT_NOPULL	},	/*  */
 	{32*3+18,	GSS_INPUT_NOPULL	},	/* BOOT_SEL1 	@@@*/

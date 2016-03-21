@@ -113,8 +113,8 @@ int edo_e1392am1_power_on(struct lcd_device *lcd, int enable)
 			gpio_direction_output(GPIO_LCD_BLK_EN, 1);
 	} else {
 		/* power off the power of LCD and it's Backlight */
-		regulator_force_disable(lcd_io_reg);
-		regulator_force_disable(lcd_vcc_reg);
+		regulator_disable(lcd_io_reg);
+		regulator_disable(lcd_vcc_reg);
 		if (gpio_is_valid(GPIO_LCD_BLK_EN))
 			gpio_direction_output(GPIO_LCD_BLK_EN, 0);
 #if defined(CONFIG_SLPT) && defined(CONFIG_REGULATOR_RICOH619)

@@ -1632,7 +1632,7 @@ static int _regulator_enable(struct regulator_dev *rdev)
 	    (rdev->constraints->valid_ops_mask & REGULATOR_CHANGE_DRMS))
 		drms_uA_update(rdev);
 
-	if (rdev->use_count == 0) {
+	if (rdev->use_count == 0 || rdev->use_count == 1) {
 		/* The regulator may on if it's not switchable or left on */
 		ret = _regulator_is_enabled(rdev);
 		if (ret == -EINVAL || ret == 0) {
