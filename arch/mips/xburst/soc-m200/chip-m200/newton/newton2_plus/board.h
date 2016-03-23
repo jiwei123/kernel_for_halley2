@@ -141,9 +141,9 @@
 #define GPIO_TP_RESET           GPIO_PC(13)
 #endif  /* CONFIG_TOUCHSCREEN_ITE7258 */
 #ifdef  CONFIG_TOUCHSCREEN_FOCALTECH
-#define GPIO_TP_INT             GPIO_PA(12)
-#define GPIO_TP_RESET           GPIO_PA(14)
-#define VCC_TOUCHSCREEN         LDO9_NAME
+#define GPIO_TP_INT             GPIO_PC(14)
+#define GPIO_TP_RESET           GPIO_PC(13)
+#define VCC_TOUCHSCREEN         LDO4_NAME
 #endif  /* CONFIG_TOUCHSCREEN_FOCALTECH */
 
 /* ****************************GPIO TOUCHSCREEN END************************** */
