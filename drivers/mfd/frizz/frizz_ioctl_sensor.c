@@ -76,6 +76,7 @@ int frizz_ioctl_sensor(struct file_id_node *node, unsigned int cmd, unsigned lon
     unsigned int packet_hex_data[FRIZZ_MAX_PACKET_SIZE];
     int frizz_packet_size;
     int i;
+    static int accel_count = 0;
 
     sensor_enable_t sensor_enable = { 0 };
     sensor_delay_t sensor_delay = { 0 };
@@ -97,16 +98,39 @@ int frizz_ioctl_sensor(struct file_id_node *node, unsigned int cmd, unsigned lon
 
         packet.header.num = 1;
 
-        switch (sensor_enable.flag) {
-        case 0:
-            packet.data[0] = HUB_MGR_GEN_CMD_CODE(HUB_MGR_CMD_DEACTIVATE_SENSOR,
-                    sensor_id, 0x00, 0x00);
-            break;
-        case 1:
-            packet.data[0] = set_sensor_active(sensor_id);
-            break;
+        if (sensor_enable.code == SENSOR_TYPE_ACCELEROMETER) {
+            switch (sensor_enable.flag) {
+            case 0:
+                if (accel_count == 1) {
+                    packet.data[0] =
+                            HUB_MGR_GEN_CMD_CODE(HUB_MGR_CMD_DEACTIVATE_SENSOR,
+                                    sensor_id, 0x00, 0x00);
+                }
+                accel_count--;
+                if (accel_count < 0)
+                    accel_count = 0;
+                break;
+            case 1:
+                if (accel_count == 0) {
+                    packet.data[0] = set_sensor_active(sensor_id);
+                }
+                accel_count++;
+                break;
+            default:
+                break;
+            }
+        } else {
+            switch (sensor_enable.flag) {
+            case 0:
+                packet.data[0] =
+                        HUB_MGR_GEN_CMD_CODE(HUB_MGR_CMD_DEACTIVATE_SENSOR,
+                                sensor_id, 0x00, 0x00);
+                break;
+            case 1:
+                packet.data[0] = set_sensor_active(sensor_id);
+                break;
+            }
         }
-
         DEBUG_PRINT("SENSOR_SET_ENABLE %x %d \n", packet.data[0], sensor_id);
 
         status = create_frizz_workqueue((void*) &packet);
