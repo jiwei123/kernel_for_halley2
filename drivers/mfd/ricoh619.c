@@ -1041,7 +1041,7 @@ static int __init ricoh61x_i2c_init(void)
 	return ret;
 }
 
-subsys_initcall(ricoh61x_i2c_init);
+postcore_initcall_sync(ricoh61x_i2c_init);
 
 static void __exit ricoh61x_i2c_exit(void)
 {

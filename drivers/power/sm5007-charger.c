@@ -657,7 +657,7 @@ static int __init sm5007_charger_init(void)
 {
 	return platform_driver_register(&sm5007_charger_driver);
 }
-module_init(sm5007_charger_init);
+arch_initcall(sm5007_charger_init);
 
 static void __exit sm5007_charger_exit(void)
 {

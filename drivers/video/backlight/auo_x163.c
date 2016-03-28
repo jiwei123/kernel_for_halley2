@@ -571,7 +571,7 @@ static void auo_x163_exit(void)
 	return;
 }
 
-module_init(auo_x163_init);
+arch_initcall_sync(auo_x163_init);
 module_exit(auo_x163_exit);
 
 MODULE_DESCRIPTION("auo_x163 lcd driver");

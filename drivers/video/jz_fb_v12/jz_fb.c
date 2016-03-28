@@ -3214,7 +3214,7 @@ static void __exit jzfb_cleanup(void)
 #ifdef CONFIG_EARLY_INIT_RUN
 rootfs_initcall(jzfb_init);
 #else
-module_init(jzfb_init);
+arch_initcall_sync(jzfb_init);
 #endif
 
 module_exit(jzfb_cleanup);

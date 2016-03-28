@@ -587,7 +587,7 @@ static void __exit power_supply_class_exit(void)
 	class_destroy(power_supply_class);
 }
 
-subsys_initcall(power_supply_class_init);
+arch_initcall(power_supply_class_init);
 module_exit(power_supply_class_exit);
 
 MODULE_DESCRIPTION("Universal power supply monitor class");

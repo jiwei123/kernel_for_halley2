@@ -1590,7 +1590,7 @@ static void __exit jz4775_i2c_exit(void)
 	platform_driver_unregister(&jz_i2c_driver);
 }
 
-subsys_initcall(jz4775_i2c_init);
+postcore_initcall_sync(jz4775_i2c_init);
 module_exit(jz4775_i2c_exit);
 
 MODULE_LICENSE("GPL");
