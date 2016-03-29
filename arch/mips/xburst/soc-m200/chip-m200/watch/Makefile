@@ -16,6 +16,9 @@ endif
 ifdef CONFIG_WATCH_SWIMBOT
 BOARD_DIR = swimbot
 endif
+ifdef CONFIG_WATCH_A2
+BOARD_DIR = a2
+endif
 
 
 CFLAGS_KERNEL	+= -I$(srctree)/arch/mips/xburst/soc-m200/chip-m200/$(CONFIG_PRODUCT_NAME)/$(BOARD_DIR)
@@ -27,4 +30,5 @@ obj-$(CONFIG_WATCH_ACRAB)		+= $(BOARD_DIR)/
 obj-$(CONFIG_WATCH_SOLAR)		+= $(BOARD_DIR)/
 obj-$(CONFIG_WATCH_SOLAR_SAMSUNG)	+= $(BOARD_DIR)/
 obj-$(CONFIG_WATCH_SWIMBOT)		+= $(BOARD_DIR)/
+obj-$(CONFIG_WATCH_A2)		+= $(BOARD_DIR)/
 
