@@ -754,7 +754,7 @@ struct i2c_board_info jz_i2c2_devs[] __initdata = {
         .platform_data = &icm30630_platform_data,
     },
 #endif /*CONFIG_SENSORHUB_ICM30630*/
-#ifdef CONFIG_NFC_BNSEM628
+#if defined(CONFIG_NFC_BNSEM628) && defined(CONFIG_SOLAR_HW_V10)
     {
         I2C_BOARD_INFO("bnsem628", 0x13),
         .platform_data = &bnsem628_pdata,
@@ -811,7 +811,12 @@ struct i2c_board_info jz_i2c3_devs[] __initdata = {
         .platform_data = &em30719_pdata,
     },
 #endif
-
+#if defined(CONFIG_NFC_BNSEM628) && defined(CONFIG_AW808_HW_F1)
+    {
+        I2C_BOARD_INFO("bnsem628", 0x13),
+        .platform_data = &bnsem628_pdata,
+    },
+#endif /*CONFIG_NFC_BNSEM628*/
 };
 #endif  /*I2C3*/
 

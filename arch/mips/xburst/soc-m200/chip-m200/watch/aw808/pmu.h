@@ -52,7 +52,11 @@
 #else
 #define LDO7_INIT_UV    3000
 #endif
+#if defined(CONFIG_NFC_BNSEM628)
+#define LDO8_INIT_UV    3300
+#else
 #define LDO8_INIT_UV    1800
+#endif
 #define LDO9_INIT_UV    1800
 #define LDO10_INIT_UV   2800
 #define LDORTC1_INIT_UV 1800
@@ -78,7 +82,11 @@
 #define LDO3_ALWAYS_ON    1
 #define LDO5_ALWAYS_ON    1
 #define LDO7_ALWAYS_ON    0
+#if defined(CONFIG_NFC_BNSEM628)
+#define LDO8_ALWAYS_ON    1
+#else
 #define LDO8_ALWAYS_ON    0
+#endif
 #define LDO9_ALWAYS_ON    0
 #if defined(CONFIG_TOUCHSCREEN_FOCALTECH)
 #define LDO10_ALWAYS_ON   1
