@@ -171,6 +171,7 @@ source "drivers/reset/Kconfig"
 source "drivers/nand/Kconfig"
 
 source "drivers/mfd/frizz/Kconfig"
+source "drivers/mfd/sensor_hub/Kconfig"
 
 source "drivers/haptics/Kconfig"
 
