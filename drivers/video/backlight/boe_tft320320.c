@@ -279,7 +279,7 @@ static void boe_tft320320_exit(void)
 	return;
 }
 
-module_init(boe_tft320320_init);
+arch_initcall_sync(boe_tft320320_init);
 module_exit(boe_tft320320_exit);
 
 MODULE_DESCRIPTION("BOE TFT320320 lcd driver");

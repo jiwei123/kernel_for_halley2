@@ -422,7 +422,7 @@ static void edo_e1392am1_exit(void)
 	return;
 }
 
-module_init(edo_e1392am1_init);
+arch_initcall_sync(edo_e1392am1_init);
 module_exit(edo_e1392am1_exit);
 
 MODULE_DESCRIPTION("EDO 1.4 400*400 MIPI LCD Driver");

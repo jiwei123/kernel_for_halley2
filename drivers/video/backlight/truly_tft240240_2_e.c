@@ -140,7 +140,7 @@ static int __init truly_tft240240_init(void)
 {
 	return platform_driver_register(&truly_tft240240_driver);
 }
-module_init(truly_tft240240_init);
+arch_initcall_sync(truly_tft240240_init);
 
 static void __exit truly_tft240240_exit(void)
 {

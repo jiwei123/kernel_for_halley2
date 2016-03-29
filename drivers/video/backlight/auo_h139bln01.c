@@ -306,7 +306,7 @@ static void auo_h139bln01_exit(void)
 	return;
 }
 
-module_init(auo_h139bln01_init);
+arch_initcall_sync(auo_h139bln01_init);
 module_exit(auo_h139bln01_exit);
 
 MODULE_DESCRIPTION("AUO 1.39 400*400 MIPI LCD Driver");

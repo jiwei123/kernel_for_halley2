@@ -220,7 +220,7 @@ static int __init byd_8991_init(void)
 	// register the panel with lcd drivers
 	return platform_driver_register(&byd_8991_driver);;
 }
-module_init(byd_8991_init);
+arch_initcall_sync(byd_8991_init);
 
 static void __exit byd_8991_exit(void)
 {

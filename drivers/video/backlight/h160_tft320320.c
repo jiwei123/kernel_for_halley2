@@ -255,7 +255,7 @@ static void h160_tft320320_exit(void)
 	return;
 }
 
-module_init(h160_tft320320_init);
+arch_initcall_sync(h160_tft320320_init);
 module_exit(h160_tft320320_exit);
 
 MODULE_DESCRIPTION("BOE TFT320320 lcd driver");

@@ -207,7 +207,7 @@ static int __init boe_hsx0154b24b_init(void)
 {
 	return platform_driver_register(&boe_hsx0154b24b_driver);
 }
-module_init(boe_hsx0154b24b_init);
+arch_initcall_sync(boe_hsx0154b24b_init);
 
 static void __exit boe_hsx0154b24b_exit(void)
 {

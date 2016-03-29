@@ -311,7 +311,7 @@ static void byd_9177aa_exit(void)
 	return;
 }
 
-module_init(byd_9177aa_init);
+arch_initcall_sync(byd_9177aa_init);
 module_exit(byd_9177aa_exit);
 
 MODULE_DESCRIPTION("BYD_9177aa lcd driver");

@@ -266,7 +266,7 @@ static void orise_otm3201a_exit(void)
 	return;
 }
 
-module_init(orise_otm3201a_init);
+arch_initcall_sync(orise_otm3201a_init);
 module_exit(orise_otm3201a_exit);
 
 MODULE_DESCRIPTION("Orise OTM3201A panel drive");
