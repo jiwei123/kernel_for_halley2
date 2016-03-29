@@ -1,23 +1,13 @@
 # Makefile for the Linux logos
 
-obj-$(CONFIG_LOGO)			+= logo.o jz_logo.o
-obj-$(CONFIG_LOGO_LINUX_MONO)		+= logo_linux_mono.o
-obj-$(CONFIG_LOGO_LINUX_VGA16)		+= logo_linux_vga16.o
-obj-$(CONFIG_LOGO_LINUX_CLUT224)	+= logo_linux_clut224.o
-obj-$(CONFIG_LOGO_BLACKFIN_CLUT224)	+= logo_blackfin_clut224.o
-obj-$(CONFIG_LOGO_BLACKFIN_VGA16)	+= logo_blackfin_vga16.o
-obj-$(CONFIG_LOGO_DEC_CLUT224)		+= logo_dec_clut224.o
-obj-$(CONFIG_LOGO_MAC_CLUT224)		+= logo_mac_clut224.o
-obj-$(CONFIG_LOGO_PARISC_CLUT224)	+= logo_parisc_clut224.o
-obj-$(CONFIG_LOGO_SGI_CLUT224)		+= logo_sgi_clut224.o
-obj-$(CONFIG_LOGO_SUN_CLUT224)		+= logo_sun_clut224.o
-obj-$(CONFIG_LOGO_SUPERH_MONO)		+= logo_superh_mono.o
-obj-$(CONFIG_LOGO_SUPERH_VGA16)		+= logo_superh_vga16.o
-obj-$(CONFIG_LOGO_SUPERH_CLUT224)	+= logo_superh_clut224.o
-obj-$(CONFIG_LOGO_M32R_CLUT224)		+= logo_m32r_clut224.o
-obj-$(CONFIG_LOGO_IWOP_CLUT224)		+= iwop/
-
-obj-$(CONFIG_SPU_BASE)			+= logo_spe_clut224.o
+obj-y		+= logo_iwop_clut224.o \
+				logo_low_battery_clut224.o \
+				charge_logo_1_clut224.o \
+				charge_logo_2_clut224.o \
+				charge_logo_3_clut224.o \
+				charge_logo_4_clut224.o \
+				charge_logo_5_clut224.o \
+				charge_logo_6_clut224.o \
 
 # How to generate logo's
 

@@ -80,7 +80,7 @@
 #define BUCK3_BOOT_ON     1
 #define BUCK4_BOOT_ON     1
 #define LDO1_BOOT_ON    1
-#define LDO2_BOOT_ON    1
+#define LDO2_BOOT_ON    0
 #define LDO3_BOOT_ON    1
 #define LDO4_BOOT_ON    0
 #define LDO5_BOOT_ON    1

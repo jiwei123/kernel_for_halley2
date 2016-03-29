@@ -71,7 +71,7 @@ int auo_x163_reset(struct lcd_device *lcd)
 
 struct lcd_platform_data auo_x163_data = {
 	.reset = auo_x163_reset,
-	.lcd_enabled = 1, // lcd panel was enabled from uboot
+	.lcd_enabled = 0, // lcd panel was enabled from uboot
 };
 
 struct auo_x163_platform_data auo_x163_pdata = {
