@@ -38,6 +38,7 @@
 #include <soc/gpio.h>
 #include <mach/jzfb.h>
 #include <linux/lcd_ctrl.h>
+#include "../logo/jz_logo.h"
 
 #ifdef CONFIG_JZ_MIPI_DSI
 #include "./jz_mipi_dsi/jz_mipi_dsih_hal.h"
@@ -3078,6 +3079,7 @@ static int __devinit jzfb_probe(struct platform_device *pdev)
 	}
 
 	if (jzfb->vidmem_phys) {
+	    show_logo(jzfb->fb);
 #ifdef CONFIG_FB_JZ_DEBUG
 		test_pattern(jzfb);
 #endif

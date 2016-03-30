@@ -106,9 +106,9 @@
 #define LDO1_BOOT_ON    1
 #define LDO2_BOOT_ON    1
 #define LDO3_BOOT_ON    1
-#define LDO4_BOOT_ON    1
+#define LDO4_BOOT_ON    0
 #define LDO5_BOOT_ON    1
-#define LDO6_BOOT_ON    1
+#define LDO6_BOOT_ON    0
 #define LDO7_BOOT_ON    0
 #define LDO8_BOOT_ON    0
 #define LDO9_BOOT_ON    0

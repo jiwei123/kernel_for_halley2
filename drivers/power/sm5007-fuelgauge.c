@@ -299,7 +299,7 @@ unsigned int fg_get_soc(struct i2c_client *client)
 		soc = soc + (((ret&0x00ff)*10)/256);
 	}
 
-	fuelgauge->info.batt_soc = 0;
+	fuelgauge->info.batt_soc = soc;
 #ifdef CONFIG_SM5007_FG_DEBUG_LOG
 	printk("%s: read = 0x%x, soc = %d\n", __func__, ret, soc);
 #endif
@@ -662,6 +662,8 @@ static bool sm5007_fg_init(struct i2c_client *client)
 	/* get first voltage measure to avgvoltage*/
 	fuelgauge->info.batt_avgvoltage = fg_get_vbat(client);
 
+	fuelgauge->info.batt_soc = fg_get_soc(client);
+
 	/* get first temperature*/
 	fuelgauge->info.temperature = fg_get_temp(client);
 
@@ -793,6 +795,9 @@ static int sm5007_fg_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CURRENT_AVG:
 		val->intval = fuelgauge->info.batt_avgcurrent;
 		break;
+	case POWER_SUPPLY_PROP_CHARGE_NOW:
+	    val->intval = fuelgauge->is_charging;
+	    break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
 		val->intval = (fuelgauge->info.batt_soc >= 1000) ? true : false;
 		break;
@@ -1066,7 +1071,7 @@ static void __exit sm5007_fuelgauge_exit(void)
 	i2c_del_driver(&sm5007_fuelgauge_driver);
 }
 
-module_init(sm5007_fuelgauge_init);
+arch_initcall(sm5007_fuelgauge_init);
 module_exit(sm5007_fuelgauge_exit);
 
 MODULE_LICENSE("GPL");

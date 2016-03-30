@@ -57,6 +57,11 @@ config LOGO_SGI_CLUT224
 	depends on SGI_IP22 || SGI_IP27 || SGI_IP32 || X86_VISWS
 	default y
 
+config LOGO_IWOP_CLUT224
+	bool "224-color IWOP Linux logo"
+	depends on AW808_HW_V11_WISE_SQUARE || SOLAR_HW_V10
+	default y
+
 config LOGO_SUN_CLUT224
 	bool "224-color Sun Linux logo"
 	depends on SPARC

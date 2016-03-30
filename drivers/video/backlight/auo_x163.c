@@ -74,13 +74,19 @@ static void auo_x163_brightness_setting(struct auo_x163 *lcd, unsigned long valu
 static inline int bl_regulator(struct auo_x163 *lcd, int en)
 {
     struct regulator *reg;
+    int ret = 0;
 
     if (!lcd || !lcd->vcc_lcd_blk_reg)
         return 0;
 
     reg = lcd->vcc_lcd_blk_reg;
-
-    return (en ? regulator_enable(reg) : regulator_disable(reg));
+    if (regulator_is_enabled(reg) && !en) {
+        ret = regulator_disable(reg);
+    }
+    else if (!regulator_is_enabled(reg) && en){
+        ret = regulator_enable(reg);
+    }
+    return ret;
 }
 
 static void auo_x163_regulator_enable(struct auo_x163 *lcd)
@@ -329,6 +335,11 @@ static int auo_x163_backlight_update_status(struct backlight_device *bd)
 {
         struct auo_x163 *lcd = dev_get_drvdata(&bd->dev);
         int brightness = bd->props.brightness;
+
+        if (bd->props.fb_blank != FB_BLANK_UNBLANK ||
+            bd->props.state & BL_CORE_FBBLANK)
+            brightness = 0;
+
         auo_x163_brightness_setting(lcd, brightness);
         return 0;
 }
@@ -427,11 +438,6 @@ static int auo_x163_regulator_get(struct auo_x163 *lcd)
 		}
 	}
 
-	regulator_enable(lcd->vcc_lcd_1v8_reg);
-	regulator_enable(lcd->vcc_lcd_3v0_reg);
-	if (lcd->vcc_lcd_blk_reg)
-		regulator_enable(lcd->vcc_lcd_blk_reg);
-
 	goto return_err;
 error_get_vcc_lcd_blk:
 	regulator_put(lcd->vcc_lcd_3v0_reg);
@@ -449,6 +455,7 @@ static int auo_x163_probe(struct mipi_dsim_lcd_device *dsim_dev)
 
         props.type = BACKLIGHT_RAW;
 	props.max_brightness = 255;
+	props.brightness = 102;
 	lcd = devm_kzalloc(&dsim_dev->dev, sizeof(struct auo_x163), GFP_KERNEL);
 	if (!lcd) {
 		dev_err(&dsim_dev->dev, "failed to allocate auo_x163 structure.\n");
