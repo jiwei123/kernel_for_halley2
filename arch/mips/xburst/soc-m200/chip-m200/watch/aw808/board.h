@@ -262,6 +262,10 @@
 #define PAH8001_VDD_NAME    LDO7_NAME
 #define PAH8001_VIO_NAME    LDO8_NAME
 #endif
+#if defined(CONFIG_AW808_HW_F1)
+#define PAH8001_VDD_NAME    LDO7_NAME
+#define PAH8001_VIO_NAME    DC4_NAME
+#endif
 /* ****************************GPIO HEARTRATE END**************************** */
 
 /* ****************************GPIO EFUSE START****************************** */
