@@ -22,7 +22,14 @@
 #include <asm/mipsmtregs.h>
 #include <asm/smtc.h>
 #endif /* SMTC */
+
+#ifndef CONFIG_MIPS_MM_HOOKS
 #include <asm-generic/mm_hooks.h>
+#else
+extern void arch_dup_mmap(struct mm_struct *oldmm,
+				 struct mm_struct *mm);
+extern void arch_exit_mmap(struct mm_struct *mm);
+#endif
 
 #ifdef CONFIG_MIPS_PGD_C0_CONTEXT
 

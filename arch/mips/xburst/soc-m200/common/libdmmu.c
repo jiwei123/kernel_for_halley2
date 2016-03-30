@@ -43,8 +43,12 @@
 #include <linux/vmalloc.h>
 #include <linux/sched.h>
 #include <jz_proc.h>
+#include <linux/swap.h>
+
 
 #include <mach/libdmmu.h>
+
+#include <jz_notifier.h>
 
 #define MAP_COUNT		0x10
 #define MAP_CONUT_MASK		0xff0
@@ -80,7 +84,12 @@ struct dmmu_handle {
 	struct list_head list;
 	struct list_head pmd_list;
 	struct list_head map_list;
+
+	struct mm_struct *handle_mm; /* mm struct used to match exit_mmap notify */
 };
+
+struct jz_notifier mmu_context_notify;
+
 
 static struct map_node *check_map(struct dmmu_handle *h,unsigned long vaddr,unsigned long len)
 {
@@ -97,6 +106,10 @@ static struct map_node *check_map(struct dmmu_handle *h,unsigned long vaddr,unsi
 static void handle_add_map(struct device *dev,struct dmmu_handle *h,unsigned long vaddr,unsigned long len)
 {
 	struct map_node *n = kmalloc(sizeof(*n),GFP_KERNEL);
+	if(n == NULL) {
+		printk("malloc map_list node failed !!\n");
+		return;
+	}
 	n->dev = dev;
 	n->start = vaddr;
 	n->len = len;
@@ -109,16 +122,22 @@ static unsigned int get_pfn(unsigned int vaddr)
 	pgd_t *pgdir;
 	pmd_t *pmdir;
 	pte_t *pte;
+
+
 	pgdir = pgd_offset(current->mm, vaddr);
-	if(pgd_none(*pgdir) || pgd_bad(*pgdir))
+	if(pgd_none(*pgdir) || pgd_bad(*pgdir)) {
 		return 0;
+	}
 	pmdir = pmd_offset((pud_t *)pgdir, vaddr);
-	if(pmd_none(*pmdir) || pmd_bad(*pmdir))
+	if(pmd_none(*pmdir) || pmd_bad(*pmdir)) {
 		return 0;
+	}
 	pte = pte_offset(pmdir,vaddr);
 	if (pte_present(*pte)) {
+
 		return pte_pfn(*pte) << PAGE_SHIFT;
 	}
+
 	return 0;
 }
 
@@ -139,12 +158,16 @@ static unsigned long unmap_node(struct pmd_node *n,unsigned long vaddr,unsigned 
 	unsigned int *pte = (unsigned int *)n->page;
 	int index = ((vaddr & 0x3ff000) >> 12);
 	int free = !check || (--n->count == 0);
+	struct page *page = NULL;
+
 	if(vaddr && end) {
 		while(index < 1024 && vaddr < end) {
 			if(pte[index] & MAP_CONUT_MASK) {
 				pte[index] -= MAP_COUNT;
 			} else {
-				ClearPageReserved(virt_to_page((void *)vaddr));
+				page = pfn_to_page(pte[index] >> PAGE_SHIFT);
+
+				ClearPageReserved(page);
 				pte[index] = reserved_pte;
 			}
 			index++;
@@ -157,7 +180,6 @@ static unsigned long unmap_node(struct pmd_node *n,unsigned long vaddr,unsigned 
 		free_page(n->page);
 		list_del(&n->list);
 		kfree(n);
-		return vaddr+(1024-index)*4096;
 	}
 
 	return vaddr;
@@ -167,11 +189,23 @@ static unsigned long map_node(struct pmd_node *n,unsigned int vaddr,unsigned int
 {
 	unsigned int *pte = (unsigned int *)n->page;
 	int index = ((vaddr & 0x3ff000) >> 12);
+	struct page * page = NULL;
+	unsigned long pfn = 0;
+
 
 	while(index < 1024 && vaddr < end) {
 		if(pte[index] == reserved_pte) {
-			SetPageReserved(virt_to_page((void *)vaddr));
-			pte[index] = dmmu_v2pfn(vaddr) | DMMU_PTE_VLD;
+
+			down_write(&current->mm->mmap_sem);
+
+			pfn = dmmu_v2pfn(vaddr) >> PAGE_SHIFT;
+			page = pfn_to_page(pfn);
+
+			SetPageReserved(page);
+
+			pte[index] = (pfn << PAGE_SHIFT) | DMMU_PTE_VLD;
+
+			up_write(&current->mm->mmap_sem);
 		} else {
 			pte[index] += MAP_COUNT;
 		}
@@ -222,12 +256,99 @@ static struct dmmu_handle *find_handle(void)
 	struct list_head *pos, *next;
 	struct dmmu_handle *h;
 
+
 	list_for_each_safe(pos, next, &handle_list) {
 		h = list_entry(pos, struct dmmu_handle, list);
 		if(h->tgid == current->tgid)
 			return h;
 	}
 	return NULL;
+}
+
+/**
+* @brief unmap node from map list, clear each pmd_node in pmd_list,
+* 	Not free handle, let dmmu_unmap_all do it.
+*
+* @param h
+*
+* @return
+*/
+static int dmmu_unmap_node_unlock(struct dmmu_handle *h)
+{
+	struct map_node *cn;
+	struct list_head *pos, *next;
+
+	unsigned long vaddr;
+	int len;
+	unsigned long end;
+
+	struct pmd_node *node;
+
+	list_for_each_safe(pos, next, &h->map_list) {
+		/* find and delete a map node from map_list */
+		cn = list_entry(pos, struct map_node, list);
+		vaddr = cn->start;
+		len = cn->len;
+		end = vaddr + len;
+
+		while(vaddr < end) {
+			node = find_node(h,vaddr);
+			if(node)
+				vaddr = unmap_node(node,vaddr,end,1);
+		}
+
+		list_del(&cn->list);
+		kfree(cn);
+	}
+
+
+	return 0;
+
+}
+
+
+static struct dmmu_handle *find_handle_mm(struct mm_struct *mm)
+{
+
+	struct list_head *pos, *next;
+	struct dmmu_handle *h;
+
+	list_for_each_safe(pos, next, &handle_list) {
+		h = list_entry(pos, struct dmmu_handle, list);
+		if(h->handle_mm == mm)
+			return h;
+	}
+
+	return NULL;
+}
+/**
+* @brief Before kernel exit_mmap, clearPagereserved of pte, exit_mmap is always called
+* 	when mm is going to be destroyed.
+*
+* @param notify
+* @param v
+*
+* @return
+*/
+static int mmu_context_exit_mmap(struct jz_notifier *notify,void *v)
+{
+
+	struct dmmu_handle *h;
+	struct mm_struct *mm = (struct mm_struct *)v;
+
+	h = find_handle_mm(mm);
+	if(h) {
+#ifdef DEBUG
+	printk("================ %s, %d  exit mmap!, mm: %p, h->handle_mm: %p\n", __func__, __LINE__, mm, h->handle_mm);
+#endif
+		mutex_lock(&h->lock);
+
+		dmmu_unmap_node_unlock(h);
+
+		mutex_unlock(&h->lock);
+	}
+
+	return 0;
 }
 
 static struct dmmu_handle *create_handle(void)
@@ -255,12 +376,25 @@ static struct dmmu_handle *create_handle(void)
 	for (pgd_index=0; pgd_index < PTRS_PER_PGD; pgd_index++)
 		pgd[pgd_index] = res_pte_paddr;
 
+
+
 	INIT_LIST_HEAD(&h->list);
 	INIT_LIST_HEAD(&h->pmd_list);
 	INIT_LIST_HEAD(&h->map_list);
+	mutex_init(&h->lock);
+
+	/* register exit_mmap notify */
+	h->handle_mm = current->mm;
+
+	if(list_empty(&handle_list)) {
+		mmu_context_notify.jz_notify = mmu_context_exit_mmap;
+		mmu_context_notify.level = NOTEFY_PROI_NORMAL;
+		mmu_context_notify.msg = MMU_CONTEXT_EXIT_MMAP;
+		jz_notifier_register(&mmu_context_notify, NOTEFY_PROI_NORMAL);
+	}
+
 	list_add(&h->list, &handle_list);
 
-	mutex_init(&h->lock);
 	return h;
 }
 
@@ -278,15 +412,18 @@ static int dmmu_make_present(unsigned long addr,unsigned long end)
 	struct vm_area_struct * vma;
 	unsigned long vm_page_prot;
 
+	down_write(&current->mm->mmap_sem);
 	vma = find_vma(current->mm, addr);
 	if (!vma) {
 		printk("dmmu_make_present error. addr=%lx len=%lx\n",addr,end-addr);
+		up_write(&current->mm->mmap_sem);
 		return -1;
 	}
 
-	if(vma->vm_flags & VM_PFNMAP)
+	if(vma->vm_flags & VM_PFNMAP) {
+		up_write(&current->mm->mmap_sem);
 		return 0;
-
+	}
 	write = (vma->vm_flags & VM_WRITE) != 0;
 	BUG_ON(addr >= end);
 	BUG_ON(end > vma->vm_end);
@@ -300,8 +437,11 @@ static int dmmu_make_present(unsigned long addr,unsigned long end)
 	vma->vm_page_prot = __pgprot(vm_page_prot);
 	if (ret < 0) {
 		printk("dmmu_make_present get_user_pages error(%d). addr=%lx len=%lx\n",0-ret,addr,end-addr);
+		up_write(&current->mm->mmap_sem);
 		return ret;
 	}
+
+	up_write(&current->mm->mmap_sem);
 	return ret == len ? 0 : -1;
 #endif
 }
@@ -327,13 +467,16 @@ unsigned long dmmu_map(struct device *dev,unsigned long vaddr,unsigned long len)
 	struct dmmu_handle *h;
 	struct pmd_node *node;
 
+
 	h = find_handle();
 	if(!h)
 		h = create_handle();
 	if(!h)
 		return 0;
 
+
 	mutex_lock(&h->lock);
+
 #ifdef DEBUG
 	printk("(pid %d)dmmu_map %lx %lx================================================\n",h->tgid,vaddr,len);
 #endif
@@ -356,6 +499,7 @@ unsigned long dmmu_map(struct device *dev,unsigned long vaddr,unsigned long len)
 		if(!node) {
 			node = add_node(h,vaddr);
 		}
+
 		vaddr = map_node(node,vaddr,end);
 	}
 	dmmu_cache_wback(h);
@@ -405,6 +549,11 @@ int dmmu_unmap(struct device *dev,unsigned long vaddr, int len)
 		list_del(&h->list);
 		ClearPageReserved(virt_to_page((void *)h->pdg));
 		free_page(h->pdg);
+
+		if(list_empty(&handle_list)) {
+			jz_notifier_unregister(&mmu_context_notify, NOTEFY_PROI_NORMAL);
+		}
+
 		mutex_unlock(&h->lock);
 		kfree(h);
 		return 0;
@@ -447,12 +596,24 @@ int dmmu_free_all(struct device *dev)
 	list_del(&h->list);
 	ClearPageReserved(virt_to_page((void *)h->pdg));
 	free_page(h->pdg);
-	kfree(h);
+
+	if(list_empty(&handle_list)) {
+		jz_notifier_unregister(&mmu_context_notify, NOTEFY_PROI_NORMAL);
+	}
 
 	mutex_unlock(&h->lock);
+
+	kfree(h);
 	return 0;
 }
 
+/**
+* @brief release all resources, which should be called by driver close
+*
+* @param dev
+*
+* @return
+*/
 int dmmu_unmap_all(struct device *dev)
 {
 	struct dmmu_handle *h;
@@ -462,14 +623,18 @@ int dmmu_unmap_all(struct device *dev)
 #ifdef DEBUG
 	printk("dmmu_unmap_all\n");
 #endif
+
 	h = find_handle();
-	if(!h)
+	if(!h) {
+		printk("dmmu unmap all not find hindle, maybe it has benn freed already, name: %s\n", dev->kobj.name);
 		return 0;
+	}
 
 	list_for_each_safe(pos, next, &h->map_list) {
 		cn = list_entry(pos, struct map_node, list);
-		if(dev == cn->dev)
+		if(dev == cn->dev) {
 			dmmu_unmap(dev,cn->start,cn->len);
+		}
 	}
 
 
@@ -477,6 +642,8 @@ int dmmu_unmap_all(struct device *dev)
 		dmmu_free_all(dev);
 	return 0;
 }
+
+
 
 int __init dmmu_init(void)
 {
@@ -508,6 +675,8 @@ int __init dmmu_init(void)
 
 	for (pte_index = 0; pte_index < PTRS_PER_PTE; pte_index++)
 		res_pte_vaddr[pte_index] = res_page_paddr;
+
+
 
 	return 0;
 }

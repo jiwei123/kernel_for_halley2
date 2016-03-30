@@ -13,6 +13,7 @@ enum jz_notif_cmd {
 	JZ_CLK_CHANGED,
 	JZ_CLKGATE_CHANGE,
 	JZ_POST_HIBERNATION, /* Hibernation finished */
+	MMU_CONTEXT_EXIT_MMAP,
 	JZ_CMD_END
 };
 enum {

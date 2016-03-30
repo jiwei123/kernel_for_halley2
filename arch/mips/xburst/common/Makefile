@@ -10,3 +10,4 @@ obj-y += proc-exec.o
 obj-y += mxu.o
 obj-y += proc.o
 obj-y += jz_notifier.o
+obj-$(CONFIG_MIPS_MM_HOOKS) += mmu_context.o
