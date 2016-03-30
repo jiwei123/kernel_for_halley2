@@ -155,5 +155,6 @@ obj-$(CONFIG_IPACK_BUS)		+= ipack/
 obj-$(CONFIG_NTB)		+= ntb/
 obj-$(CONFIG_NAND)  += nand/
 obj-$(CONFIG_FRIZZ) += mfd/frizz/
+obj-$(CONFIG_SENSOR_HUB) += mfd/sensor_hub/
 obj-$(CONFIG_HAPTICS_DRV2605) += haptics/
 obj-$(CONFIG_SLPT) += slpt/

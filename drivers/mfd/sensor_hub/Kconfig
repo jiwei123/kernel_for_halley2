@@ -1,0 +1,29 @@
+#
+# "sensor hub devices"
+#
+
+menu "Ingenic SensorHub support"
+	depends on INPUT
+
+config SENSOR_HUB
+	tristate "Ingenic SensorHub"
+	depends on INPUT
+	default n
+	---help---
+	  If unsure, say Y.
+if SENSOR_HUB
+choice
+	prompt "Select SensorHub communication Interface"
+	depends on SENSOR_HUB
+	default SENSOR_HUB_I2C
+config SENSOR_HUB_I2C
+	tristate "SensorHub Interface I2C"
+	depends on I2C && SENSOR_HUB
+	default y
+	---help---
+	  Say Y here to enable I2C bus interface to SensorHub
+	  If unsure, say Y.
+endchoice
+endif
+
+endmenu

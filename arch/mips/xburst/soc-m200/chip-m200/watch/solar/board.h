@@ -40,6 +40,12 @@
 #define HUB_UART_RTS     GPIO_PF(2)
 #define HUB_UART_CTS     GPIO_PF(1)
 #endif
+
+#ifdef CONFIG_SENSOR_HUB
+#define SENSOR_HUB_RESET			GPIO_PC(22)
+#define SENSOR_HUB_IRQ	        GPIO_PC(23)
+#define HOST_WAKEUP_SENSOR_HUB	GPIO_PC(24)
+#endif
 /* ****************************SENSOR HUB END********************************** */
 
 
