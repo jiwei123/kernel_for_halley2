@@ -31,6 +31,7 @@
 #include <linux/lcd.h>
 #include <linux/interrupt.h>
 #include <linux/regulator/consumer.h>
+#include <linux/gpio.h>
 
 #include <mach/jzfb.h>
 #include <mach/jz_dsim.h>
@@ -90,6 +91,22 @@ int edo_e1392am1_reset(struct lcd_device *lcd)
 	return 0;
 }
 
+/*
+ * set pulse to set negative voltage -2.4v
+ */
+void edo_e1392am1_set_pulse(unsigned int level)
+{
+	int i = 0;
+	gpio_direction_output(GPIO_LCD_BLK_EN, 1);
+	udelay(2000);
+	for(i = 0; i < level; i++){
+		gpio_direction_output(GPIO_LCD_BLK_EN, 0);
+		udelay(10);
+		gpio_direction_output(GPIO_LCD_BLK_EN, 1);
+		udelay(10);
+	}
+}
+
 int edo_e1392am1_power_on(struct lcd_device *lcd, int enable)
 {
 	int ret;
@@ -104,6 +121,9 @@ int edo_e1392am1_power_on(struct lcd_device *lcd, int enable)
 		ret = regulator_enable(lcd_io_reg);
 		if (ret)
 			printk(KERN_ERR "failed to enable lcd io reg\n");
+
+		edo_e1392am1_set_pulse(31);
+
 #if defined(CONFIG_SLPT) && defined(CONFIG_REGULATOR_RICOH619)
 		ricoh61x_regulator_set_sleep_mode_power(regulator_to_rdev(lcd_vcc_reg), 1);
 		ricoh61x_regulator_set_sleep_mode_power(regulator_to_rdev(lcd_io_reg), 1);
