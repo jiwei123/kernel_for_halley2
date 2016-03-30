@@ -1,0 +1,11 @@
+choice
+	prompt "Select hardware version"
+	depends on WATCH_A2
+	default A2_HW_V10
+
+config A2_HW_V10
+       bool "a2 hardware version v1.0"
+       depends on WATCH_A2
+
+endchoice
+

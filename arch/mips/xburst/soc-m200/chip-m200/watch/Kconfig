@@ -27,6 +27,10 @@ config WATCH_SOLAR_SAMSUNG
 config WATCH_SWIMBOT
        bool "watch swimbot"
        depends on BOARD_WATCH
+
+config WATCH_A2
+       bool "watch a2"
+       depends on BOARD_WATCH
 endchoice
 
 if WATCH_AW808
@@ -41,6 +45,9 @@ endif
 if WATCH_SWIMBOT
 source "arch/mips/xburst/soc-m200/chip-m200/watch/swimbot/Kconfig"
 endif
+if WATCH_A2
+source "arch/mips/xburst/soc-m200/chip-m200/watch/a2/Kconfig"
+endif
 
 
 config BOARD_NAME
@@ -51,6 +58,7 @@ config BOARD_NAME
 	default "solar" 	if WATCH_SOLAR
 	default "solar_samsung" if WATCH_SOLAR_SAMSUNG
 	default "swimbot"   if WATCH_SWIMBOT
+	default "a2" 	if WATCH_A2
 
 config ROOTLIST
 	bool "Export hardware information to proc/hardware/list"
