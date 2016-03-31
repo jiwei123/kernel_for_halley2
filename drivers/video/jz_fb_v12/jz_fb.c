@@ -3079,7 +3079,9 @@ static int __devinit jzfb_probe(struct platform_device *pdev)
 	}
 
 	if (jzfb->vidmem_phys) {
+#ifdef CONFIG_LOGO
 	    show_logo(jzfb->fb);
+#endif
 #ifdef CONFIG_FB_JZ_DEBUG
 		test_pattern(jzfb);
 #endif
