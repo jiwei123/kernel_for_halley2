@@ -143,7 +143,7 @@
 #ifdef  CONFIG_TOUCHSCREEN_FOCALTECH
 #define GPIO_TP_INT             GPIO_PC(14)
 #define GPIO_TP_RESET           GPIO_PC(13)
-#define VCC_TOUCHSCREEN         LDO4_NAME
+#define VCC_TOUCHSCREEN         PS5_NAME
 #endif  /* CONFIG_TOUCHSCREEN_FOCALTECH */
 
 /* ****************************GPIO TOUCHSCREEN END************************** */

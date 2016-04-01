@@ -8,21 +8,21 @@
 #define BUCK1_DVS_NAME "buck1_dvs"
 #define BUCK2_NAME "cpu_mem12"
 #define BUCK3_NAME "cpu_vddio"
-#define BUCK4_NAME "AVDD3V3"
-#define LDO1_NAME "LDO1_3V3"
-#define LDO2_NAME "LDO2_1V8"
-#define LDO3_NAME "LDO3_3V0"
-#define LDO4_NAME "LDO4_2V8"
+#define BUCK4_NAME "cpu_3v3"
+#define LDO1_NAME "ldo1_3v3"
+#define LDO2_NAME "lcd_1v8"
+#define LDO3_NAME "wifi_vdd_3v0"
+#define LDO4_NAME "lcd_2v8"
 #define LDO5_NAME "cpu_2v5"
-#define LDO6_NAME "dmic"
-#define LDO7_NAME "vcc_sensor1v8"
-#define LDO8_NAME "vcc_sensor3v3"
-#define LDO9_NAME "lcd_1v8"
-#define PS1_NAME "sensorhub_core"
-#define PS2_NAME "ps2"
+#define LDO6_NAME "dmic_1v8"
+#define LDO7_NAME "camera_vdd_2v8"
+#define LDO8_NAME "camera_vddio_1v8"
+#define LDO9_NAME "gps_1v8"
+#define PS1_NAME "ps1_1v1"
+#define PS2_NAME "ps2_1v2"
 #define PS3_NAME "wifi_vddio_1v8"
-#define PS4_NAME "motor"
-#define PS5_NAME "tp2v8"
+#define PS4_NAME "vibra_3v0"
+#define PS5_NAME "tp_2v8"
 
 /* ****************************PMU DC/LDO NAME END*************************** */
 
@@ -66,7 +66,7 @@
 #define PS2_ALWAYS_ON     1
 #define PS3_ALWAYS_ON     1
 #define PS4_ALWAYS_ON     0
-#define PS5_ALWAYS_ON     1
+#define PS5_ALWAYS_ON     0
 /* ****************************PMU DC/LDO ALWAYS ON END********************** */
 
 /* ****************************PMU DC/LDO BOOT ON**************************** */
@@ -87,7 +87,7 @@
 #define PS2_BOOT_ON     1
 #define PS3_BOOT_ON     1
 #define PS4_BOOT_ON     0
-#define PS5_BOOT_ON     1
+#define PS5_BOOT_ON     0
 /* ****************************PMU DC/LDO BOOT ON END************************ */
 
 /* ****************************PMU LDO LPM_ATTACH_TO_STM AND BUCKS AUTO_MODE************************ */
