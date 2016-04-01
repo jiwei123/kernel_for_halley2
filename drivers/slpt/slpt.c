@@ -1287,6 +1287,8 @@ core_initcall_sync(slpt_init);
 module_exit(slpt_exit);
 
 extern void pm_p0_setup_tlb(unsigned int addr_fr0, unsigned int addr_fr1, unsigned int map_addr);
+extern void show_wakeup_sources(void);
+extern void record_suspend_time(void);
 
 int slpt_pm_enter(suspend_state_t state) {
 	int error = 0;
@@ -1306,6 +1308,8 @@ int slpt_pm_enter(suspend_state_t state) {
 	if (slpt_select && slpt_select_enable)
 		task_enable = 1;
 
+	record_suspend_time();
+
 	if (task_enable) {
 		slpt_task_is_enabled = 1;
 #ifdef CONFIG_SLPT_MAP_TO_KSEG2
@@ -1317,6 +1321,8 @@ int slpt_pm_enter(suspend_state_t state) {
 		slpt_task_is_enabled = 0;
 		error = slpt_suspend_in_kernel(state);
 	}
+
+	show_wakeup_sources();
 
 	return 0;
 }
