@@ -1,6 +1,6 @@
 #include <linux/fb.h>
 
-#ifdef CONFIG_JZ4780_AOSD
+#ifdef CONFIG_AOSD_V11
 #include "aosd.h"
 #endif
 
@@ -73,6 +73,7 @@ enum jzfb_format_order {
  */
 struct jzfb_fg_t {
 	u32 fg;
+	u32 is_enabled;
 	u32 bpp;
 	u32 x;
 	u32 y;

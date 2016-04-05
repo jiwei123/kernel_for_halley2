@@ -184,11 +184,15 @@ static struct jz_platform_device platform_devices_array[] __initdata = {
 #endif
 
 #ifdef CONFIG_LCD_KFM701A21_1A
-    DEF_DEVICE(&kfm701a21_1a_device,0,0),
+	DEF_DEVICE(&kfm701a21_1a_device,0,0),
 #endif
 
 #ifdef CONFIG_FB_JZ_V11
 	DEF_DEVICE(&jz_fb0_device, &jzfb0_pdata, sizeof(struct jzfb_platform_data)),
+/* AOSD */
+#ifdef CONFIG_AOSD_V11
+	DEF_DEVICE(&jz_aosd_device, 0, 0),
+#endif
 #endif
 /* nand */
 #ifdef CONFIG_NAND_DRIVER

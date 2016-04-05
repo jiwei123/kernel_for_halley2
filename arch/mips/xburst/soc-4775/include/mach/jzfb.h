@@ -38,7 +38,7 @@ enum data_format {
 
 /* Output data start-edge tuning in 1x clock output mode. TXCTRL: 15-13 bit */
 enum data_start_edge {
-        START_EDGE_0 = 0x0, /*0 of T7X*/
+	START_EDGE_0 = 0x0, /*0 of T7X*/
         START_EDGE_1, /*1 of T7X*/
         START_EDGE_2, /*2 of T7X*/
         START_EDGE_3, /*3 of T7X*/

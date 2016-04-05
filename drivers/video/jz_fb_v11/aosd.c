@@ -56,7 +56,7 @@ void print_aosd_registers(void)	/* debug */
 {
 	struct device *dev = jzaosd->dev;
 
-	clk_enable(jzaosd->debug_clk);
+	/*clk_enable(jzaosd->debug_clk);*/
 
 	dev_info(dev, "AOSD_CTRL:0x%08lx\n", aosd_readl(jzaosd, AOSD_CTRL));
 	dev_info(dev, "AOSD_CFG:0x%08lx\n", aosd_readl(jzaosd, AOSD_CFG));

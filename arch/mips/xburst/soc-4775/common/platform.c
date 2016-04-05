@@ -1131,7 +1131,29 @@ struct platform_device jz_vpu_device = {
 	.num_resources    = ARRAY_SIZE(jz_vpu_resource),
 	.resource         = jz_vpu_resource,
 };
+#ifdef CONFIG_AOSD_V11
+static struct resource jz_aosd_resources[] = {
+	[0] = {
+		.start	= COMPRESS_IOBASE,
+		.end	= COMPRESS_IOBASE + 0x120 - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+#if 0
+	[1] = {
+		.flags = IORESOURCE_IRQ,
+		.start = IRQ_COMPRESS,
+		.end   = IRQ_COMPRESS,
+	},
+#endif
+};
 
+struct platform_device jz_aosd_device = {
+	.name	= "jz-aosd",
+	.id	= -1,
+	.num_resources	= ARRAY_SIZE(jz_aosd_resources),
+	.resource	= jz_aosd_resources,
+};
+#endif
 /* ADC controller*/
 static struct resource jz_adc_resources[] = {
 	{
