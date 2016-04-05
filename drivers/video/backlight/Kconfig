@@ -191,6 +191,12 @@ config LCD_AUO_H139BLN01
 	help
 	   jz mipi dsi.dpi AMOLED display panel support
 
+config LCD_JDI_LPM013M091A
+	tristate "jdi 1.34 inch mipi-dsi panel(320x300)"
+	depends on FB && JZ_MIPI_DSI
+	help
+	   jz mipi dsi.dpi display panel support
+
 config LCD_ARS_NT35350
 	tristate "ARS-Y1300A 1.3 inch LTPS TFT mipi-dsi panel(360x360)"
 	depends on FB && JZ_MIPI_DSI

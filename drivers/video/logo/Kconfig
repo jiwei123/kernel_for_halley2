@@ -59,7 +59,7 @@ config LOGO_SGI_CLUT224
 
 config LOGO_IWOP_CLUT224
 	bool "224-color IWOP Linux logo"
-	depends on AW808_HW_V11_WISE_SQUARE || SOLAR_HW_V10
+	depends on AW808_HW_V11_WISE_SQUARE || SOLAR_HW_V10 || WATCH_A2
 	default y
 
 config LOGO_SUN_CLUT224

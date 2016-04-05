@@ -22,6 +22,7 @@ obj-$(CONFIG_LCD_KFM701A21_1A)	+= kfm701a21_1a.o
 obj-$(CONFIG_LCD_BYD_9177AA)	+= byd_9177aa.o
 obj-$(CONFIG_LCD_X163)             += auo_x163.o
 obj-$(CONFIG_LCD_AUO_H139BLN01)    += auo_h139bln01.o
+obj-$(CONFIG_LCD_JDI_LPM013M091A) += lcd-jdi-lpm013m091a.o
 obj-$(CONFIG_LCD_ARS_NT35350) += ars_nt35350.o
 obj-$(CONFIG_LCD_BOE_TFT320320) += boe_tft320320.o
 obj-$(CONFIG_LCD_EDO_E1392AM1) += edo_e1392am1.o

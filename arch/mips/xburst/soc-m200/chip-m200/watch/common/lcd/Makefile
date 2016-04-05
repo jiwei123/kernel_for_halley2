@@ -17,3 +17,4 @@ obj-$(CONFIG_LCD_H160_TFT320320) += lcd-h160_tft320320.o
 obj-$(CONFIG_LCD_EDO_E1392AM1) += lcd-edo_e1392am1.o
 obj-$(CONFIG_LCD_AUO_H139BLN01) += lcd-auo_h139bln01.o
 obj-$(CONFIG_LCD_ARS_NT35350) += lcd-ars_nt35350.o
+obj-$(CONFIG_LCD_JDI_LPM013M091A) += lcd-jdi-lpm013m091a.o

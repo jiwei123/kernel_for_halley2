@@ -27,6 +27,8 @@ void setup_lcd_hwlist(void)
 	HWLIST_LCD_INFO_DEF("TRULY", "TFT240240-2-E", "1.54", "212", "", "square");
 #elif defined(CONFIG_LCD_BOE_HSX0154B24B)
 	HWLIST_LCD_INFO_DEF("boe", "HSX0154B24B", "1.54", "212", "", "square");
+#elif defined(CONFIG_LCD_JDI_LPM013M091A)
+	HWLIST_LCD_INFO_DEF("jdi", "LPM013M091A", "1.34", "212", "", "round");
 #else
 	#error "not support your lcd, please add your lcd's info here"
 #endif
