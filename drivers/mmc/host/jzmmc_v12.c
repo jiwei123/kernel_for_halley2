@@ -161,6 +161,27 @@ struct jzmmc_host {
 	(host->flags &= ~(1 << JZMMC_USE_PIO))
 /*-------------------End structure and macro define------------------------*/
 
+static int jzrtc_clk32k_count = 0;
+int jzrtc_enable_clk32k(void)
+{
+    jzrtc_clk32k_count++;
+    if (jzrtc_clk32k_count > 0) {
+        rtc_write_reg(RTC_CKPCR,ENABLE_CLK32K);
+        return 0;
+    }
+    return -1;
+}
+
+int jzrtc_disable_clk32k(void)
+{
+    jzrtc_clk32k_count--;
+    if (jzrtc_clk32k_count <= 0) {
+        rtc_write_reg(RTC_CKPCR,DISABLE_CLK32K);
+        return 0;
+    }
+    return -1;
+}
+
 /*
  * Functional functions.
  *

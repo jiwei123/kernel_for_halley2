@@ -1408,6 +1408,7 @@ CONFIG_I2C_HELPER_AUTO=y
 # CONFIG_I2C_SIMTEC is not set
 # CONFIG_I2C_XILINX is not set
 CONFIG_I2C1_SPEED=400
+CONFIG_I2C2_SPEED=100
 CONFIG_I2C0_SPEED=400
 CONFIG_I2C_V12_JZ=y
 CONFIG_I2C_FIFO_LEN=64
@@ -1416,7 +1417,9 @@ CONFIG_I2C0_V12_JZ=y
 CONFIG_I2C1_V12_JZ=y
 # CONFIG_I2C1_V12_PA is not set
 CONFIG_I2C1_V12_PC=y
-# CONFIG_I2C2_V12_JZ is not set
+CONFIG_I2C2_V12_JZ=y
+# CONFIG_I2C3_PA is not set
+CONFIG_I2C3_PE=y
 # CONFIG_I2C3_V12_JZ is not set
 CONFIG_I2C_JZV10_WAIT_MS=1000
 
@@ -2412,7 +2415,81 @@ CONFIG_IOMMU_SUPPORT=y
 # CONFIG_PM_DEVFREQ is not set
 # CONFIG_EXTCON is not set
 # CONFIG_MEMORY is not set
-# CONFIG_IIO is not set
+CONFIG_IIO=y
+CONFIG_IIO_BUFFER=y
+# CONFIG_IIO_BUFFER_CB is not set
+CONFIG_IIO_KFIFO_BUF=y
+CONFIG_IIO_TRIGGERED_BUFFER=y
+CONFIG_IIO_TRIGGER=y
+CONFIG_IIO_CONSUMERS_PER_TRIGGER=2
+
+#
+# Accelerometers
+#
+# CONFIG_IIO_ST_ACCEL_3AXIS is not set
+
+#
+# Analog to digital converters
+#
+# CONFIG_MAX1363 is not set
+# CONFIG_TI_ADC081C is not set
+
+#
+# Amplifiers
+#
+
+#
+# Hid Sensor IIO Common
+#
+
+#
+# Digital to analog converters
+#
+# CONFIG_AD5064 is not set
+# CONFIG_AD5380 is not set
+# CONFIG_AD5446 is not set
+# CONFIG_MAX517 is not set
+# CONFIG_MCP4725 is not set
+
+#
+# Frequency Synthesizers DDS/PLL
+#
+
+#
+# Clock Generator/Distribution
+#
+
+#
+# Phase-Locked Loop (PLL) frequency synthesizers
+#
+
+#
+# Digital gyroscope sensors
+#
+# CONFIG_IIO_ST_GYRO_3AXIS is not set
+# CONFIG_ITG3200 is not set
+
+#
+# Inertial measurement units
+#
+CONFIG_SENSORHUB_ICM30630=y
+# CONFIG_INV_MPU_IIO is not set
+CONFIG_ICM30630_INV_MPU_IIO=y
+CONFIG_ICM30630_INV_MPU_IIO_I2C=y
+# CONFIG_INV_MPU6050_IIO is not set
+
+#
+# Light sensors
+#
+# CONFIG_ADJD_S311 is not set
+# CONFIG_SENSORS_TSL2563 is not set
+# CONFIG_VCNL4000 is not set
+
+#
+# Magnetometer sensors
+#
+# CONFIG_AK8975 is not set
+# CONFIG_IIO_ST_MAGN_3AXIS is not set
 CONFIG_PWM=y
 CONFIG_JZ_PWM=y
 
