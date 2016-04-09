@@ -2,7 +2,7 @@
 HAVE_UART	= y
 
 ##############################     TOOLS    #############################
-CROSS_COMPILE ?=mips-linux-gnu-
+CROSS_COMPILE ?=mipsel-linux-
 CC = $(CROSS_COMPILE)gcc
 LD = $(CROSS_COMPILE)ld
 OBJCOPY = $(CROSS_COMPILE)objcopy
@@ -11,11 +11,11 @@ drop-sections := .reginfo .mdebug .oomment .note .pdr .options .MIPS.options
 strip-flags   := $(addprefix --remove-section=,$(drop-sections))
 
 HEX_CFLAGS += -Iinclude
-HEX_CFLAGS += -nostdinc -Wall -Wundef -Werror-implicit-function-declaration \
-	 -fno-common -EL -Os -march=mips32 -mabi=32 -G 0 -mno-abicalls -fno-pic
+HEX_CFLAGS += -Wall -Wundef -Werror-implicit-function-declaration \
+	 -fno-common  -Os -march=mips32 -mabi=32 -G 0 -mno-abicalls -fno-pic
 HEX_CFLAGS += -DINTERFACE_NEMC
 
-HEX_LDFLAGS	:= -nostdlib -EL -T target.ld
+HEX_LDFLAGS	:= -nostdlib -T target.ld
 HEX_OBJCOPY_ARGS  := -O elf32-tradlittlemips
 
 HEX_NAME := firmware_uart.hex
@@ -25,6 +25,7 @@ OBJS := src/start.o		\
 	src/main.o		\
 	src/mcu_ops.o		\
 	src/gpio.o		\
+#	src/utils.o
 
 ifeq ($(HAVE_UART), y)
 OBJS += src/uart.o
@@ -33,9 +34,10 @@ endif
 
 all: firmware.bin
 	@hexdump -v -e '"0x" 1/4 "%08x" "," "\n"' $< > $(HEX_NAME)
+	@cp firmware_uart.hex ..
 
 firmware.bin:firmware.o
-	@$(LD) -nostdlib -EL -T target.ld $(OBJS) -Map tmp.map -o tmp.elf
+	@$(LD) -nostdlib -T target.ld $(OBJS) -Map tmp.map -o tmp.elf
 	@$(OBJCOPY) $(strip-flags) $(HEX_OBJCOPY_ARGS) -O binary tmp.elf $@
 
 firmware.o : $(OBJS)

@@ -2838,6 +2838,31 @@ void uart_handle_cts_change(struct uart_port *uport, unsigned int status)
 }
 EXPORT_SYMBOL_GPL(uart_handle_cts_change);
 
+#ifdef CONFIG_SERIAL_JZ47XX_PDMA_UART
+void uart_handle_cts_change_for_pdma(struct uart_port *uport, unsigned int status)
+{
+	struct tty_port *port = &uport->state->port;
+	struct tty_struct *tty = port->tty;
+
+	uport->icount.cts++;
+
+	if (tty_port_cts_enabled(port)) {
+		if (tty->hw_stopped) {
+			if (status) {
+				tty->hw_stopped = 0;
+				//uport->ops->start_tx(uport);
+				uart_write_wakeup(uport);
+			}
+		} else {
+			if (!status) {
+				tty->hw_stopped = 1;
+				//uport->ops->stop_tx(uport);
+			}
+		}
+	}
+}
+EXPORT_SYMBOL_GPL(uart_handle_cts_change_for_pdma);
+#endif
 /**
  * uart_insert_char - push a char to the uart layer
  *

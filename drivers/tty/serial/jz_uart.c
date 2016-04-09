@@ -72,6 +72,7 @@ static struct uart_driver serial_jz47xx_reg;
 static inline void check_modem_status(struct uart_jz47xx_port *up);
 static unsigned short *serial47xx_get_divisor(struct uart_port *port, unsigned int baud);
 static inline void serial_dl_write(struct uart_port *up, int value);
+
 /*
 *Function:read register
 *Parameter:struct uart_jz47xx_port *up, int offset
@@ -88,7 +89,6 @@ static inline unsigned int serial_in(struct uart_jz47xx_port *up, int offset)
 *Parameter:struct uart_jz47xx_port *up, int offset,int value:write value
 *Return:void
 */
-
 static inline void serial_out(struct uart_jz47xx_port *up, int offset, int value)
 {
 	offset <<= 2;
@@ -253,11 +253,6 @@ static void serial_jz47xx_start_tx(struct uart_port *port)
 		up->ier |= UART_IER_THRI;
 		serial_out(up, UART_IER, up->ier);
 	}
-	/* if(!strcmp(up->name,"uart1")) */
-	/* { */
-	/* 	udelay(100); */
-	/* 	printk("uart1 send data!!!\n"); */
-	/* } */
 	spin_unlock_irqrestore(&t_lock,flags);
 }
 
@@ -296,59 +291,90 @@ static inline irqreturn_t serial_jz47xx_irq(int irq, void *dev_id)
 
 #ifdef CONFIG_SERIAL_JZ47XX_PDMA_UART
 #include "../../dma/jzdma/common_firmware/include/tcsm.h"
+
+extern void uart_handle_cts_change_for_pdma(struct uart_port *uport, unsigned int status);
+static inline void check_modem_status_from_pdma (
+		struct uart_jz47xx_port *up, unsigned int status)
+{
+	unsigned int msr =
+			(status >> TCSM_UART_CTS_CHANGE_BIT) & TCSM_UART_CTS_CHANGE_MASK;
+	//printk("mcu state %x\n", status);
+	if ((msr & UART_MSR_ANY_DELTA) == 0)
+		return;
+
+	if (msr & UART_MSR_DCTS)
+		uart_handle_cts_change_for_pdma(&up->port, msr & UART_MSR_CTS);
+
+	wake_up_interruptible(&up->port.state->port.delta_msr_wait);
+}
+
+static int isMcuTxBufFull(unsigned int waddr, unsigned int raddr)
+{
+	if (waddr < raddr)
+		return (waddr == raddr - 1);
+
+	return (waddr == raddr + TCSM_UART_TBUF_LEN - 1);
+}
+
 static void transmit_chars_to_pdma(struct uart_jz47xx_port *up)
 {
 	struct circ_buf *xmit = &up->port.state->xmit;
 
 	volatile unsigned char *buf = (volatile unsigned char *)PDMA_TO_CPU(TCSM_UART_TBUF_ADDR);
-	unsigned int waddr = *(volatile unsigned int *)PDMA_TO_CPU(TCSM_UART_TBUF_RP);
-	unsigned int count = *(volatile unsigned int *)PDMA_TO_CPU(TCSM_UART_TBUF_COUNT);
-	if (up->port.x_char) {
-		buf[count] = up->port.x_char;
-		count = (count + 1) & (TCSM_UART_BUF_LEN - 1);
-		up->port.icount.tx++;
-		up->port.x_char = 0;//transmit finish x_char=0
-		*(volatile unsigned int *)PDMA_TO_CPU(TCSM_UART_TBUF_COUNT) = count;
+	unsigned int raddr = *(volatile unsigned int *)PDMA_TO_CPU(TCSM_UART_TBUF_RP);
+	unsigned int waddr = *(volatile unsigned int *)PDMA_TO_CPU(TCSM_UART_TBUF_WP);
+
+	if (isMcuTxBufFull(waddr, raddr)) {
+		printk("isMcuBufFull ier:%#x raddr:%#x waddr:%#x\n",
+				serial_in(up, UART_IER), raddr, waddr);
 		return;
 	}
 
-	if (((count == waddr) && uart_circ_empty(xmit)) || uart_tx_stopped(&up->port)) {//xmit is empty or stop tx
+	if (up->port.x_char) {
+		buf[waddr] = up->port.x_char;
+		waddr = (waddr + 1) & (TCSM_UART_TBUF_LEN - 1);
+		up->port.icount.tx++;
+		up->port.x_char = 0;//transmit finish x_char=0
+		*(volatile unsigned int *)PDMA_TO_CPU(TCSM_UART_TBUF_WP) = waddr;
+		return;
+	}
+
+	if (((waddr == raddr) && uart_circ_empty(xmit)) ||
+			uart_tx_stopped(&up->port)) {//xmit is empty or stop tx
 		serial_jz47xx_stop_tx(&up->port);
 		return;
 	}
+
 	do {
 		if (uart_circ_empty(xmit)) // FIFO FULL
 			break;
-		buf[count] = xmit->buf[xmit->tail];
+		buf[waddr] = xmit->buf[xmit->tail];
 		xmit->tail = (xmit->tail + 1) & (UART_XMIT_SIZE - 1);
 		up->port.icount.tx++;
-		count = (count + 1) & (TCSM_UART_BUF_LEN - 1);
-	}while (count != waddr);
+		waddr = (waddr + 1) & (TCSM_UART_TBUF_LEN - 1);
+	} while (!isMcuTxBufFull(waddr, raddr));
 
-	*(volatile unsigned int *)PDMA_TO_CPU(TCSM_UART_TBUF_COUNT) = count;
-	if(count >= waddr)
-		count = count - waddr;
-	else
-		count = TCSM_UART_BUF_LEN - waddr + count;
+	*(volatile unsigned int *)PDMA_TO_CPU(TCSM_UART_TBUF_WP) = waddr;
 
 	/* if circ_chars is less than WARKUP_CHARS,then warkup */
-	if ((count + uart_circ_chars_pending(xmit)) < WAKEUP_CHARS)//get the renainder of circ_chars
+	if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)//get the renainder of circ_chars
 		uart_write_wakeup(&up->port);
 }
+
+#define MAX_COUNT (TCSM_UART_RBUF_LEN / 2)
 static void receive_chars_from_pdma(struct uart_jz47xx_port *up)
 {
 	struct tty_struct *tty = up->port.state->port.tty;
 	unsigned int ch, flag, status;
-	int max_count = 256;
+	int max_count = MAX_COUNT;
 
-	unsigned int raddr = *(volatile unsigned int *)PDMA_TO_CPU(TCSM_UART_RBUF_WP);
-	unsigned int count = *(volatile unsigned int *)PDMA_TO_CPU(TCSM_UART_RBUF_COUNT);
+	unsigned int waddr = *(volatile unsigned int *)PDMA_TO_CPU(TCSM_UART_RBUF_WP);
+	unsigned int raddr = *(volatile unsigned int *)PDMA_TO_CPU(TCSM_UART_RBUF_RP);
 	volatile unsigned char *buf = (volatile unsigned char *)PDMA_TO_CPU(TCSM_UART_RBUF_ADDR);
-	/* printk("raddr = %d count = %d\n",raddr,count); */
-	/* printk("waddr = %x 0x14 = %X\n",raddr,*(volatile unsigned int *)0xb3422014); */
-	while ( (raddr != count) && (max_count-- > 0)) {
-		ch = buf[count]; // read RX_Register
-		status = buf[count + 1];
+
+	while ((waddr != raddr) && (max_count-- > 0)) {
+		ch = buf[raddr];
+		status = buf[raddr + 1];
 		flag = TTY_NORMAL; // TTY_NORMAL=0
 		up->port.icount.rx++;
 
@@ -390,33 +416,36 @@ static void receive_chars_from_pdma(struct uart_jz47xx_port *up)
 			else if (status & UART_LSR_FE)
 				flag = TTY_FRAME;
 		}
-		/* printk("ch = %x status = %x\n",ch,status); */
-		uart_insert_char(&up->port, status, UART_LSR_OE, ch, flag);
-ignore_char:
-		//raddr = (raddr + 2) & (TCSM_UART_BUF_LEN - 1);
-		count = (count + 2) & (TCSM_UART_BUF_LEN - 1);
 
+		uart_insert_char(&up->port, status, UART_LSR_OE, ch, flag);
+		ignore_char:
+		raddr = (raddr + 2) & (TCSM_UART_RBUF_LEN - 1);
+		*(volatile unsigned int *)PDMA_TO_CPU(TCSM_UART_RBUF_RP) = raddr;
 	}
-	if(max_count != 256) {
+
+	if (max_count != MAX_COUNT) {
 		tty_flip_buffer_push(tty->port);
-		*(volatile unsigned int *)PDMA_TO_CPU(TCSM_UART_RBUF_COUNT) = count;
 	}
-	/* printk("uier = %X\n",*(volatile unsigned int *)0xb0031004); */
-	//*(volatile unsigned int *)PDMA_TO_CPU(TCSM_UART_RBUF_RP) = raddr;
-	/* printk("d raddr = %d count = %d\n",raddr,count); */
 }
 
 void pdma_handle_irq(int id, unsigned int status)
 {
 	struct uart_jz47xx_port *up = serial_jz47xx_ports[id];
+
+	if (!up->port.state->port.tty) {
+		// tty was released
+		return;
+	}
 	if (status & TCSM_UART_NEED_READ)
 		receive_chars_from_pdma(up);
-	check_modem_status(up);
+
+	if (status & TCSM_UART_CTS_CHANGE)
+		check_modem_status_from_pdma(up, status);
+
 	if (status & TCSM_UART_NEED_WRITE) {
 		transmit_chars_to_pdma(up);
 		serial_out(up, UART_IER, up->ier);
 	}
-		//transmit_chars_to_pdma(up);
 }
 EXPORT_SYMBOL(pdma_handle_irq);
 #endif
@@ -509,7 +538,6 @@ static int serial_jz47xx_startup(struct uart_port *port)
 #ifdef CONFIG_SERIAL_JZ47XX_PDMA_UART
 	if(up->use_pdma) {
 		retval = 0;
-		//printk("Alloc pdma irq now!\n");
 	} else
 #endif
 	retval = request_irq(up->port.irq, serial_jz47xx_irq, 0, up->name, up);//request irq

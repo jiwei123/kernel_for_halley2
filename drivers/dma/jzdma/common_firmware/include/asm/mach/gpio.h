@@ -11,6 +11,7 @@
 /*************************************************************************
  * GPIO (General-Purpose I/O Ports)
  *************************************************************************/
+#define	GPIO_BASE	0x10010000
 
 //n = 0,1,2,3,4,5 (PORTA, PORTB, PORTC, PORTD, PORTE, PORTF)
 #define GPIO_PXPIN(n)	(GPIO_BASE + (0x00 + (n)*0x100)) /* PIN Level Register */

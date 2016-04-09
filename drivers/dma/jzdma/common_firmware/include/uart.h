@@ -27,6 +27,10 @@
 #define LSR_TDRQ              (0x1 << 5)
 #define LSR_DRY               (0x1 << 0)
 #define IER_TDRIE             (0x1 << 1)
+#define MSR_ANY_DELTA         0x0F
+#define MSR_CTS               0x10
+#define MSR_DCTS              0x01
+
 void uart_init(void);
 int handle_uart_irq(void);
 
