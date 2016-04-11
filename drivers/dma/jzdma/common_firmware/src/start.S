@@ -7,7 +7,7 @@
  * Copyright (C) 2006 Ingenic Semiconductor Inc.
  *
  */
-#define TCSM_STACK_TOP	(0xF4001F3C)
+#define TCSM_STACK_TOP	(0xF4000F3C)
 #define TCSM_BANK0_PA	0xF4000000
 
 	.text
