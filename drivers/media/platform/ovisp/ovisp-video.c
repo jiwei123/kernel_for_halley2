@@ -33,7 +33,7 @@
 
 #include "ovisp-csi.h"
 
-#define CAMERA_NEED_REGULATOR		(0)
+#define CAMERA_NEED_REGULATOR		(1)
 
 #define UNSTABLE_FRAMES 13
 extern int capture_frames_count;
@@ -150,8 +150,11 @@ static int ovisp_subdev_power_on(struct ovisp_camera_dev *camdev,
 
 	/* first camera work power on */
 #if (CAMERA_NEED_REGULATOR)
-	if(!regulator_is_enabled(camdev->camera_power))
-	    regulator_enable(camdev->camera_power);
+	if(!regulator_is_enabled(camdev->camera_power_vdd))
+	    regulator_enable(camdev->camera_power_vdd);
+
+	if(!regulator_is_enabled(camdev->camera_power_vddio))
+	    regulator_enable(camdev->camera_power_vddio);
 #endif
 
 	if (client->power) {
@@ -233,8 +236,11 @@ static int ovisp_subdev_power_off(struct ovisp_camera_dev *camdev,
 	/*cpu_xxx power should not be power on or off*/
 	/*analog power off*/
 #if (CAMERA_NEED_REGULATOR)
-	if(regulator_is_enabled(camdev->camera_power))
-		        regulator_disable(camdev->camera_power);
+	if(regulator_is_enabled(camdev->camera_power_vdd))
+		regulator_disable(camdev->camera_power_vdd);
+
+	if(regulator_is_enabled(camdev->camera_power_vddio))
+		regulator_disable(camdev->camera_power_vddio);
 #endif
 
 	ovisp_subdev_mclk_off(camdev, index);
@@ -1842,9 +1848,16 @@ static int ovisp_camera_probe(struct platform_device *pdev)
 	camdev->first_init = 1;
 
 #if (CAMERA_NEED_REGULATOR)
-	camdev->camera_power = regulator_get(camdev->dev, "cpu_avdd");
-	if(IS_ERR(camdev->camera_power)) {
-		dev_warn(camdev->dev, "camera regulator missing\n");
+	camdev->camera_power_vdd = regulator_get(camdev->dev, "camera_vdd_2v8");
+	if(IS_ERR(camdev->camera_power_vdd)) {
+		dev_warn(camdev->dev, "camera vdd regulator missing\n");
+		ret = -ENXIO;
+		goto regulator_error;
+	}
+
+	camdev->camera_power_vddio = regulator_get(camdev->dev, "camera_vddio_1v8");
+	if(IS_ERR(camdev->camera_power_vddio)) {
+		dev_warn(camdev->dev, "camera vddio regulator missing\n");
 		ret = -ENXIO;
 		goto regulator_error;
 	}
@@ -1945,7 +1958,8 @@ cleanup_ctx:
 	vb2_dma_contig_cleanup_ctx(camdev->alloc_ctx);
 #if (CAMERA_NEED_REGULATOR)
 regulator_error:
-	regulator_put(camdev->camera_power);
+	regulator_put(camdev->camera_power_vdd);
+	regulator_put(camdev->camera_power_vddio);
 #endif
 unreg_v4l2_dev:
 	v4l2_device_unregister(&camdev->v4l2_dev);
@@ -1966,7 +1980,8 @@ static int __exit ovisp_camera_remove(struct platform_device *pdev)
 	struct ovisp_camera_dev *camdev = platform_get_drvdata(pdev);
 
 #if (CAMERA_NEED_REGULATOR)
-	regulator_put(camdev->camera_power);
+	regulator_put(camdev->camera_power_vdd);
+	regulator_put(camdev->camera_power_vddio);
 #endif
 	video_device_release(camdev->vfd);
 	v4l2_device_unregister(&camdev->v4l2_dev);

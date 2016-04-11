@@ -103,7 +103,8 @@ struct ovisp_camera_dev {
 	int input;
 	int first_init;
 
-	struct regulator * camera_power;
+	struct regulator * camera_power_vdd;
+	struct regulator * camera_power_vddio;
 };
 
 #endif /*__OVISP_VIDEO_H__*/
