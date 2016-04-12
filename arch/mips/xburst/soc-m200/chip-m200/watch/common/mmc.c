@@ -22,7 +22,7 @@ struct jzmmc_platform_data inand_pdata = {
 	.removal  			= DONTCARE,
 	.sdio_clk			= 0,
 	.ocr_avail			= MMC_VDD_32_33 | MMC_VDD_33_34,
-	.capacity  			= MMC_CAP_SD_HIGHSPEED | MMC_CAP_MMC_HIGHSPEED \
+	.capacity  			= MMC_CAP_SD_HIGHSPEED | MMC_CAP_MMC_HIGHSPEED | MMC_CAP_ERASE \
 	                                  | MMC_CAP_4_BIT_DATA | MMC_CAP_8_BIT_DATA | MMC_CAP_NONREMOVABLE,
 	.pm_flags			= 0,
 	.max_freq			= CONFIG_MMC0_MAX_FREQ,

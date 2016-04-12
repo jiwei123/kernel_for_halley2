@@ -113,6 +113,7 @@ config USB_GADGET_STORAGE_NUM_BUFFERS
 	   a module parameter as well.
 	   If unsure, say 2.
 
+
 #
 # USB Peripheral Controller Support
 #
@@ -851,6 +852,9 @@ config  USB_NLUNS_NUM
 	range 1 8
 	help
           The number of disk mounted on PC
+
+config USB_FASTBOOT
+	tristate "USB fastboot"
 endif
 
 config USB_ANDROID_RNDIS_DWORD_ALIGNED
