@@ -14,14 +14,17 @@
 #include <linux/syscore_ops.h>
 #include <linux/platform_device.h>
 #include <linux/sched/rt.h>
+#include <linux/slab.h>
+#include <linux/proc_fs.h>
 #include <linux/seq_file.h>
-#include <jz_proc.h>
-#include <jz_notifier.h>
+
 #include <soc/base.h>
 #include <soc/cpm.h>
 #include <soc/extal.h>
 #include <soc/tcu.h>
-#include <linux/slab.h>
+#include <jz_proc.h>
+#include <jz_notifier.h>
+
 #include <asm/reboot.h>
 
 #define RTC_RTCCR		(0x00)	/* rw, 32, 0x00000081 */
@@ -53,7 +56,15 @@
 
 static void wdt_start_count(int msecs)
 {
-	int time = JZ_EXTAL_RTC / 64 * msecs / 1000;
+	int time = 0;
+	unsigned int div;
+
+	if(!((*(volatile unsigned int *)(0xb0000024)) & (1 << 2)))
+		time = CONFIG_EXTAL_CLOCK * 1000 / 512 * msecs / 1024;
+	else
+		time = JZ_EXTAL_RTC / 1024 * msecs /1000;
+	div = 5;
+
 	if(time > 65535)
 		time = 65535;
 
@@ -61,7 +72,7 @@ static void wdt_start_count(int msecs)
 
 	outl(0,WDT_IOBASE + WDT_TCNT);		//counter
 	outl(time,WDT_IOBASE + WDT_TDR);	//data
-	outl((3<<3 | 1<<1),WDT_IOBASE + WDT_TCSR);
+	outl((div << 3 | 1 << 1),WDT_IOBASE + WDT_TCSR);
 	outl(0,WDT_IOBASE + WDT_TCER);
 	outl(1,WDT_IOBASE + WDT_TCER);
 }
@@ -74,38 +85,48 @@ static void wdt_stop_count(void)
 	outl(1 << 16,TCU_IOBASE + TCU_TSSR);
 }
 
-static void inline rtc_write_reg(int reg,int value)
+static int inline rtc_write_reg(int reg,int value)
 {
-	while(!(inl(RTC_IOBASE + RTC_RTCCR) & RTCCR_WRDY));
+	int timeout = 0x2000;
+	while(!(inl(RTC_IOBASE + RTC_RTCCR) & RTCCR_WRDY) && timeout--);
+	if(!timeout)
+	{
+		printk("WARN:NO USE RTC!!!!!\n");
+		return -1;
+	}
 	outl(0xa55a,(RTC_IOBASE + RTC_WENR));
 	while(!(inl(RTC_IOBASE + RTC_RTCCR) & RTCCR_WRDY));
 	while(!(inl(RTC_IOBASE + RTC_WENR) & WENR_WEN));
 	while(!(inl(RTC_IOBASE + RTC_RTCCR) & RTCCR_WRDY));
 	outl(value,(RTC_IOBASE + reg));
 	while(!(inl(RTC_IOBASE + RTC_RTCCR) & RTCCR_WRDY));
+
+	return 0;
 }
 
 /*
  * Function: Keep power for CPU core when reset.
  * So that EPC, tcsm and so on can maintain it's status after reset-key pressed.
  */
-void inline reset_keep_power(int keep_pwr)
+int inline reset_keep_power(void)
 {
-	if (keep_pwr)
-		rtc_write_reg(RTC_PWRONCR,
-			      inl(RTC_IOBASE + RTC_PWRONCR) & ~(1 << 0));
+	return rtc_write_reg(RTC_PWRONCR,
+			     inl(RTC_IOBASE + RTC_PWRONCR) & ~(1 << 0));
 }
 
 #define HWFCR_WAIT_TIME(x) ((x > 0x7fff ? 0x7fff: (0x7ff*(x)) / 2000) << 5)
+#define HRCR_WAIT_TIME(x) ((((x) > 1875 ? 1875: (x)) / 125) << 11)
 
 void jz_hibernate(void)
 {
+	uint32_t rtc_rtccr;
+
 	local_irq_disable();
 	/* Set minimum wakeup_n pin low-level assertion time for wakeup: 1000ms */
 	rtc_write_reg(RTC_HWFCR, HWFCR_WAIT_TIME(1000));
 
 	/* Set reset pin low-level assertion time after wakeup: must  > 60ms */
-	rtc_write_reg(RTC_HRCR, (60 << 5));
+	rtc_write_reg(RTC_HRCR, HRCR_WAIT_TIME(125));
 
 	/* clear wakeup status register */
 	rtc_write_reg(RTC_HWRSR, 0x0);
@@ -115,12 +136,17 @@ void jz_hibernate(void)
 	/* Put CPU to hibernate mode */
 	rtc_write_reg(RTC_HCR, 0x1);
 
+	/*poweroff the pmu*/
 	jz_notifier_call(NOTEFY_PROI_HIGH, JZ_POST_HIBERNATION, NULL);
+
+	rtc_rtccr = inl(RTC_IOBASE + RTC_RTCCR);
+	rtc_rtccr |= 0x1 << 0;
+	rtc_write_reg(RTC_RTCCR,rtc_rtccr);
 
 	mdelay(200);
 
 	while(1)
-		printk("We should NOT come here.%08x\n",inl(RTC_IOBASE + RTC_HCR));
+		printk("%s:We should NOT come here.%08x\n",__func__, inl(RTC_IOBASE + RTC_HCR));
 }
 
 void jz_wdt_restart(char *command)
@@ -146,16 +172,19 @@ void jz_wdt_restart(char *command)
 		printk("check wdt.\n");
 }
 
-static void hibernate_restart(void) {
+static void hibernate_restart(void)
+{
 	uint32_t rtc_rtcsr,rtc_rtccr;
 
 	while(!(inl(RTC_IOBASE + RTC_RTCCR) & RTCCR_WRDY));
+
 	rtc_rtcsr = inl(RTC_IOBASE + RTC_RTCSR);
 	rtc_rtccr = inl(RTC_IOBASE + RTC_RTCCR);
 
 	rtc_write_reg(RTC_RTCSAR,rtc_rtcsr + 5);
-	rtc_rtccr &= ~(1 << 4);
-	rtc_write_reg(RTC_RTCCR,rtc_rtccr | 0x3<<2);
+	rtc_rtccr &= ~(1 << 4 | 1 << 1);
+	rtc_rtccr |= 0x3 << 2;
+	rtc_write_reg(RTC_RTCCR,rtc_rtccr);
 
 	/* Clear reset status */
 	cpm_outl(0,CPM_RSR);
@@ -164,7 +193,7 @@ static void hibernate_restart(void) {
 	rtc_write_reg(RTC_HWFCR, HWFCR_WAIT_TIME(1000));
 
 	/* Set reset pin low-level assertion time after wakeup: must  > 60ms */
-	rtc_write_reg(RTC_HRCR, (60 << 5));
+	rtc_write_reg(RTC_HRCR, HRCR_WAIT_TIME(125));
 
 	/* clear wakeup status register */
 	rtc_write_reg(RTC_HWRSR, 0x0);
@@ -173,10 +202,13 @@ static void hibernate_restart(void) {
 	/* Put CPU to hibernate mode */
 	rtc_write_reg(RTC_HCR, 0x1);
 
+	rtc_rtccr = inl(RTC_IOBASE + RTC_RTCCR);
+	rtc_rtccr |= 0x1 << 0;
+	rtc_write_reg(RTC_RTCCR,rtc_rtccr);
+
 	mdelay(200);
 	while(1)
-		printk("We should NOT come here.%08x\n",inl(RTC_IOBASE + RTC_HCR));
-
+		printk("%s:We should NOT come here.%08x\n",__func__, inl(RTC_IOBASE + RTC_HCR));
 }
 #ifdef CONFIG_HIBERNATE_RESET
 void jz_hibernate_restart(char *command)
@@ -203,50 +235,7 @@ int __init reset_init(void)
 }
 arch_initcall(reset_init);
 
-static char *reset_command[] = {"wdt","hibernate","recovery"};
-static int reset_proc_show(struct seq_file *m, void *v)
-{
-	int len = 0;
-	int i;
-	for(i = 0;i < ARRAY_SIZE(reset_command);i++)
-		len += seq_printf(m,"%s\t",reset_command[i]);
-	len += seq_printf(m,"\n");
-
-	return len;
-}
-
-static int reset_proc_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, reset_proc_show, PDE_DATA(inode));
-}
-static int reset_write_proc(struct file *file, const char __user *buffer,
-			    size_t count, loff_t *data) {
-	int command = 0;
-	int i;
-
-	if(count == 0) return count;
-	for(i = 0;i < ARRAY_SIZE(reset_command);i++) {
-		if(!strncmp(buffer,reset_command[i],strlen(reset_command[i]))) {
-			command = i + 1;
-			break;
-		}
-	}
-	if(command == 0) return count;
-	local_irq_disable();
-	switch(command) {
-	case 1:
-		jz_wdt_restart(NULL);
-		break;
-	case 2:
-		hibernate_restart();
-		break;
-	case 3:
-		jz_wdt_restart("recovery");
-		break;
-
-	}
-	return count;
-}
+///////////////////////////////////////////////////////////////////////////////////////////////////
 struct wdt_reset {
 	unsigned stop;
 	unsigned msecs;
@@ -261,7 +250,9 @@ static int reset_task(void *data) {
 	};
 	sched_setscheduler(current,SCHED_RR,&param);
 
-	wdt_start_count(wdt->msecs + 1000);
+	/* wdt_start_count(wdt->msecs + 1000); */
+	/* while(1); */
+	wdt_start_count(10*1000);//10s内复位
 	while (1) {
 		if(kthread_should_stop()) {
 			wdt_stop_count();
@@ -273,51 +264,22 @@ static int reset_task(void *data) {
 
 	return 0;
 }
-
-
-static int wdt_control_proc_show(struct seq_file *m, void *v)
+/* ============================wdt control proc=================================== */
+static int wdt_time_show(struct seq_file *filq, void *v)
 {
 	int len = 0;
-	struct wdt_reset *wdt = m->private;
-	len += seq_printf(m,wdt->stop?">off<on\n":"off>on<\n");
-	return len;
-return 0;
-}
+	struct wdt_reset *wdt = filq->private;
 
-static int wdt_control_proc_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, wdt_control_proc_show, PDE_DATA(inode));
-}
+	len += seq_printf(filq, "%d msecs\n", wdt->msecs);
 
-static int wdt_control_write_proc(struct file *file, const char __user *buffer,
-			    size_t count, loff_t *data) {
-	struct wdt_reset *wdt =file->private_data ;
-	if(!strncmp(buffer,"on",2) && (wdt->stop == 1)) {
-		wdt->task = kthread_run(reset_task, wdt, "reset_task%d",wdt->count++);
-		wdt->stop = 0;
-	} else if(!strncmp(buffer,"off",3) && (wdt->stop == 0)) {
-		kthread_stop(wdt->task);
-		wdt->stop = 1;
-	}
-	return count;
-}
-static int wdt_time_proc_show(struct seq_file *m, void *v)
-{
-	int len = 0;
-	struct wdt_reset *wdt = m->private;
-	len += seq_printf(m,"%d msecs\n",wdt->msecs);
 	return len;
 }
 
-static int wdt_time_proc_open(struct inode *inode, struct file *file)
+static int wdt_time_write(struct file *file, const char __user *buffer,
+			  size_t usize, loff_t *off)
 {
-	return single_open(file, wdt_time_proc_show, PDE_DATA(inode));
-}
-
-static int wdt_time_write_proc(struct file *file, const char __user *buffer,
-			    size_t count, loff_t *data) {
 	unsigned msecs= 0;
-	struct wdt_reset *wdt = file->private_data;
+	struct wdt_reset *wdt = ((struct seq_file *)file->private_data)->private;
 
 	if(!wdt->stop)
 		return -EBUSY;
@@ -327,37 +289,102 @@ static int wdt_time_write_proc(struct file *file, const char __user *buffer,
 	if(msecs > 30000) msecs = 30000;
 
 	wdt->msecs = msecs;
-	return count;
+	return usize;
+}
+static struct jz_single_file_ops wdt_time_proc_fops = {
+	.read = wdt_time_show,
+	.write = wdt_time_write,
+};
+/* ============================wdt time proc end================================== */
+/* ============================wdt control proc=================================== */
+static int wdt_control_show(struct seq_file *filq, void *v)
+{
+	int len = 0;
+	struct wdt_reset *wdt = filq->private;
+
+	len += seq_printf(filq, wdt->stop?">off<on\n":"off>on<\n");
+
+	return len;
 }
 
-static const struct file_operations reset_proc_fops ={
-	.read = seq_read,
-	.open = reset_proc_open,
-	.write = reset_write_proc,
-	.llseek = seq_lseek,
-	.release = single_release,
-};
+static int wdt_control_write(struct file *file, const char __user *buffer,
+			     size_t usize, loff_t *off)
+{
+	struct wdt_reset *wdt = ((struct seq_file *)file->private_data)->private;
 
-static const struct file_operations wdt_control_proc_fops ={
-	.read = seq_read,
-	.open = wdt_control_proc_open,
-	.write = wdt_control_write_proc,
-	.llseek = seq_lseek,
-	.release = single_release,
-};
+	if(!strncmp(buffer,"on",2) && (wdt->stop == 1)) {
+		wdt->task = kthread_run(reset_task, wdt, "reset_task%d",wdt->count++);
+		wdt->stop = 0;
+	} else if(!strncmp(buffer,"off",3) && (wdt->stop == 0)) {
+		kthread_stop(wdt->task);
+		wdt->stop = 1;
+	}
 
-static const struct file_operations wdt_time_proc_fops ={
-	.read = seq_read,
-	.open = wdt_time_proc_open,
-	.write = wdt_time_write_proc,
-	.llseek = seq_lseek,
-	.release = single_release,
+	return usize;
+}
+static struct jz_single_file_ops wdt_control_proc_fops = {
+	.read = wdt_control_show,
+	.write = wdt_control_write,
 };
+/* ============================wdt control proc end =============================== */
+/* ============================reset proc=================================== */
+static char *reset_command[] = {"wdt","hibernate","recovery"};
+
+static int reset_show(struct seq_file *filq, void *v)
+{
+	int len = 0, i;
+
+	for(i = 0; i < ARRAY_SIZE(reset_command); i++)
+		len += seq_printf(filq, "%s\t", reset_command[i]);
+	len += seq_printf(filq,"\n");
+
+	return len;
+}
+
+static int reset_write(struct file *file, const char __user *buffer,
+		       size_t usize, loff_t *off)
+{
+	int command_size = 0;
+	int i;
+
+	if(usize == 0)
+		return -EINVAL;
+
+	command_size = ARRAY_SIZE(reset_command);
+	for(i = 0;i < command_size; i++) {
+		if(!strncmp(buffer, reset_command[i], strlen(reset_command[i])))
+			break;
+	}
+	if(i == command_size)
+		return -EINVAL;
+
+	local_irq_disable();
+	switch(i) {
+	case 0:
+		jz_wdt_restart(NULL);
+		break;
+	case 1:
+		hibernate_restart();
+		break;
+	case 2:
+		jz_wdt_restart("recovery");
+		break;
+	default:
+		printk("not support command %d\n", i);
+	}
+
+	return usize;
+}
+static struct jz_single_file_ops reset_proc_fops = {
+	.read = reset_show,
+	.write = reset_write,
+};
+/* ============================reset proc end=============================== */
 
 static int wdt_probe(struct platform_device *pdev)
 {
 	struct wdt_reset *wdt;
-	struct proc_dir_entry *p;
+	struct proc_dir_entry *p, *res;
 
 	wdt = kmalloc(sizeof(struct wdt_reset),GFP_KERNEL);
 	if(!wdt) {
@@ -379,11 +406,18 @@ static int wdt_probe(struct platform_device *pdev)
 		pr_warning("create_proc_entry for common reset failed.\n");
 		return -ENODEV;
 	}
-        proc_create_data("reset", 0444,p,&reset_proc_fops,wdt);
-        proc_create_data("wdt_control", 0444,p,&wdt_control_proc_fops,wdt);
-        proc_create_data("wdt_time", 0444,p,&wdt_time_proc_fops,wdt);
+
+	res = jz_proc_create_data("reset", 0444, p, &reset_proc_fops, wdt);
+	res = jz_proc_create_data("wdt_control", 0444, p, &wdt_control_proc_fops, wdt);
+	res = jz_proc_create_data("wdt_time", 0444, p, &wdt_time_proc_fops, wdt);
+	if (!res) {
+		pr_warning("proc_create_data for reset wdt failed.\n");
+		return -ENODEV;
+	}
+
 	return 0;
 }
+
 int wdt_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	struct wdt_reset *wdt = dev_get_drvdata(&pdev->dev);

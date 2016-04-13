@@ -18,7 +18,7 @@ config JZ_EPD_GPIO_FUNCTION
        depends on FB && (FB_JZ4775_ANDROID_EPD)
        default n
 
-config JZ4780_AOSD
+config JZ_AOSD_V11
 		bool "aosd function"
 		depends on FB_JZ_V11
 		default n

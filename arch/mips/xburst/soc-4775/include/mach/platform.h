@@ -150,7 +150,9 @@ extern struct platform_device jz_gpu;
 
 extern struct platform_device jz_fb0_device;
 extern struct platform_device jz_fb1_device;
-
+#ifdef CONFIG_AOSD_V11
+extern struct platform_device jz_aosd_device;
+#endif
 extern struct platform_device jz_uart0_device;
 extern struct platform_device jz_uart1_device;
 extern struct platform_device jz_uart2_device;
