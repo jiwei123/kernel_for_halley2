@@ -381,7 +381,8 @@ extern struct slpt_task *slpt_select;
 extern unsigned int slpt_task_is_enabled;
 extern int (*slpt_save_pm_enter_func)(suspend_state_t state);
 
-extern void slpt_set_suspend_ops(struct platform_suspend_ops *ops);
+extern void slpt_set_suspend_ops(int (*enter_sleep)(suspend_state_t state));
+extern int slpt_pm_enter(suspend_state_t state);
 extern int slpt_suspend_in_kernel(suspend_state_t state);
 extern void set_suspend_time(struct timespec suspend_time);
 extern int slpt_printf(const char *fmt, ...);

@@ -2537,7 +2537,7 @@ CONFIG_JZ_PWM_GPIO_E1=y
 # Slpt Drivers
 #
 # CONFIG_SLPT is not set
-CONFIG_SLPT_MAP_TO_KSEG2=y
+# CONFIG_SLPT_MAP_TO_KSEG2 is not set
 
 #
 # Firmware Drivers

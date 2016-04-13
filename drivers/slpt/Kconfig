@@ -27,7 +27,7 @@ config LCD_BRIGHTNESS_ALWAYS_ON_LEVEL
 config SLPT_MAP_TO_KSEG2
 	bool "slpt will map to kseg2 address"
 	depends on SLPT
-	default y
+	default n
 
 config SLPT_BUILT_IN_FIRMWARE
 	bool "slpt app will built-in kernel"
