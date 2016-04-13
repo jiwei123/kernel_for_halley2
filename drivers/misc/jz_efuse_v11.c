@@ -20,18 +20,21 @@
 #define DRV_NAME		"jz-efuse"
 
 #define EFUSE_CTRL				0xc
-#define HI_WEN		(0x1 < 1)
-#define LO_WEN		(0x1 < 0)
-
+#define HI_WEN		(0x1 << 1)
+#define LO_WEN		(0x1 << 0)
+/*
 #define CMD_READ		100
 #define CMD_WRITE		101
-
+*/
 
 #define CMD_DEBUG_READ		102 //debug use
 #define CMD_DEBUG_WRITE		103 //debug use
 
 #define CHIP_ID_ADDR	(0x10)
 #define USER_ID_ADDR	(0x20)
+
+#define CMD_READ        _IOWR('k', 51, struct efuse_wr_info*)
+#define CMD_WRITE       _IOWR('k', 52, struct efuse_wr_info*)
 
 struct efuse_wr_info {
 	uint32_t seg_id;
@@ -58,7 +61,7 @@ static uint32_t efuse_readl(uint32_t reg_off)
 	return readl(efuse->iomem + reg_off);
 }
 
-static void efuse_writel(uint32_t val, uint32_t reg_off)
+static void efuse_writel(uint32_t reg_off, uint32_t val)
 {
 	writel(val, efuse->iomem + reg_off);
 }
@@ -81,7 +84,6 @@ static void efuse_vddq_set(unsigned long is_on)
 	if (is_on) {
 		mod_timer(&efuse->vddq_protect_timer, jiffies + HZ);
 	}
-
 	if (efuse->gpio_vddq_en_n != -ENODEV) {
 		gpio_set_value(efuse->gpio_vddq_en_n, !is_on);
 	}
@@ -121,7 +123,7 @@ void jz_efuse_id_read(int is_chip_id, uint32_t * buf)
 	}
 }
 
-EXPORT_SYMBOL_GPL(jz_efuse_id_rad);
+EXPORT_SYMBOL_GPL(jz_efuse_id_read);
 
 static int jz_efuse_write(int seg_id, uint32_t * buf)
 {
@@ -133,18 +135,16 @@ static int jz_efuse_write(int seg_id, uint32_t * buf)
 		return -1;
 	}
 
-	if(seg_id != USER_ID && seg_id != CHIP_ID){
+	if(seg_id != USER_ID_ADDR && seg_id != CHIP_ID_ADDR){
 		printk("ERROR: seg_id error,check it !!! \n");
 		return -1;
 	}
 	spin_lock(&efuse->lock);
-
 	efuse_vddq_set(1);
 
 	if (seg_id == CHIP_ID_ADDR) {
 		for (i = 0; i < 4; i++)
 			efuse_writel(CHIP_ID_ADDR + i * 4, *(buf + i));
-
 		efuse_writel(EFUSE_CTRL, LO_WEN);
 		while ((efuse_readl(EFUSE_CTRL) & LO_WEN)) ;
 	} else if (seg_id == USER_ID_ADDR) {
@@ -155,7 +155,6 @@ static int jz_efuse_write(int seg_id, uint32_t * buf)
 		while ((efuse_readl(EFUSE_CTRL) & HI_WEN)) ;
 	}
 	efuse_vddq_set(0);
-
 	spin_unlock(&efuse->lock);
 	return 0;
 }
@@ -168,7 +167,7 @@ static int jz_efuse_debug_read(struct efuse_wr_info *wr_info)
 
 	printk(" 2 - jz_efuse debug read \n");
 
-	if(seg_id == CHIP_ID){
+	if(seg_id == CHIP_ID_ADDR){
 		if(len > 4){
 			dev_err(efuse->dev, "read segment %d data length %d > 4 words \n", seg_id, len);
 			return -1;
@@ -177,7 +176,7 @@ static int jz_efuse_debug_read(struct efuse_wr_info *wr_info)
 			dev_err(efuse->dev, "read segment %d start_pos  %d > (0 ~ 3) \n", seg_id, start_pos);
 			return -1;
 		}
-	}else if(seg_id == USER_ID){
+	}else if(seg_id == USER_ID_ADDR){
 		if(len > 4){
 			dev_err(efuse->dev, "read segment %d data length %d > 4 words\n", seg_id, len);
 			return -1;
@@ -200,9 +199,9 @@ static int jz_efuse_debug_read(struct efuse_wr_info *wr_info)
 		len = start_pos + 1;
 	}
 
-	if(seg_id == CHIP_ID)
+	if(seg_id == CHIP_ID_ADDR)
 		add_off = CHIP_ID_ADDR;
-	else if(seg_id == USER_ID)
+	else if(seg_id == USER_ID_ADDR)
 		add_off = USER_ID_ADDR;
 
 	spin_lock(&efuse->lock);
@@ -227,7 +226,7 @@ static int jz_efuse_debug_write(struct efuse_wr_info *wr_info)
 
 	printk(" 3 - jz_efuse debug write \n");
 
-	if(seg_id == CHIP_ID){
+	if(seg_id == CHIP_ID_ADDR){
 		if(len > 4){
 			dev_err(efuse->dev, "write segment %d data length %d > 4 words \n", seg_id, len);
 			return -1;
@@ -236,7 +235,7 @@ static int jz_efuse_debug_write(struct efuse_wr_info *wr_info)
 			dev_err(efuse->dev, "write segment %d start_pos  %d > (0 ~ 3) \n", seg_id,start_pos);
 			return -1;
 		}
-	}else if(seg_id == USER_ID){
+	}else if(seg_id == USER_ID_ADDR){
 		if(len > 4){
 			dev_err(efuse->dev, "write segment %d data length %d > 4 words\n", seg_id, len);
 			return -1;
@@ -258,9 +257,9 @@ static int jz_efuse_debug_write(struct efuse_wr_info *wr_info)
 		len = start_pos + 1;
 	}
 
-	if(seg_id == CHIP_ID)
+	if(seg_id == CHIP_ID_ADDR)
 		add_off = CHIP_ID_ADDR;
-	else if(seg_id == USER_ID)
+	else if(seg_id == USER_ID_ADDR)
 		add_off = USER_ID_ADDR;
 
 	spin_lock(&efuse->lock);
@@ -272,10 +271,10 @@ static int jz_efuse_debug_write(struct efuse_wr_info *wr_info)
 		start_pos--;
 	}while(start_pos >= 0 && len >= 0);
 
-	if(seg_id == CHIP_ID){
+	if(seg_id == CHIP_ID_ADDR){
 		efuse_writel(EFUSE_CTRL, LO_WEN);
 		while ((efuse_readl(EFUSE_CTRL) & LO_WEN)) ;
-	}else if(seg_id == USER_ID){
+	}else if(seg_id == USER_ID_ADDR){
 		efuse_writel(EFUSE_CTRL, HI_WEN);
 		while ((efuse_readl(EFUSE_CTRL) & HI_WEN)) ;
 	}
@@ -295,7 +294,6 @@ static long efuse_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	arg_r = (unsigned int *)arg;
 	efuse->wr_info = (struct efuse_wr_info *)arg_r;
-	//copy_from_user(efuse->wr_info,arg,sizeof(struct efuse_wr_info));
 	switch (cmd) {
 	case CMD_READ:
 		ret = jz_efuse_read(efuse->wr_info->seg_id, efuse->wr_info->buf);
@@ -305,7 +303,6 @@ static long efuse_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		break;
 	case CMD_DEBUG_READ:
 		ret = jz_efuse_debug_read(efuse->wr_info);
-		//copy_to_user(arg,efuse->wr_info,sizeof(struct efuse_wr_info));
 		break;
 	case CMD_DEBUG_WRITE:
 		ret = jz_efuse_debug_write(efuse->wr_info);

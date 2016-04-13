@@ -20,7 +20,8 @@
 #define GPIO_SD0_VCC_EN_N	GPIO_PB(3)
 #define GPIO_SD0_CD_N		GPIO_PB(2)
 
-
+/*efuse-vddq*/
+#define GPIO_EFUSE_VDDQ GPIO_PE(2)
 
 
 /**
