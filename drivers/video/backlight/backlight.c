@@ -449,6 +449,7 @@ unsigned int __weak get_brightness_always_on_level(void) {
 
 void handle_brightness_always_on(struct backlight_device *bd) {
 	if (brightness_is_always_on()) {
+		bd->props.fb_blank = FB_BLANK_UNBLANK;
 		bd->props.power = FB_BLANK_UNBLANK;
 		bd->props.state &= ~BL_CORE_FBBLANK;
 		bd->props.state &= ~BL_CORE_SUSPENDED;

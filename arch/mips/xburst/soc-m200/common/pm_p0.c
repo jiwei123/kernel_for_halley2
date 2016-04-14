@@ -23,6 +23,7 @@
 #ifdef CONFIG_SLPT
 #include <linux/slpt.h>
 #endif
+#include <linux/gpio.h>
 
 extern void show_wakeup_sources(void);
 extern void record_suspend_time(void);
@@ -34,28 +35,37 @@ extern void record_suspend_time(void);
 
 struct m200_sleep_lib_entry
 {
-	void (*enable_set_sleep_core_voltage)(int enable, unsigned int mV);
-	void (*enable_sleep_pmu_low_power_mode)(int enable);
+	void (*enable_set_pmu_suspend_mode_voltage)(int enable, unsigned int mV);
 	void (*enable_sleep_poweroff_mode)(int enable);
 	void (*restore_context)(void);
 	int (*enter_sleep)(int state);
+	void (*select_pmu)(int pmu);
 };
 
-static int enter(suspend_state_t state)
+static int do_enter_sleep(suspend_state_t state)
 {
 	struct m200_sleep_lib_entry *sleep_entry = (void *)(SLEEP_LIB_TCSM);
 
-#if !defined(CONFIG_SLPT)
-	record_suspend_time();
-#endif
-
 	sleep_entry->enter_sleep(state);
 
-#if !defined(CONFIG_SLPT)
-	show_wakeup_sources();
+	return 0;
+}
+
+static int enter(suspend_state_t state)
+{
+	int ret;
+
+	record_suspend_time();
+
+#ifdef CONFIG_SLPT
+	ret = slpt_pm_enter(state);
+#else
+	ret = do_enter_sleep(state);
 #endif
 
-	return 0;
+	show_wakeup_sources();
+
+	return ret;
 }
 
 static struct platform_suspend_ops pm_ops = {
@@ -65,11 +75,9 @@ static struct platform_suspend_ops pm_ops = {
 
 int __init pm_init(void)
 {
-#if defined(CONFIG_SLPT)
-	slpt_set_suspend_ops(&pm_ops);
-#else
 	suspend_set_ops(&pm_ops);
-#endif
+	slpt_set_suspend_ops(do_enter_sleep);
+
 	return 0;
 }
 
