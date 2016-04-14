@@ -13,9 +13,9 @@ Discarded input sections
  .reginfo       0x0000000000000000        0x0 src/uart.o
  .comment       0x0000000000000000        0x0 src/uart.o
 
-内存配置
+Memory Configuration
 
-名称           来源             长度             属性
+Name             Origin             Length             Attributes
 tcsm_bank0       0x00000000f4000000 0x0000000000001f3c rw
 tcsm_bank3_1     0x00000000f4001f3c 0x00000000000000c4 rw
 tcsm_bank4_0     0x00000000f4002000 0x00000000000000c4 rw
@@ -25,47 +25,49 @@ tcsm_bank4_1     0x00000000f40020c4 0x0000000000000730 rw
 Linker script and memory map
 
 
-.tcsm_bank0     0x00000000f4000000      0x870
+.tcsm_bank0     0x00000000f4000000      0x890
                 0x00000000f4000000                . = ALIGN (0x4)
  *(.text)
- .text          0x00000000f4000000      0x220 src/start.o
+ .text          0x00000000f4000000      0x240 src/start.o
                 0x00000000f4000100                _intr
-                0x00000000f4000138                _intr_entry
+                0x00000000f4000158                _intr_entry
                 0x00000000f4000108                _start
                 0x00000000f4000000                _reset
- .text          0x00000000f4000220       0x10 src/delay.o
-                0x00000000f4000220                mcu_delay
- .text          0x00000000f4000230       0xe0 src/main.o
-                0x00000000f4000268                main
- .text          0x00000000f4000310       0x60 src/mcu_ops.o
-                0x00000000f4000310                trap_entry
- .text          0x00000000f4000370       0xe0 src/gpio.o
-                0x00000000f4000410                gpio_direction_output
-                0x00000000f4000370                gpio_set_value
-                0x00000000f40003d4                gpio_direction_input
-                0x00000000f40003b0                gpio_get_value
- .text          0x00000000f4000450      0x3f0 src/uart.o
-                0x00000000f40004e0                handle_uart_irq
-                0x00000000f4000450                uart_init
+ .text          0x00000000f4000240       0x10 src/delay.o
+                0x00000000f4000240                mcu_delay
+ .text          0x00000000f4000250       0xe0 src/main.o
+                0x00000000f4000288                main
+ .text          0x00000000f4000330       0x60 src/mcu_ops.o
+                0x00000000f4000330                trap_entry
+ .text          0x00000000f4000390       0xe0 src/gpio.o
+                0x00000000f4000430                gpio_direction_output
+                0x00000000f4000390                gpio_set_value
+                0x00000000f40003f4                gpio_direction_input
+                0x00000000f40003d0                gpio_get_value
+ .text          0x00000000f4000470      0x3f0 src/uart.o
+                0x00000000f4000500                handle_uart_irq
+                0x00000000f4000470                uart_init
  *(.data)
- .data          0x00000000f4000840        0x0 src/start.o
- .data          0x00000000f4000840        0x0 src/delay.o
- .data          0x00000000f4000840        0x0 src/main.o
- .data          0x00000000f4000840        0x0 src/mcu_ops.o
- .data          0x00000000f4000840        0x0 src/gpio.o
- .data          0x00000000f4000840        0x0 src/uart.o
-                0x00000000f4000840                _gp = ALIGN (0x4)
+ .data          0x00000000f4000860        0x0 src/start.o
+ .data          0x00000000f4000860        0x0 src/delay.o
+ .data          0x00000000f4000860        0x0 src/main.o
+ .data          0x00000000f4000860        0x0 src/mcu_ops.o
+ .data          0x00000000f4000860        0x0 src/gpio.o
+ .data          0x00000000f4000860        0x0 src/uart.o
+                0x00000000f4000860                _gp = ALIGN (0x4)
  *(.sdata)
  *(.sdata.*)
+                0x00000000f4000860                __bss_start = .
  *(.sbss)
  *(.bss)
- .bss           0x00000000f4000840        0x0 src/start.o
- .bss           0x00000000f4000840        0x0 src/delay.o
- .bss           0x00000000f4000840       0x10 src/main.o
- .bss           0x00000000f4000850       0x10 src/mcu_ops.o
-                0x00000000f4000850                need_send_mailbox
- .bss           0x00000000f4000860        0x0 src/gpio.o
- .bss           0x00000000f4000860       0x10 src/uart.o
+ .bss           0x00000000f4000860        0x0 src/start.o
+ .bss           0x00000000f4000860        0x0 src/delay.o
+ .bss           0x00000000f4000860       0x10 src/main.o
+ .bss           0x00000000f4000870       0x10 src/mcu_ops.o
+                0x00000000f4000870                need_send_mailbox
+ .bss           0x00000000f4000880        0x0 src/gpio.o
+ .bss           0x00000000f4000880       0x10 src/uart.o
+                0x00000000f4000890                __bss_end = .
  *(.scommon)
  *(.rodata)
 

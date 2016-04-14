@@ -24,8 +24,10 @@ SECTIONS
                 _gp = ALIGN(4);
                 *(.sdata)
                 *(.sdata.*)
+                __bss_start = .;
                 *(.sbss)
                 *(.bss)
+                __bss_end = .;
                 *(.scommon)
                 *(.rodata)
 	} > tcsm_bank0

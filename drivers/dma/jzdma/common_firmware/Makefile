@@ -2,7 +2,7 @@
 HAVE_UART	= y
 
 ##############################     TOOLS    #############################
-CROSS_COMPILE ?=mipsel-linux-
+CROSS_COMPILE :=mipsel-linux-
 CC = $(CROSS_COMPILE)gcc
 LD = $(CROSS_COMPILE)ld
 OBJCOPY = $(CROSS_COMPILE)objcopy

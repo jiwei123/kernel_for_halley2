@@ -44,6 +44,16 @@ _start:
 	li	$2, TCSM_BANK0_PA
 	mtc0	$2, $30, 0 //cp0 errorPC
 
+	/*
+	 * Clear BSS
+	 */
+	la  $9, __bss_start  # $9 <-- __bss_start
+	la  $10, __bss_end   # $10 <-- __bss_end
+1:
+	sw   $0, 0($9)
+	blt  $9, $10, 1b
+	addi $9, 4
+
 	/* setup stack, jump to C code */
 	la	$28, _gp // Init gp
 	la	$29, TCSM_STACK_TOP // Init sp
