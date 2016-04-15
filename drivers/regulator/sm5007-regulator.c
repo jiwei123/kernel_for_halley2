@@ -643,12 +643,17 @@ static struct regulator_ops SM5007_ops = {
 }
 
 static struct SM5007_regulator SM5007_regulator[] = {
+    /*
+     * Do not adjust core voltage, it will be handled by floader and sleep_lib
+     */
+#if 0
 	SM5007_REG_BUCK(BUCK1, 0x30, 0, 0x30, 0x31, 0x3F, 0x00,
 			700, 1300, 12500, 0x30, SM5007_ops, 500, sm5703_buck_output_list, 0x46, 0x01, 0x00),
 	SM5007_REG_BUCK(BUCK1_SLP, 0x30, 0, 0x30, 0x31, 0x3F, 0x00,
 			700, 1300, 12500, 0x30, SM5007_ops, 500, sm5703_buck_output_list, 0x46, 0x01, 0x00),
 	SM5007_REG_BUCK(BUCK1_DVS, 0x30, 0, 0x30, 0x32, 0x3F, 0x00,
 			700, 1300, 12500, 0x30, SM5007_ops, 500, sm5703_buck_output_list, 0x46, 0x01, 0x00),
+#endif
     SM5007_REG_BUCK(BUCK2, 0x33, 0, 0x33, 0xFF, 0xFF, 0x00,
             1200, 1200, 0, 0x0, SM5007_ops, 500, sm5703_buck_output_list, 0x46, 0x02, 0x01),
     SM5007_REG_BUCK(BUCK3, 0x42, 0, 0x42, 0xFF, 0xFF, 0x00,
