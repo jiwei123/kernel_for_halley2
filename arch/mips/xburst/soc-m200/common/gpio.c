@@ -676,7 +676,7 @@ static int __init setup_gpio_irq(void)
 	int i, j;
 
 	for (i = 0; i < ARRAY_SIZE(jz_gpio_chips); i++) {
-		if (request_irq(IRQ_GPIO_PORT(i), gpio_handler, IRQF_DISABLED,
+		if (request_irq(IRQ_GPIO_PORT(i), gpio_handler, IRQF_DISABLED | IRQF_NO_SUSPEND,
 				jz_gpio_chips[i].irq_chip.name,
 				(void*)&jz_gpio_chips[i]))
 			continue;
