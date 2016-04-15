@@ -237,6 +237,12 @@ config ITE7258_TWS20381A0
          help
          TWS20381A0 is the FPC type
          TWS20381A0 for F1
+config ITE7258_FPC02000764A
+         bool "FPC02000764A_update_fireware"
+         depends on ITE7258_EXT_FUNC
+         help
+         FPC02000764A is the FPC type
+         FPC02000764A for A2
 endchoice
 endif
 

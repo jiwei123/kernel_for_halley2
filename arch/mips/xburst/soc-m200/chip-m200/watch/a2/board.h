@@ -183,11 +183,11 @@
 #define GPIO_TP_RESET		GPIO_PD(27)
 #endif
 #ifdef  CONFIG_TOUCHSCREEN_ITE7258
-#define GPIO_TP_INT             GPIO_PC(14)
-#define GPIO_TP_RESET             GPIO_PC(13)
+#define GPIO_TP_INT             GPIO_PA(12)
+#define GPIO_TP_RESET             GPIO_PA(11)
 #define GPIO_TP_EN			-1
 #define VCC_TOUCHSCREEN LDO4_NAME
-#define VIO_TOUCHSCREEN "" /* not use */
+#define VIO_TOUCHSCREEN NULL /* not use */
 #endif  /* CONFIG_TOUCHSCREEN_ITE7258 */
 
 /* ****************************GPIO TOUCHSCREEN END************************** */
