@@ -92,6 +92,7 @@ enum int_type {
 //#ifdef ENABLE_FUEL_GAUGE_FUNCTION
 /* define for FG delayed time */
 #define RICOH61x_MONITOR_START_TIME		15
+#define RICOH61x_FG_BOOT_TIME           0
 #define RICOH61x_FG_RESET_TIME			6
 #define RICOH61x_FG_STABLE_TIME			120
 #define RICOH61x_DISPLAY_UPDATE_TIME	15
@@ -2406,7 +2407,7 @@ static int ricoh61x_init_fgsoca(struct ricoh61x_battery_info *info)
 
 	/* Start first Display job */
 	queue_delayed_work(info->monitor_wqueue, &info->displayed_work,
-						   RICOH61x_FG_RESET_TIME*HZ);
+						   RICOH61x_FG_BOOT_TIME*HZ);
 
 	/* Start first Waiting stable job */
 	queue_delayed_work(info->monitor_wqueue, &info->charge_stable_work,

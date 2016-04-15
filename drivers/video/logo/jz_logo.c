@@ -19,7 +19,7 @@ const struct linux_logo * charge_logo[] = {
         &charge_logo_6_clut224,
 };
 
-int show_charge_logo(struct fb_info * info) {
+void show_charge_logo(struct fb_info * info) {
     int time = 12;
     int count = 0;
     int size = ARRAY_SIZE(charge_logo);
@@ -40,7 +40,7 @@ int show_charge_logo(struct fb_info * info) {
 }
 EXPORT_SYMBOL_GPL(show_charge_logo);
 
-int show_boot_logo(struct fb_info *info)
+void show_boot_logo(struct fb_info *info)
 {
     fb_blank(info, FB_BLANK_POWERDOWN);
 
@@ -50,11 +50,10 @@ int show_boot_logo(struct fb_info *info)
     }
 
     fb_blank(info, FB_BLANK_UNBLANK);
-    return 0;
 }
 EXPORT_SYMBOL_GPL(show_boot_logo);
 
-int show_low_battery_logo(struct fb_info *info)
+void show_low_battery_logo(struct fb_info *info)
 {
     fb_blank(info, FB_BLANK_POWERDOWN);
 
@@ -65,7 +64,6 @@ int show_low_battery_logo(struct fb_info *info)
     fb_blank(info, FB_BLANK_UNBLANK);
     msleep(2000);
     fb_blank(info, FB_BLANK_POWERDOWN);
-    return 0;
 }
 EXPORT_SYMBOL_GPL(show_low_battery_logo);
 
@@ -92,20 +90,29 @@ int battery_is_charging() {
     struct device *dev;
     struct power_supply *psy;
     union power_supply_propval ret = { 0, };
+    int is_charging = 0;
 
     class_dev_iter_init(&iter, power_supply_class, NULL, NULL);
     while ((dev = class_dev_iter_next(&iter))) {
         psy = dev_get_drvdata(dev);
         if (psy->type == POWER_SUPPLY_TYPE_BATTERY) {
-            psy->get_property(psy, POWER_SUPPLY_PROP_CHARGE_NOW, &ret);
-            break;
+            if (!psy->get_property(psy, POWER_SUPPLY_PROP_CHARGE_NOW, &ret)) {
+                is_charging = ret.intval;
+                break;
+            }
+        }
+        else {
+            if (!psy->get_property(psy, POWER_SUPPLY_PROP_ONLINE, &ret)) {
+                is_charging = ret.intval;
+                break;
+            }
         }
     }
-    return ret.intval;
+    return is_charging;
 }
 EXPORT_SYMBOL_GPL(battery_is_charging);
 
-int show_logo(struct fb_info *info) {
+void show_logo(struct fb_info *info) {
     if (battery_is_low()) {
         if (battery_is_charging()) {
             show_charge_logo(info);
