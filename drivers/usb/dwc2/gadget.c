@@ -2153,6 +2153,9 @@ static void dwc2_gadget_out_ep_xfer_complete(struct dwc2_ep *dep) {
 
 			DWC2_GADGET_DEBUG_MSG("%s: req 0x%p trans-ed %d bytes\n", dep->name, req, trans_count);
 
+            dma_cache_sync(dwc->dev, req->request.buf, req->request.length,
+                    dep->is_in ? DMA_TO_DEVICE : DMA_FROM_DEVICE);
+
 			/* if xfersize is not zero, we receive an short packet, the transfer is complete */
 			if (!deptsiz.b.xfersize && (req->trans_count_left || need_send_zlp(req))) {
 				DWC2_GADGET_DEBUG_MSG("%s: req 0x%p continue trans\n", dep->name, req);

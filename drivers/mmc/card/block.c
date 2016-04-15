@@ -186,6 +186,14 @@ static void mmc_blk_put(struct mmc_blk_data *md)
 	mutex_unlock(&open_lock);
 }
 
+struct mmc_card * mmc_card_get(struct gendisk *disk) {
+    struct mmc_blk_data *md = mmc_blk_get(disk);
+    struct mmc_card *card = md->queue.card;
+    mmc_blk_put(disk);
+    return card;
+}
+EXPORT_SYMPOL(mmc_card_get);
+
 static ssize_t power_ro_lock_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {

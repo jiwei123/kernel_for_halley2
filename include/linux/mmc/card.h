@@ -13,6 +13,7 @@
 #include <linux/device.h>
 #include <linux/mmc/core.h>
 #include <linux/mod_devicetable.h>
+#include <linux/genhd.h>
 
 struct mmc_cid {
 	unsigned int		manfid;
@@ -519,5 +520,7 @@ extern void mmc_unregister_driver(struct mmc_driver *);
 
 extern void mmc_fixup_device(struct mmc_card *card,
 			     const struct mmc_fixup *table);
+
+extern struct mmc_card * mmc_card_get(struct gendisk *disk);
 
 #endif /* LINUX_MMC_CARD_H */
