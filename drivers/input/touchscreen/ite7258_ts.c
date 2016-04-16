@@ -56,6 +56,8 @@
 #include "ITE7258_HDL015SQ01.h" /* x3 board */
 #elif defined(CONFIG_ITE7258_TWS20381A0)
 #include "ITE7258_TWS20381A0.h" /* F1 board */
+#elif defined(CONFIG_ITE7258_FPC02000764A)
+#include "ITE7258_FPC02000764A.h" /* A2 board */
 #else
 unsigned char *algorithm_raw_data = NULL;
 unsigned char *configurate_raw_data = NULL;
@@ -81,6 +83,7 @@ struct ite7258_ts_data {
 	unsigned int y_pos;
 	unsigned int pressure;
 	unsigned int is_suspend;
+	unsigned int key_flag;
 	unsigned int tp_firmware_algo_ver;
 	unsigned int tp_firmware_cfg_ver;
 	enum ite_ts_type type;
@@ -966,50 +969,64 @@ static int ite7258_read_Touchdata(struct ite7258_ts_data *data)
 	if((pucPoint[0] & 0x01)) { // is busy
 		return 0;
 	}
-	if((pucPoint[0] & 0x80)) {
+	if((pucPoint[0] & 0x80)) { /*New point info avalid*/
 		pucPoint[0] = POINT_INFO_BUF_ADDR;
 		ret = ite7258_i2c_Read(data->client, pucPoint, 1, pucPoint, 14);
-		if(pucPoint[1] & 0x01) { //Palm
-			return 0;
-		}
-
-#ifdef  CONFIG_ITE7258_MULTITOUCH
-		if (pucPoint[0] & 0x01) {
-			xraw = ((pucPoint[3] & 0x0F) << 8) + pucPoint[2];
-			yraw = ((pucPoint[3] & 0xF0) << 4) + pucPoint[4];
-			pressure = (pucPoint[5] & 0x0F);
-			data->x_pos = xraw;
-			data->y_pos = yraw;
-			data->pressure = pressure;
-			ite7258_report_value(data);
+		if (pucPoint[0] & 0xF0) { /* Event */
+			if (!data->key_flag && (pucPoint[0] & 0x41)) { /*Event Button*/
+				input_report_key(data->input_dev, KEY_BACK, pucPoint[2] ? 1 : 0);
+				input_mt_sync(data->input_dev);
+				input_sync(data->input_dev);
+			}
+		} else if (!(pucPoint[0] & 0x07)) { /*No More Data*/
+			data->key_flag = 0;
 			input_mt_sync(data->input_dev);
-			//input_sync(data->input_dev);
-		}
-		if (pucPoint[0] & 0x02) {
-			xraw = ((pucPoint[7] & 0x0F) << 8) + pucPoint[6];
-			yraw = ((pucPoint[7] & 0xF0) << 4) + pucPoint[8];
-			pressure = (pucPoint[9] & 0x0F);
-			data->x_pos = xraw;
-			data->y_pos = yraw;
-			data->pressure = pressure;
-			ite7258_report_value(data);
-			input_mt_sync(data->input_dev);
-			//input_sync(data->input_dev);
-		}
-		input_mt_sync(data->input_dev);
-		input_sync(data->input_dev);
-#else
-		if(pucPoint[0] & 0x01){
-			xraw = ((pucPoint[3] & 0x0F) << 8) + pucPoint[2];
-			yraw = ((pucPoint[3] & 0xF0) << 4) + pucPoint[4];
-			data->x_pos = xraw;
-			data->y_pos = yraw;
-			pressure = (pucPoint[5] & 0x0F);
-			input_report_key(data->input_dev, BTN_TOUCH, 1);
-			ite7258_report_value(data);
 			input_sync(data->input_dev);
-		}
+		} else { /* Get Point Info */
+			if(pucPoint[1] & 0x01) { //Palm
+				return 0;
+			}
+#ifdef  CONFIG_ITE7258_MULTITOUCH
+			if (pucPoint[0] & 0x01) {
+				data->key_flag = 1;
+				xraw = ((pucPoint[3] & 0x0F) << 8) + pucPoint[2];
+				yraw = ((pucPoint[3] & 0xF0) << 4) + pucPoint[4];
+				pressure = (pucPoint[5] & 0x0F);
+				data->x_pos = xraw;
+				data->y_pos = yraw;
+				data->pressure = pressure;
+				ite7258_report_value(data);
+				input_mt_sync(data->input_dev);
+				//input_sync(data->input_dev);
+			}
+			if (pucPoint[0] & 0x02) {
+				data->key_flag = 1;
+				xraw = ((pucPoint[7] & 0x0F) << 8) + pucPoint[6];
+				yraw = ((pucPoint[7] & 0xF0) << 4) + pucPoint[8];
+				pressure = (pucPoint[9] & 0x0F);
+				data->x_pos = xraw;
+				data->y_pos = yraw;
+				data->pressure = pressure;
+				ite7258_report_value(data);
+				input_mt_sync(data->input_dev);
+				//input_sync(data->input_dev);
+			}
+			input_mt_sync(data->input_dev);
+			input_sync(data->input_dev);
+#else
+			if(pucPoint[0] & 0x01) {
+				data->key_flag = 1;
+				xraw = ((pucPoint[3] & 0x0F) << 8) + pucPoint[2];
+				yraw = ((pucPoint[3] & 0xF0) << 4) + pucPoint[4];
+				data->x_pos = xraw;
+				data->y_pos = yraw;
+				pressure = (pucPoint[5] & 0x0F);
+				input_report_key(data->input_dev, BTN_TOUCH, 1);
+				ite7258_report_value(data);
+				input_sync(data->input_dev);
+			}
 #endif
+		}
 	}
 	return 0;
 
@@ -1370,6 +1387,7 @@ static void ite7258_input_set(struct input_dev *input_dev, struct ite7258_ts_dat
 	input_set_abs_params(input_dev, ABS_Y, 0, ts->y_max, 0, 0);
 	input_set_abs_params(input_dev, ABS_PRESSURE, 0, 0xFF, 0, 0);
 #endif
+	set_bit(KEY_BACK, input_dev->keybit);
 	set_bit(EV_KEY, input_dev->evbit);
 	set_bit(EV_ABS, input_dev->evbit);
 	set_bit(EV_SYN, input_dev->evbit);
