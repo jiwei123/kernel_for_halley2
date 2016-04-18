@@ -10,6 +10,7 @@
 #include "interface.h"
 #include "voice_wakeup.h"
 #include <common.h>
+#include "dma_ops.h"
 
 
 extern unsigned int _dma_channel;
@@ -169,17 +170,17 @@ int wakeup_open(void)
 #endif
 	/* code that need rewrite */
 	struct circ_buf *xfer = &rx_fifo->xfer;
-	rx_fifo->n_size	= BUF_SIZE; /*tcsm 4kBytes*/
-	xfer->buf = (char *)VOICE_TCSM_DATA_BUF;
+	rx_fifo->n_size	= dma_dst_buf_size;
+	xfer->buf = (char *)dma_dst_buf;
 	dma_addr = pdma_trans_addr(_dma_channel, 2);
-	if((dma_addr >= (VOICE_TCSM_DATA_BUF & 0x1fffffff)) && (dma_addr <= ((VOICE_TCSM_DATA_BUF + BUF_SIZE)& 0x1fffffff))) {
+	if((dma_addr >= ((unsigned int)dma_dst_buf & 0x1fffffff)) && (dma_addr <= (((unsigned int)dma_dst_buf + dma_dst_buf_size)& 0x1fffffff))) {
 		xfer->head = (char *)(dma_addr | 0xA0000000) - xfer->buf;
 	} else {
 		xfer->head = 0;
 	}
 	xfer->tail = xfer->head;
 
-	printf("pdma_trans_addr:%x, xfer->buf:%x, xfer->head:%x, xfer->tail:%x\n",pdma_trans_addr(_dma_channel, 2), xfer->buf, xfer->head, xfer->tail);
+	printf("pdma_trans_addr:%x, xfer->buf:%x, xfer->head:%x, xfer->tail:%x\n",pdma_trans_addr(_dma_channel, DMA_DEV_TO_MEM), xfer->buf, xfer->head, xfer->tail);
 	return 0;
 }
 

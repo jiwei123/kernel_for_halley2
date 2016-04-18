@@ -3,7 +3,10 @@
 #include <tcsm_layout.h>
 
 extern int (*h_handler)(const char *fmt, ...);
-/* #define CONFIG_SLEEP_DEBUG */
+extern unsigned char *g_record_buffer;
+extern unsigned int g_record_len;
+extern unsigned char *g_desc_addr;
+/* #define CONFIG_SLEEP_DEBUG*/
 
 #ifdef CONFIG_SLEEP_DEBUG
 #define printk	h_handler

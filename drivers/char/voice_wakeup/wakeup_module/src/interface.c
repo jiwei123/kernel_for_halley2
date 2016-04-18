@@ -43,6 +43,11 @@ struct sleep_buffer *g_sleep_buffer;
 static int voice_wakeup_enabled = 0;
 static int dmic_record_enabled = 0;
 
+unsigned char *g_record_buffer = NULL;
+unsigned int g_record_len = 0;
+unsigned char *g_desc_addr = NULL;
+unsigned int g_desc_size = 0;
+
 
 
 
@@ -75,6 +80,12 @@ int module_init(void)
 	g_sleep_buffer = NULL;
 	voice_wakeup_enabled = 0;
 	dmic_record_enabled = 0;
+
+	g_record_buffer = NULL;
+	g_record_len = 0;
+	g_desc_addr = NULL;
+	g_desc_size = 0;
+
 	return 0;
 }
 
@@ -84,6 +95,8 @@ int module_exit(void)
 }
 int open(int mode)
 {
+	dma_config_normal();
+
 	switch (mode) {
 		case EARLY_SLEEP:
 			break;
@@ -92,6 +105,7 @@ int open(int mode)
 			if(!voice_wakeup_enabled) {
 				return 0;
 			}
+
 			rtc_init();
 			dmic_init_mode(DEEP_SLEEP);
 			wakeup_open();
@@ -117,7 +131,6 @@ int open(int mode)
 			break;
 	}
 
-	dma_config_normal();
 	dma_start(_dma_channel);
 	dmic_enable();
 
@@ -428,6 +441,37 @@ int set_sleep_buffer(struct sleep_buffer *sleep_buffer)
 
 	return 0;
 }
+
+int set_record_buffer(char *buffer, int len)
+{
+	g_record_buffer = buffer;
+	g_record_len = len;
+}
+
+unsigned int get_record_buffer(void)
+{
+	if(g_record_buffer != NULL) {
+		return g_record_buffer;
+	} else {
+		return VOICE_TCSM_DATA_BUF;
+	}
+
+}
+unsigned int get_record_buffer_len(void)
+{
+	if(g_record_buffer != NULL) {
+		return g_record_len;
+	}  else {
+		return BUF_SIZE;
+	}
+}
+
+int set_desc_addr(char *desc, unsigned int len)
+{
+	g_desc_addr = desc;
+	g_desc_size = len;
+}
+
 
 /* used by cpu eary sleep.
  * @return SYS_WAKEUP_OK, SYS_WAKEUP_FAILED.

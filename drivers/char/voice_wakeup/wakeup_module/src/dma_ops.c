@@ -7,10 +7,12 @@
 #include "dma_ops.h"
 
 int *src_buf;
-int *dst_buf;
+
+int *dma_dst_buf;
+int dma_dst_buf_size;
 
 struct dma_config config;
-struct dma_desc *desc;  /* pointer to desc in tcsm */
+struct dma_desc *g_desc;
 struct dma_desc sleep_desc[NR_BUFFERS]; /* pointer to desc in ddr, when suspend to deep sleep */
 
 int dma_channel = 5; /* default channel 5, but this should be set by kernel */
@@ -22,8 +24,8 @@ void build_circ_descs(struct dma_desc *desc)
 	struct dma_desc *next;
 	for(i=0; i< NR_DESC; i++) {
 		config.src = V_TO_P(src_buf);
-		config.dst = V_TO_P(dst_buf + ((BUF_SIZE/NR_DESC/sizeof(dst_buf)) * i));
-		config.count = BUF_SIZE/NR_DESC/config.burst_len; /*count of data unit*/
+		config.dst = V_TO_P(dma_dst_buf + ((dma_dst_buf_size/NR_DESC/sizeof(dma_dst_buf)) * i));
+		config.count = dma_dst_buf_size/NR_DESC/config.burst_len; /*count of data unit*/
 		config.link = 1;
 		cur = &desc[i];
 		if(i == NR_DESC -1) {
@@ -60,14 +62,6 @@ void dump_descs(struct dma_desc *desc)
 
 	}
 
-}
-void dump_tcsm()
-{
-	int i;
-	unsigned int * t = (unsigned int *)VOICE_TCSM_DATA_BUF;
-	for(i = 0; i< 256; i++) {
-		printf("t[%d]:%x\n", i, *(t +i));
-	}
 }
 
 void dump_dma_register(int chn)
@@ -149,9 +143,24 @@ void dma_config_normal(void)
 {
 	REG32(CPM_IOBASE + CPM_CLKGR0) &= ~(1 << 21);
 
-	desc = (struct dma_desc *)(DMA_DESC_ADDR);
+	if(g_desc_addr != NULL) {
+		g_desc = (struct dma_desc *)g_desc_addr;
+	} else {
+		g_desc = (struct dma_desc *)(DMA_DESC_ADDR);
+	}
 	src_buf = (int *)DMIC_RX_FIFO;
-	dst_buf = (int *)VOICE_TCSM_DATA_BUF;
+
+	if(g_record_buffer != NULL) {
+		dma_dst_buf = g_record_buffer;
+		dma_dst_buf_size = g_record_len;
+	} else {
+		dma_dst_buf = (int *)VOICE_TCSM_DATA_BUF;
+		dma_dst_buf_size = BUF_SIZE;
+	}
+
+	printk("dma_dst_buf: %x\n", dma_dst_buf);
+	printk("dma_dst_buf_size: %d\n", dma_dst_buf_size);
+	printk("dma_desc addr: %x\n", g_desc);
 
 	config.type = DMIC_REQ_TYPE; /* dmic reveive request */
 	config.channel = dma_channel;
@@ -165,10 +174,10 @@ void dma_config_normal(void)
 	config.tsz	 = 6;
 	config.burst_len = 128;
 
-	config.desc = V_TO_P(desc);
+	config.desc = V_TO_P(g_desc);
 	config.tie = 1;
 
-	build_circ_descs(desc);
+	build_circ_descs(g_desc);
 	pdma_config(&config);
 	//dump_descs();
 

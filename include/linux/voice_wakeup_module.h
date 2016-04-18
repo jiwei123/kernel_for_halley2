@@ -76,5 +76,10 @@ int wakeup_module_is_wakeup_enabled(void);
 int wakeup_module_cpu_should_sleep(void);
 
 
+int wakeup_module_set_record_buffer(char *buffer, unsigned int len);
+
+int wakeup_module_get_record_buffer(void);
+
+int wakeup_module_get_record_buffer_len(void);
 
 #endif

@@ -13,9 +13,19 @@ config JZ_DMIC_V12
 	help
 		Say Y here if you want to support DMIC on your board. The Dmic Driver
 		support record and wakeup function. When in doubt, Say N here.
+
+config RECORD_DATA_TO_DDR
+	bool "Record Data to DDR instead of to TCSM as Default"
+	depends on JZ_DMIC_V12
+	default n
+	help
+		Say Y here if you want to record data to DDR dynamic allocated instead
+		of dead define which TCSM allocated. But pay attention, if you say Y here, you
+		cannot use voice wakup function when in deep sleep.
+
 config JZ_DMIC_WAKEUP
 	bool "Ingenic Voice Wakeup Driver"
-	depends on JZ_DMIC_V12
+	depends on JZ_DMIC_V12 && (!RECORD_DATA_TO_DDR)
 	default n
 	help
 		Say Y here if you want to use voice wakeup function. The Voice Wakeup

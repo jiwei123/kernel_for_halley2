@@ -52,6 +52,10 @@ struct wakeup_module_ops {
 	int (*voice_wakeup_enable)(int);
 	int (*is_voice_wakeup_enabled)(void);
 	int (*cpu_should_sleep)(void);
+	int (*set_record_buffer)(char *, unsigned int);
+	int (*get_record_buffer)(void);
+	int (*get_record_buffer_len)(void);
+	int (*set_desc_addr)(char *, unsigned int);
 
 
 
@@ -191,6 +195,41 @@ int wakeup_module_cpu_should_sleep(void)
 }
 EXPORT_SYMBOL(wakeup_module_cpu_should_sleep);
 
+
+int wakeup_module_set_record_buffer(char *buffer, unsigned int len)
+{
+	return m_ops->set_record_buffer(buffer, len);
+}
+EXPORT_SYMBOL(wakeup_module_set_record_buffer);
+
+int wakeup_module_get_record_buffer(void)
+{
+	return m_ops->get_record_buffer();
+}
+EXPORT_SYMBOL(wakeup_module_get_record_buffer);
+
+int wakeup_module_get_record_buffer_len(void)
+{
+	return m_ops->get_record_buffer_len();
+}
+EXPORT_SYMBOL(wakeup_module_get_record_buffer_len);
+
+int wakeup_module_set_desc_addr(char * addr, unsigned int len)
+{
+	return m_ops->set_desc_addr(addr, len);
+}
+EXPORT_SYMBOL(wakeup_module_set_desc_addr);
+
+#ifdef CONFIG_RECORD_DATA_TO_DDR
+static unsigned char *record_buffer;
+static dma_addr_t record_dma_addr;
+#define RECORD_DATA_SIZE 	(1 * PAGE_SIZE)
+
+static unsigned char *desc_addr;
+static dma_addr_t desc_dma_addr;
+#define DMA_DESC_SIZE		(1 * PAGE_SIZE)
+
+#endif
 static int __init wakeup_module_init(void)
 {
 	/* load voice wakeup firmware */
@@ -199,11 +238,40 @@ static int __init wakeup_module_init(void)
 
 	m_ops->_module_init();
 	m_ops->set_dma_channel(JZDMA_REQ_I2S1 + 1);  /* dma phy id 5 */
+
+#ifdef CONFIG_RECORD_DATA_TO_DDR
+	/* record data to ddr instead of tcsm as default. */
+
+	record_buffer = dma_alloc_noncoherent(NULL, RECORD_DATA_SIZE, &record_dma_addr, DMA_FROM_DEVICE);
+
+	if(record_buffer == NULL) {
+		printk("error allocat buffer for dmic recorder!\n");
+		return -EFAULT;
+	}
+	printk("record buffer addr: %x, dma addr:%x\n", record_buffer, record_dma_addr);
+
+	wakeup_module_set_record_buffer(record_buffer, RECORD_DATA_SIZE);
+
+	desc_addr = dma_alloc_coherent(NULL, DMA_DESC_SIZE, &desc_dma_addr, DMA_FROM_DEVICE);
+	if(desc_addr == NULL) {
+		printk("failed to set desc addr!\n");
+		return -EFAULT;
+	}
+	wakeup_module_set_desc_addr(desc_addr, DMA_DESC_SIZE);
+
+#endif
+
 	return 0;
 }
 static void __exit wakeup_module_exit(void)
 {
 	m_ops->_module_exit();
+
+#ifdef CONFIG_RECORD_DATA_TO_DDR
+	dma_free_noncoherent(NULL, RECORD_DATA_SIZE, record_buffer, record_dma_addr);
+
+	dma_free_coherent(NULL, DMA_DESC_SIZE, desc_addr, desc_dma_addr);
+#endif
 
 }
 
