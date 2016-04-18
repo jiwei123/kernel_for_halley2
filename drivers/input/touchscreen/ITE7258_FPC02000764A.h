@@ -1,6 +1,6 @@
 /*
  * Update ITE7258 Firmware and Configurate
- * ITE7258_Firmware_V0195_20150205
+ * ITE7258_Firmware_FPC02000764
  * */
 
 //Configurate Firmware
