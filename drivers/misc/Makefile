@@ -67,3 +67,4 @@ obj-$(CONFIG_JZ_IRDA_V11)   += jz_irda_v11.o
 obj-$(CONFIG_LATTICE_ECP3_CONFIG)	+= lattice-ecp3-config.o
 obj-$(CONFIG_SRAM)		+= sram.o
 obj-$(CONFIG_JZ_EFUSE)		+= efuse/
+obj-$(CONFIG_JZ_AES_V12) += jz_aes_v12.o

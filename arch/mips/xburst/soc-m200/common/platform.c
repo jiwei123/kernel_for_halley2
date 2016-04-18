@@ -1070,6 +1070,31 @@ struct platform_device jz_rtc_device = {
 };
 #endif
 
+#ifdef CONFIG_JZ_AES_V12
+
+struct resource jz_aes_res[] = {
+		{
+		.start = AES_IOBASE,
+		.end = AES_IOBASE + 0x100,
+		.flags = IORESOURCE_MEM,
+		},
+		{
+		.start = IRQ_AES,
+		.end = IRQ_AES,
+		.flags = IORESOURCE_IRQ,
+		}
+};
+
+struct platform_device jz_aes_device = {
+	.name = "jz-aes",
+	.id = -1,
+	.num_resources = ARRAY_SIZE(jz_aes_res),
+	.resource = jz_aes_res,
+};
+
+
+#endif
+
 #if IS_ENABLED(CONFIG_JZ_EFUSE_V12)
 /* efuse */
 struct platform_device jz_efuse_device = {

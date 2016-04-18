@@ -199,6 +199,11 @@ static struct jz_platform_device platform_devices_array[] __initdata = {
 #if IS_ENABLED(CONFIG_JZ_EFUSE_V12)
 	DEF_DEVICE(&jz_efuse_device, &jz_efuse_pdata, sizeof(struct jz_efuse_platform_data)),
 #endif
+
+#ifdef CONFIG_JZ_AES_V12
+	DEF_DEVICE(&jz_aes_device, NULL, 0),
+#endif
+
 #ifdef CONFIG_JZ_BATTERY
 	DEF_DEVICE(&jz_adc_device, &adc_platform_data, sizeof(struct jz_adc_platform_data)),
 #endif

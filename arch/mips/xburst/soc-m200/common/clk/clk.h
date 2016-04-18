@@ -227,8 +227,8 @@ enum {
 #define CLK_NAME_PWC_DMIC        "pwc_dmic"
 	CLK_ID_PWC_BCH,
 #define CLK_NAME_PWC_BCH         "pwc_bch"
-	CLK_ID_PWC_HASH,
-#define CLK_NAME_PWC_HASH        "pwc_hash"
+	CLK_ID_PWC_AES,
+#define CLK_NAME_PWC_AES        "pwc_aes"
 	CLK_ID_PWC_LCD,
 #define CLK_NAME_PWC_LCD         "pwc_lcd"
 	CLK_ID_PWC_USB,
@@ -252,7 +252,7 @@ enum {
 };
 enum {
 	PWC_P0 = 0,PWC_P1,PWC_VPU,PWC_GPU,PWC_ISP,PWC_IPU,PWC_DMIC,
-	PWC_BCH,PWC_HASH,PWC_LCD,PWC_USB,PWC_UHC,
+	PWC_BCH,PWC_AES,PWC_LCD,PWC_USB,PWC_UHC,
 };
 struct  freq_udelay_jiffy {
 	unsigned int  max_num;

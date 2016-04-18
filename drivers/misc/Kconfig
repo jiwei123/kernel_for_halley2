@@ -604,6 +604,13 @@ config JZ_EFUSE_V13
 	  bool "JZ V13 EFUSE Driver"
 	  default n
 
+config JZ_AES_V12
+	bool "JZ AES V12 Driver"
+	help
+		this driver is used to Encrypt/Decrypt by AES.
+	default n
+
+
 config JZ_IRDA_V11
 	  bool "JZ V11_IRDA Driver"
 	  default n

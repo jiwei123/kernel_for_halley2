@@ -44,7 +44,7 @@ static struct cpm_pwc cpm_pwc_srcs[] = {
 	PWC_SRC(PWC_DMIC,CPM_LCR, 7, 6,  50),
 
 	PWC_SRC(PWC_BCH, CPM_PGR,10,26,  50),
-	PWC_SRC(PWC_HASH,CPM_PGR, 9,25,  50),
+	PWC_SRC(PWC_AES,CPM_PGR, 9,25,  50),
 	PWC_SRC(PWC_LCD, CPM_PGR, 5,21,  50),
 	PWC_SRC(PWC_USB, CPM_PGR, 4,20,  50),
 	PWC_SRC(PWC_UHC, CPM_PGR, 3,19,  50),
