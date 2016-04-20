@@ -40,9 +40,22 @@
 extern struct regulator_dev *regulator_to_rdev(struct regulator *regulator);
 extern int ricoh61x_regulator_set_sleep_mode_power(struct regulator_dev *rdev, int power_on);
 
+extern void tps65137_digital_pulse_power_on(int gpio, int low_enable, unsigned int level);
+extern void tps65137_digital_pulse_power_off(int gpio, int low_enable);
+extern void __tps65137_digital_pulse(int gpio, int low_enable, unsigned int level);
+
 static struct regulator *lcd_vcc_reg = NULL;
 static struct regulator *lcd_io_reg = NULL;
 static bool is_init = 0;
+
+static inline int bl_regulator(int gpio, int en)
+{
+	if (en)
+		tps65137_digital_pulse_power_on(gpio, 1, 31);
+	else
+		tps65137_digital_pulse_power_off(gpio, 1);
+	return 0;
+}
 
 int edo_e1392am1_init(struct lcd_device *lcd)
 {
@@ -91,22 +104,6 @@ int edo_e1392am1_reset(struct lcd_device *lcd)
 	return 0;
 }
 
-/*
- * set pulse to set negative voltage -2.4v
- */
-void edo_e1392am1_set_pulse(unsigned int level)
-{
-	int i = 0;
-	gpio_direction_output(GPIO_LCD_BLK_EN, 1);
-	udelay(2000);
-	for(i = 0; i < level; i++){
-		gpio_direction_output(GPIO_LCD_BLK_EN, 0);
-		udelay(10);
-		gpio_direction_output(GPIO_LCD_BLK_EN, 1);
-		udelay(10);
-	}
-}
-
 int edo_e1392am1_power_on(struct lcd_device *lcd, int enable)
 {
 	int ret;
@@ -122,8 +119,9 @@ int edo_e1392am1_power_on(struct lcd_device *lcd, int enable)
 		if (ret)
 			printk(KERN_ERR "failed to enable lcd io reg\n");
 
-		edo_e1392am1_set_pulse(31);
-
+		bl_regulator(GPIO_LCD_BLK_EN, 1);
+		//__tps65137_digital_pulse(GPIO_LCD_BLK_EN, 1, 19);
+		//msleep(200);
 #if defined(CONFIG_SLPT) && defined(CONFIG_REGULATOR_RICOH619)
 		ricoh61x_regulator_set_sleep_mode_power(regulator_to_rdev(lcd_vcc_reg), 1);
 		ricoh61x_regulator_set_sleep_mode_power(regulator_to_rdev(lcd_io_reg), 1);
@@ -132,6 +130,11 @@ int edo_e1392am1_power_on(struct lcd_device *lcd, int enable)
 		if (gpio_is_valid(GPIO_LCD_BLK_EN))
 			gpio_direction_output(GPIO_LCD_BLK_EN, 1);
 	} else {
+		/* quick action buttons to lcd display abnormal */
+		bl_regulator(GPIO_LCD_BLK_EN, 0);
+		/* next arrival operation mast delay >120ms */
+		msleep(120);
+
 		/* power off the power of LCD and it's Backlight */
 		regulator_disable(lcd_io_reg);
 		regulator_disable(lcd_vcc_reg);
