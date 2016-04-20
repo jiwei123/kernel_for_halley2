@@ -396,6 +396,7 @@ static struct regulator_ops ricoh61x_ops = {
 }
 
 static struct ricoh61x_regulator ricoh61x_regulator[] = {
+#if defined(CONFIG_CPU_FREQ)
 	RICOH61x_REG(DC1, 0x16, 0x2C, 0, 0x2C, 1, 0x36, 0xFF, 0x3B,
 			600, 3500, 12500, 0xE8, ricoh61x_ops, 500,
 			0x00, 0, 0x00, 0),
@@ -407,6 +408,7 @@ static struct ricoh61x_regulator ricoh61x_regulator[] = {
 	RICOH61x_REG(DC2, 0x17, 0x2E, 0, 0x2E, 1, 0x37, 0xFF, 0x3C,
 			600, 3500, 12500, 0xE8, ricoh61x_ops, 500,
 			0x00, 0, 0x00, 0),
+#endif
 
 	RICOH61x_REG(DC3, 0x18, 0x30, 0, 0x30, 1, 0x38, 0xFF, 0x3D,
 			600, 3500, 12500, 0xE8, ricoh61x_ops, 500,
@@ -537,7 +539,7 @@ static inline int ricoh61x_cache_regulator_register(struct device *parent,
 
 static struct regulator_config ricoh61x_regulator_config;
 
-static int ricoh61x_regulator_probe(struct platform_device *pdev)
+static int __devinit ricoh61x_regulator_probe(struct platform_device *pdev)
 {
 	struct ricoh61x_regulator *ri = NULL;
 	struct regulator_dev *rdev;

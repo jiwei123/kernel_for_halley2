@@ -5,9 +5,13 @@
 #include <linux/jz_dwc.h>
 
 #if defined(CONFIG_REGULATOR_SM5007)
-#include "pmu5007.h"
+    #include "pmu5007.h"
 #elif defined(CONFIG_REGULATOR_RICOH619)
-#include "pmu.h"
+    #if defined(CONFIG_WATCH_AW808)
+        #include "pmu-ricoh619-aw808.h"
+    #else
+        #include "pmu.h"
+    #endif
 #endif
 /* ****************************GPIO SLEEP START******************************* */
 #define GPIO_REGULATOR_SLP	GPIO_PB(0)
