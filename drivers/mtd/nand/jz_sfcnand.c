@@ -147,6 +147,7 @@ static int sfc_pio_transfer(struct jz_sfc_nand *flash)
 	sfc_cmd_en(flash, 0, 0x1);
 	sfc_write_cmd(flash, 0, flash->sfc_tran->sfc_cmd.cmd);
 	sfc_data_en(flash, 0, flash->sfc_tran->date_en);
+	sfc_mode(flash,0,flash->sfc_tran->sfc_cmd.transmode);
 	sfc_dev_addr(flash, 0, flash->sfc_tran->sfc_cmd.addr_low);
 	sfc_dev_addr_plus(flash, 0, flash->sfc_tran->sfc_cmd.addr_high);
 	sfc_dev_addr_dummy_bytes(flash,0,flash->sfc_tran->sfc_cmd.dummy_byte);
@@ -177,7 +178,6 @@ static int sfc_pio_transfer(struct jz_sfc_nand *flash)
 		sfc_transfer_mode(flash, SLAVE_MODE);
 		sfc_transfer_direction(flash, GLB_TRAN_DIR_WRITE);
 	}
-	sfc_mode(flash,0,flash->sfc_tran->sfc_cmd.transmode);
 	sfc_enable_all_intc(flash);
 	sfc_start(flash);
 	return 0;
@@ -1201,6 +1201,10 @@ static int jz_get_sfcnand_param(struct jz_spi_nand_platform_data **param,struct 
 				return 0;
 		}else
 			break;
+	}
+	if(i>=2){
+		printk("error in read magic\n");
+		return -1;
 	}
 	member_addr=buffer+sizeof(int32_t);
 	param_from_burner.version=*(int *)member_addr;
