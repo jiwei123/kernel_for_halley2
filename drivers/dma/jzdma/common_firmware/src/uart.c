@@ -26,19 +26,6 @@ void uart_init(void)
 #define INTC_UART0_BIT 19
 #define INTC_UART(n) (1 << (INTC_UART0_BIT - n))
 
-#ifdef DEBUG
-static void gpio_port_direction_output(int port, int pin, int value)
-{
-	REG_GPIO_PXINTC(port) = 1 << pin;
-	REG_GPIO_PXMASKS(port) = 1 << pin;
-	REG_GPIO_PXPAT1C(port) = 1 << pin;
-	if (value == 1)
-		REG_GPIO_PXPAT0S(port) = 1 << pin;
-	else
-		REG_GPIO_PXPAT0C(port) = 1 << pin;
-}
-#endif
-
 static void start_tx()
 {
 	UART_REG8(UART_IER) |= IER_TDRIE;
