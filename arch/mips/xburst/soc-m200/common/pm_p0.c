@@ -76,7 +76,9 @@ static struct platform_suspend_ops pm_ops = {
 int __init pm_init(void)
 {
 	suspend_set_ops(&pm_ops);
+#ifdef CONFIG_SLPT
 	slpt_set_suspend_ops(do_enter_sleep);
+#endif
 
 	return 0;
 }
