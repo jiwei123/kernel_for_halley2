@@ -74,6 +74,9 @@ static void bt_disable_power(struct bt_power *bt_power)
 	} else {
 		pr_warn("%s bt_reg_on can not be defined to -1\n", __func__);
 	}
+
+	if (bt_power->bt_rst_n != -1)
+        gpio_direction_output(bt_power->bt_rst_n, 0);
 }
 
 static int bt_power_control(struct bt_power *bt_power, int enable)
