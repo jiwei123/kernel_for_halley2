@@ -5,7 +5,7 @@
 
 int thr_table[TRIGGER_CNTS] = {1000, 5000};
 int tri_cnt[TRIGGER_CNTS] = {2, 6};
-
+#ifdef CONFIG_SLEEP_DEBUG
 static int quantity_thr(int thr)
 {
 	int i;
@@ -16,6 +16,7 @@ static int quantity_thr(int thr)
 	}
 	return i;
 }
+#endif
 int quantity_tri(int times)
 {
 	if(times < 2) {
@@ -31,15 +32,14 @@ int quantity_tri(int times)
 int adjust_trigger_value(int times_per_unit, int cur_thr)
 {
 	int result;
-	int fix_times = quantity_tri(times_per_unit);
-	//int fix_thr   = quantity_thr(cur_thr);
-	int fix_result;
+	int down = quantity_tri(times_per_unit);
 
-	fix_result = fix_times;
-
-	result = cur_thr + (5000 - 1000) * fix_result;
-	//result = fix_times - fix_thr > 0 ? 1000 * (fix_times - fix_thr) : cur_thr;
-
+	if(down) {
+		result = thr_table[0];
+	} else {
+		result = thr_table[1];
+	}
 
 	return result;
+
 }

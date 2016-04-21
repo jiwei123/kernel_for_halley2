@@ -22,7 +22,7 @@
 #include <linux/circ_buf.h>
 #include <linux/timer.h>
 #include <linux/syscore_ops.h>
-#include <linux/freezer.h>
+
 
 #include <asm/uaccess.h>
 
@@ -86,6 +86,7 @@ struct jzdmic_dev {
 	int minor;
 	int nr_devs;
 
+	int cache_addr;
 	struct dma_fifo *record_fifo;
 	struct timer_list record_timer;
 	struct completion read_completion;
@@ -104,7 +105,7 @@ struct jzdmic_dev {
 	struct device *dev;
 };
 
-static DECLARE_WAIT_QUEUE_HEAD(waiter);
+
 
 static int jzdmic_open(struct inode *inode, struct file *filp)
 {
@@ -119,11 +120,17 @@ static int jzdmic_open(struct inode *inode, struct file *filp)
 
 	wakeup_module_open(NORMAL_RECORD);
 	filp->private_data = jzdmic;
-	record_fifo->n_size	= TCSM_DATA_BUFFER_SIZE; /* dead size, don't change */
-	xfer->buf = (char *)TCSM_DATA_BUFFER_ADDR;
-	xfer->head = (char *)KSEG1ADDR(wakeup_module_get_dma_address()) - xfer->buf;;
+	record_fifo->n_size	= wakeup_module_get_record_buffer_len(); /* dead size, don't change */
+	xfer->buf = (char *)wakeup_module_get_record_buffer();
 	xfer->tail = xfer->head;
-	clear_bit(F_READBLOCK, &jzdmic->flags);
+
+	if(xfer->buf > 0x80000000 && xfer->buf < 0xa0000000) {
+		jzdmic->cache_addr = 1;
+		xfer->head = (char *)KSEG0ADDR(wakeup_module_get_dma_address()) - xfer->buf;;
+	} else {
+		jzdmic->cache_addr = 0;
+		xfer->head = (char *)KSEG1ADDR(wakeup_module_get_dma_address()) - xfer->buf;;
+	}
 
 	mod_timer(&jzdmic->record_timer, jiffies + msecs_to_jiffies(20));
 
@@ -159,6 +166,10 @@ static int jzdmic_read(struct file *filp, char *buf, size_t count, loff_t *f_pos
 			}
 			spin_unlock_irqrestore(&jzdmic->lock, flags);
 
+			if(jzdmic->cache_addr) {
+				dma_cache_sync(NULL, xfer->buf + xfer->tail, nread, DMA_FROM_DEVICE);
+			}
+
 			copy_to_user(buf, xfer->buf + xfer->tail, nread);
 
 			spin_lock_irqsave(&jzdmic->lock, flags);
@@ -175,7 +186,8 @@ static int jzdmic_read(struct file *filp, char *buf, size_t count, loff_t *f_pos
 		}
 		if(mcount > 0) {
 			/*means data not complete yet, we block here until ready*/
-			wait_event_freezable(waiter, test_bit(F_READBLOCK, &jzdmic->flags));
+			set_bit(F_READBLOCK, &jzdmic->flags);
+			wait_for_completion(&jzdmic->read_completion);
 			clear_bit(F_READBLOCK, &jzdmic->flags);
 		}
 
@@ -289,20 +301,26 @@ static void record_timer_handler(unsigned long data)
 	struct circ_buf *xfer = &record_fifo->xfer;
 	dma_addr_t trans_addr = wakeup_module_get_dma_address();
 
-	//printk("trans_addr:%08x", trans_addr);
+//	printk("trans_addr:%08x", trans_addr);
 	spin_lock_irqsave(&jzdmic->lock, flags);
 	/*
 	 * we can't controll dma transfer,
 	 * so we just change the fifo info according to trans_addr.
 	 *
 	 * */
-	xfer->head = (char *)KSEG1ADDR(trans_addr) - xfer->buf;
+
+	if(jzdmic->cache_addr) {
+		xfer->head = (char *)KSEG0ADDR(trans_addr) - xfer->buf;;
+	} else {
+		xfer->head = (char *)KSEG1ADDR(trans_addr) - xfer->buf;
+	}
 	spin_unlock_irqrestore(&jzdmic->lock, flags);
 
-	set_bit(F_READBLOCK, &jzdmic->flags);
-	wake_up_interruptible(&waiter);
+	if(test_bit(F_READBLOCK, &jzdmic->flags)) {
+		complete(&jzdmic->read_completion);
+	}
 
-	//printk("record_timer:xfer->head:%08x\n", xfer->head);
+//	printk("record_timer:xfer->head:%08x\n", xfer->head);
 	mod_timer(&jzdmic->record_timer, jiffies + msecs_to_jiffies(20));
 
 

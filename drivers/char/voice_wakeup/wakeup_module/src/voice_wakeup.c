@@ -10,7 +10,10 @@
 #include "interface.h"
 #include "voice_wakeup.h"
 #include <common.h>
+#include "dma_ops.h"
 
+
+extern unsigned int _dma_channel;
 
 unsigned int __res_mem wakeup_res[] = {
 	//#include "ivModel_v21.data"
@@ -167,17 +170,17 @@ int wakeup_open(void)
 #endif
 	/* code that need rewrite */
 	struct circ_buf *xfer = &rx_fifo->xfer;
-	rx_fifo->n_size	= BUF_SIZE; /*tcsm 4kBytes*/
-	xfer->buf = (char *)TCSM_DATA_BUFFER_ADDR;
-	dma_addr = pdma_trans_addr(DMA_CHANNEL, 2);
-	if((dma_addr >= (TCSM_DATA_BUFFER_ADDR & 0x1fffffff)) && (dma_addr <= ((TCSM_DATA_BUFFER_ADDR + BUF_SIZE)& 0x1fffffff))) {
+	rx_fifo->n_size	= dma_dst_buf_size;
+	xfer->buf = (char *)dma_dst_buf;
+	dma_addr = pdma_trans_addr(_dma_channel, 2);
+	if((dma_addr >= ((unsigned int)dma_dst_buf & 0x1fffffff)) && (dma_addr <= (((unsigned int)dma_dst_buf + dma_dst_buf_size)& 0x1fffffff))) {
 		xfer->head = (char *)(dma_addr | 0xA0000000) - xfer->buf;
 	} else {
 		xfer->head = 0;
 	}
 	xfer->tail = xfer->head;
 
-	printf("pdma_trans_addr:%x, xfer->buf:%x, xfer->head:%x, xfer->tail:%x\n",pdma_trans_addr(DMA_CHANNEL, 2), xfer->buf, xfer->head, xfer->tail);
+	printf("pdma_trans_addr:%x, xfer->buf:%x, xfer->head:%x, xfer->tail:%x\n",pdma_trans_addr(_dma_channel, DMA_DEV_TO_MEM), xfer->buf, xfer->head, xfer->tail);
 	return 0;
 }
 
@@ -191,14 +194,14 @@ int wakeup_close(void)
 int get_valid_bytes()
 {
 	unsigned int dma_addr;
-	dma_addr = pdma_trans_addr(DMA_CHANNEL, DMA_DEV_TO_MEM);
+	dma_addr = pdma_trans_addr(_dma_channel, DMA_DEV_TO_MEM);
 	int nbytes;
 	struct circ_buf *xfer;
 	xfer = &rx_fifo->xfer;
 	xfer->head = (char *)(dma_addr | 0xA0000000) - xfer->buf;
 
 	nbytes = CIRC_CNT(xfer->head, xfer->tail, rx_fifo->n_size);
-	//serial_put_hex(nbytes);
+
 	return nbytes;
 }
 int process_nbytes(int nbytes)
@@ -262,7 +265,7 @@ int process_dma_data_2(void)
 	volatile int ret;
 	struct circ_buf *xfer;
 
-	dma_addr = pdma_trans_addr(DMA_CHANNEL, DMA_DEV_TO_MEM);
+	dma_addr = pdma_trans_addr(_dma_channel, DMA_DEV_TO_MEM);
 	xfer = &rx_fifo->xfer;
 	xfer->head = (char *)(dma_addr | 0xA0000000) - xfer->buf;
 
@@ -306,13 +309,14 @@ int process_dma_data(void)
 	int ret;
 	struct circ_buf *xfer;
 
-	dma_addr = pdma_trans_addr(DMA_CHANNEL, DMA_DEV_TO_MEM);
+	dma_addr = pdma_trans_addr(_dma_channel, DMA_DEV_TO_MEM);
 	xfer = &rx_fifo->xfer;
 	xfer->head = (char *)(dma_addr | 0xA0000000) - xfer->buf;
 
 	nbytes = CIRC_CNT(xfer->head, xfer->tail, rx_fifo->n_size);
+
 	//printk("xfer->head:%d, xfer->tail:%d, nbyts:%d\n", xfer->head, xfer->tail, nbytes);
- 	if(nbytes > 220) {
+	if(nbytes > 220) {
 		while(1) {
 			int nread;
 			nread = CIRC_CNT(xfer->head, xfer->tail, rx_fifo->n_size);

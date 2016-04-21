@@ -14,6 +14,11 @@ void dma_start(int channel);
 void dma_stop(int channel);
 
 void early_sleep_dma_config(unsigned char *buffer, unsigned long len);
+
+
+extern int *dma_dst_buf;
+extern int dma_dst_buf_size;
+
 #endif
 
 

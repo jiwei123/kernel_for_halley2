@@ -4,6 +4,7 @@
 #ifndef __COMMON_H__
 #define __COMMON_H__
 
+#include <tcsm_layout.h>
 #ifndef noinline
 #define noinline __attribute__((noinline))
 #endif
@@ -69,34 +70,6 @@ typedef unsigned int	u32;
 			)
 
 
-
-
-/**
- *      |-------------|     <--- SLEEP_TCSM_BOOTCODE_TEXT
- *      | BOOT CODE   |
- *      |-------------|     <--- SLEEP_TCSM_RESUMECODE_TEXT
- *      |    ...      |
- *      | RESUME CODE |
- *      |    ...      |
- *      |-------------|     <--- SLEEP_TCSM_RESUME_DATA
- *      | RESUME DATA |
- *      |_____________|
- */
-
-#define SLEEP_TCSM_SPACE           0xb3423000
-#define SLEEP_TCSM_LEN             4096
-
-#define SLEEP_TCSM_BOOT_LEN        256
-#define SLEEP_TCSM_DATA_LEN        64
-#define SLEEP_TCSM_RESUME_LEN      (SLEEP_TCSM_LEN - SLEEP_TCSM_BOOT_LEN - SLEEP_TCSM_DATA_LEN)
-
-#define SLEEP_TCSM_BOOT_TEXT       (SLEEP_TCSM_SPACE)
-#define SLEEP_TCSM_RESUME_TEXT     (SLEEP_TCSM_BOOT_TEXT + SLEEP_TCSM_BOOT_LEN)
-#define SLEEP_TCSM_RESUME_DATA     (SLEEP_TCSM_RESUME_TEXT + SLEEP_TCSM_RESUME_LEN)
-
-#define CPU_RESMUE_SP               0xb3425FFC  /* BANK3~BANK2 */
-
-
 #define _cpu_switch_restore()						\
 	do {											\
 		int val = 0;								\
@@ -109,7 +82,17 @@ typedef unsigned int	u32;
 
 #define _cpu_switch_24MHZ()				\
 	do {								\
-		REG32(0xb0000000) = 0x95800000;	\
+		int val = 0;				\
+		val = REG32(0xb0000000);	\
+		val &= ~(0xfff << 20);		\
+		val |= (0x95 << 24);		\
+		REG32(0xb0000000) = val;	\
+		val = REG32(0xb0000000);	\
+		val &= ~(0xfffff);			\
+		REG32(0xb0000000) = val;	\
+		val = REG32(0xb0000000);	\
+		val |= 7 << 20;				\
+		REG32(0xb0000000) = val;	\
 		while((REG32(0xB00000D4) & 7))	\
 			    TCSM_PCHAR('w');		\
 	} while(0)
@@ -117,7 +100,7 @@ typedef unsigned int	u32;
 
 
 /* Choose One Work Mode: */
-/*#define CONFIG_CPU_IDLE_SLEEP*/
+/* #define CONFIG_CPU_IDLE_SLEEP */
 #define CONFIG_CPU_SWITCH_FREQUENCY
 
 

@@ -1,18 +1,21 @@
 TOPDIR = .
-CROSS_COMPILE ?= mipsel-linux-android-
+
+CROSS_COMPILE :=mipsel-linux-
+#mips-linux-gnu-
 CC = $(CROSS_COMPILE)gcc
 LD = $(CROSS_COMPILE)ld
 OBJCOPY = $(CROSS_COMPILE)objcopy
 OBJDUMP	= $(CROSS_COMPILE)objdump
+
 drop-sections := .reginfo .mdebug .oomment .note .pdr .options .MIPS.options
 strip-flags   := $(addprefix --remove-section=,$(drop-sections))
 
 CFLAGS += -I$(TOPDIR)/include
 CFLAGS += -nostdinc -Wall -Wundef -Werror-implicit-function-declaration \
-	 -fno-common -EL -Os -march=mips32 -mabi=32 -G 0 -mno-abicalls -fno-pic\
+	 -fno-common -Os -march=mips32 -mabi=32 -G 0 -mno-abicalls -fno-pic\
 	 -msoft-float
 
-LDFLAGS	:= -nostdlib -EL -T target.ld
+LDFLAGS	:= -nostdlib -T target.ld
 OBJCOPY_ARGS  := -O elf32-tradlittlemips
 
 OBJS := $(TOPDIR)/src/start.o		\
@@ -29,9 +32,9 @@ OBJS := $(TOPDIR)/src/start.o		\
 
 all: $(TOPDIR)/firmware.bin
 	@hexdump -v -e '"0x" 1/4 "%08x" "," "\n"' $< > $(TOPDIR)/firmware.hex
-
+	@cp $(TOPDIR)/firmware.hex $(TOPDIR)/../voice_wakeup_firmware.hex
 $(TOPDIR)/firmware.bin:$(TOPDIR)/firmware.o
-	@$(LD) -nostdlib -EL -T $(TOPDIR)/target.ld $(OBJS) -Map $(TOPDIR)/tmp.map -o $(TOPDIR)/tmp.elf
+	@$(LD) -nostdlib -T $(TOPDIR)/target.ld $(OBJS) -Map $(TOPDIR)/tmp.map -o $(TOPDIR)/tmp.elf
 	@$(OBJCOPY) $(strip-flags) $(OBJCOPY_ARGS) -O binary $(TOPDIR)/tmp.elf $@
 	@$(OBJDUMP) $(TOPDIR)/tmp.elf -D > tmp.dump
 $(TOPDIR)/firmware.o:$(OBJS)
@@ -48,4 +51,5 @@ $(TOPDIR)/lib/libivw3_6.a:$(TOPDIR)/lib/libivw3_6.hex
 clean:
 	find . -name "*.o" | xargs rm -vf
 	find . -name "*.o.cmd" | xargs rm -vf
+	rm *.dump *.map
 

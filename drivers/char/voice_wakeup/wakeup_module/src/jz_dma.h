@@ -1,9 +1,6 @@
 #ifndef __JZ_PDMAC_H__
 #define __JZ_PDMAC_H__
 
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
 
 /* DMA BASE ADDRESS */
 #define PDMAC_BASE	0xB3420000

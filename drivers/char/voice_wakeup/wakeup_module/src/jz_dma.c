@@ -1,3 +1,4 @@
+#include <common.h>
 #include "interface.h"
 #include "jz_dma.h"
 

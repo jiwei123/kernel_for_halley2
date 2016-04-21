@@ -43,6 +43,11 @@ struct sleep_buffer *g_sleep_buffer;
 static int voice_wakeup_enabled = 0;
 static int dmic_record_enabled = 0;
 
+unsigned char *g_record_buffer = NULL;
+unsigned int g_record_len = 0;
+unsigned char *g_desc_addr = NULL;
+unsigned int g_desc_size = 0;
+
 
 
 
@@ -75,6 +80,12 @@ int module_init(void)
 	g_sleep_buffer = NULL;
 	voice_wakeup_enabled = 0;
 	dmic_record_enabled = 0;
+
+	g_record_buffer = NULL;
+	g_record_len = 0;
+	g_desc_addr = NULL;
+	g_desc_size = 0;
+
 	return 0;
 }
 
@@ -84,6 +95,8 @@ int module_exit(void)
 }
 int open(int mode)
 {
+	dma_config_normal();
+
 	switch (mode) {
 		case EARLY_SLEEP:
 			break;
@@ -92,6 +105,7 @@ int open(int mode)
 			if(!voice_wakeup_enabled) {
 				return 0;
 			}
+
 			rtc_init();
 			dmic_init_mode(DEEP_SLEEP);
 			wakeup_open();
@@ -100,7 +114,7 @@ int open(int mode)
 #endif
 			/* UNMASK INTC we used */
 			REG32(0xB000100C) = 1<<0; /*dmic int en*/
-			/* REG32(0xB000100C) = 1<<26; */ /*tcu1 int en*/
+			REG32(0xB000100C) = 1<<26; /*tcu1 int en*/
 			REG32(0xB000102C) = 1<<0; /*rtc int en*/
 			dump_voice_wakeup();
 			break;
@@ -117,7 +131,6 @@ int open(int mode)
 			break;
 	}
 
-	dma_config_normal();
 	dma_start(_dma_channel);
 	dmic_enable();
 
@@ -147,14 +160,21 @@ static inline void powerdown_wait(void)
 	lcr |= 1;
 	REG32(CPM_IOBASE + CPM_LCR) = lcr;
 
-	cpu_no = get_cp0_ebase();
+	cpu_no = get_cp0_ebase() & 1;
 	opcr = REG32(CPM_IOBASE + CPM_OPCR);
 	opcr &= ~(3<<25);
 	opcr |= (cpu_no + 1) << 25;
 
 	opcr |= 1 << 30;
 	REG32(CPM_IOBASE + CPM_OPCR) = opcr;
+
+	/*DDR clk on*/
+	REG32(0xb0000020) &= ~(1 << 31);
+
 	temp = REG32(CPM_IOBASE + CPM_OPCR);
+
+	while(!cpu_should_sleep())
+		;
 	__asm__ volatile(".set mips32\n\t"
 			"nop\n\t"
 			"nop\n\t"
@@ -224,7 +244,7 @@ static inline void idle_wait(void)
  *	RTC	 INTS: used to sum wakeup failed times. and adjust thr value.
  *	TCU	 INTS: used for cpu to process data.
  * */
-#define INTC0_MASK	0xfffffffe
+#define INTC0_MASK	0xfBfffffe
 #define INTC1_MASK	0xfffffffe
 
 /* desc: this function is only called when cpu is in deep sleep
@@ -233,21 +253,23 @@ static inline void idle_wait(void)
  * */
 int handler(int par)
 {
-	volatile int ret = SYS_WAKEUP_INTC;
-	__attribute__ ((unused)) unsigned int int0;
-	unsigned int int1;
+	volatile int ret;
+	__attribute__ ((unused)) unsigned int int1;
+
+	/* DDR clock off*/
+	REG32(0xb0000020) |= 1 << 31;
 
 	while(1) {
 
-		int0 = REG32(0xb0001010);
 		int1 = REG32(0xb0001030);
 		if((REG32(0xb0001010) & INTC0_MASK) || (REG32(0xb0001030) & INTC1_MASK)) {
+			serial_put_hex(REG32(0xb0001010));
+			serial_put_hex(REG32(0xb0001030));
 			cpu_wakeup_by = WAKEUP_BY_OTHERS;
-			/* TCSM_PCHAR('t'); */
-			ret = SYS_WAKEUP_INTC;
+			ret = SYS_WAKEUP_OK;
 			break;
 		}
-		/* TCSM_PCHAR('D'); */
+
 		/* RTC interrupt pending */
 		if(REG32(0xb0001030) & (1<<0)) {
 			TCSM_PCHAR('R');
@@ -284,6 +306,8 @@ int handler(int par)
 #else
 			if(cpu_should_sleep()) {
 				flush_dcache_all();
+				while(!cpu_should_sleep())
+					;
 				__asm__ __volatile__("sync");
 				powerdown_wait();
 			} else {
@@ -293,6 +317,9 @@ int handler(int par)
 		} else if(ret == SYS_WAKEUP_FAILED) {
 			/* deep sleep */
 			flush_dcache_all();
+
+			while(!cpu_should_sleep())
+				;
 			__asm__ __volatile__("sync");
 			powerdown_wait();
 		}
@@ -333,6 +360,7 @@ int close(int mode)
 		dmic_disable();
 		dma_close();
 	} else if (open_cnt < 0) {
+		printk("[voice wakeup] warning: close was called more times than open.\n");
 		open_cnt = 0;
 	}
 
@@ -404,6 +432,7 @@ int is_cpu_wakeup_by_dmic(void)
 /* used by wakeup driver when earyl sleep. */
 int set_sleep_buffer(struct sleep_buffer *sleep_buffer)
 {
+	//int i;
 	g_sleep_buffer = sleep_buffer;
 
 	dma_stop(_dma_channel);
@@ -415,6 +444,37 @@ int set_sleep_buffer(struct sleep_buffer *sleep_buffer)
 
 	return 0;
 }
+
+void set_record_buffer(char *buffer, int len)
+{
+	g_record_buffer = buffer;
+	g_record_len = len;
+}
+
+unsigned int get_record_buffer(void)
+{
+	if(g_record_buffer != NULL) {
+		return g_record_buffer;
+	} else {
+		return VOICE_TCSM_DATA_BUF;
+	}
+
+}
+unsigned int get_record_buffer_len(void)
+{
+	if(g_record_buffer != NULL) {
+		return g_record_len;
+	}  else {
+		return BUF_SIZE;
+	}
+}
+
+void set_desc_addr(char *desc, unsigned int len)
+{
+	g_desc_addr = desc;
+	g_desc_size = len;
+}
+
 
 /* used by cpu eary sleep.
  * @return SYS_WAKEUP_OK, SYS_WAKEUP_FAILED.
