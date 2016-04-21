@@ -111,14 +111,19 @@ int auo_h139bln01_power_on(struct lcd_device *lcd, int enable)
 			gpio_direction_output(GPIO_LCD_BLK_EN, 1);
 	} else {
 		/* power off the power of LCD and it's Backlight */
-		ret = regulator_force_disable(lcd_io_reg);
-		if (ret)
-			printk("can't disable auo_h139 lcd_io_reg ++++++++++\n");
-		ret = regulator_force_disable(lcd_vcc_reg);
-		if (ret)
-			printk("can't disable auo_h139 lcd_vcc_reg ++++++++++\n");
 		if (gpio_is_valid(GPIO_LCD_BLK_EN))
 			gpio_direction_output(GPIO_LCD_BLK_EN, 0);
+
+        ret = regulator_force_disable(lcd_io_reg);
+        if (ret)
+            printk("can't disable auo_h139 lcd_io_reg ++++++++++\n");
+        ret = regulator_force_disable(lcd_vcc_reg);
+        if (ret)
+            printk("can't disable auo_h139 lcd_vcc_reg ++++++++++\n");
+
+        if (gpio_is_valid(GPIO_MIPI_RST_N))
+            gpio_direction_output(GPIO_MIPI_RST_N, 0);
+
 #if defined(CONFIG_SLPT) && defined(CONFIG_REGULATOR_RICOH619)
 		ricoh61x_regulator_set_sleep_mode_power(regulator_to_rdev(lcd_vcc_reg), 0);
 		ricoh61x_regulator_set_sleep_mode_power(regulator_to_rdev(lcd_io_reg), 0);
