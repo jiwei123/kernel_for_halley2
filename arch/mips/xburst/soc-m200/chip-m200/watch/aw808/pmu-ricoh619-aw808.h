@@ -12,19 +12,19 @@
 /* ****************************PMU DC/LDO NAME******************************* */
 #define DC1_NAME                "CPU core"
 #define DC2_NAME                "LPDDR2, CPU MEM"
-#define DC3_NAME                "NO USE"
+#define DC3_NAME                "NO USE-P0"
 #define DC4_NAME                "EMMC, LPDDR2, CPUIO, PLL, SENSOR, SENSOR HUB"
 #define DC5_NAME                "LDO3, LDO4, Speaker, Motor"
 #define LDO1_NAME               "BT"
 #define LDO2_NAME               "EMMC, CPU_ADC, CPU_CODEC, CPU_USB"
-#define LDO3_NAME               "NO USE"
-#define LDO4_NAME               "Amoled"
+#define LDO3_NAME               "NO USE-P1"
+#define LDO4_NAME               "Amoled-P0"
 #define LDO5_NAME               "CPU_USB, CPU_MIPI, if is SENSOR 9-Axis"
-#define LDO6_NAME               "Amoled"
-#define LDO7_NAME               "NJRC heart rate"
-#define LDO8_NAME               "NJRC heart rate"
-#define LDO9_NAME               "TP"
-#define LDO10_NAME              "TP"
+#define LDO6_NAME               "Amoled-P1"
+#define LDO7_NAME               "NJRC heart rate-P0"
+#define LDO8_NAME               "NJRC heart rate-P1"
+#define LDO9_NAME               "TP-P0"
+#define LDO10_NAME              "TP-P1"
 #define LDORTC1_NAME            "rtc_1v8"
 #define LDORTC2_NAME            "rtc_1v1"
 
@@ -77,7 +77,7 @@
 #define DC3_BOOT_ON             0
 #define DC4_BOOT_ON             1
 #define DC5_BOOT_ON             1
-#define LDO1_BOOT_ON            0
+#define LDO1_BOOT_ON            1
 #define LDO2_BOOT_ON            1
 #define LDO3_BOOT_ON            0
 #define LDO4_BOOT_ON            1
@@ -85,8 +85,8 @@
 #define LDO6_BOOT_ON            1
 #define LDO7_BOOT_ON            0
 #define LDO8_BOOT_ON            0
-#define LDO9_BOOT_ON            0
-#define LDO10_BOOT_ON           0
+#define LDO9_BOOT_ON            1
+#define LDO10_BOOT_ON           1
 #define LDORTC1_BOOT_ON         1
 #define LDORTC2_BOOT_ON         1
 /* ****************************PMU DC/LDO BOOT ON END************************ */

@@ -492,7 +492,7 @@ static int ricoh61x_regulator_preinit(struct device *parent,
 	if (!ricoh61x_pdata->init_apply)
 		return 0;
 
-	if (ricoh61x_pdata->init_uV >= 0) {
+	if (ricoh61x_pdata->init_uV > 0) {
 		ret = __ricoh61x_set_voltage(parent, ri,
 				ricoh61x_pdata->init_uV,
 				ricoh61x_pdata->init_uV, 0);
@@ -539,7 +539,7 @@ static inline int ricoh61x_cache_regulator_register(struct device *parent,
 
 static struct regulator_config ricoh61x_regulator_config;
 
-static int __devinit ricoh61x_regulator_probe(struct platform_device *pdev)
+static int ricoh61x_regulator_probe(struct platform_device *pdev)
 {
 	struct ricoh61x_regulator *ri = NULL;
 	struct regulator_dev *rdev;
