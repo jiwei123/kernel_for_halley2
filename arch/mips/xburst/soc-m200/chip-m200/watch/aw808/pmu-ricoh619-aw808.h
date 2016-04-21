@@ -1,3 +1,11 @@
+/*
+ * Copyright (C) 2016 Ingenic Semiconductor
+ * SunWenZhong(Fighter) <wenzhong.sun@ingenic.com, wanmyqawdr@126.com>
+ *
+ * Release under GPLv2
+ *
+ */
+
 #ifndef PMU_RICOH619_AW808_H
 #define PMU_RICOH619_AW808_H
 
@@ -11,10 +19,10 @@
 
 /* ****************************PMU DC/LDO NAME******************************* */
 #define DC1_NAME                "CPU core"
-#define DC2_NAME                "LPDDR2, CPU MEM"
+#define DC2_NAME                "LPDDR2, CPU MEM, SENSOR HUB"
 #define DC3_NAME                "NO USE-P0"
 #define DC4_NAME                "EMMC, LPDDR2, CPUIO, PLL, SENSOR, SENSOR HUB"
-#define DC5_NAME                "LDO3, LDO4, Speaker, Motor"
+#define DC5_NAME                "LDO3, LDO4, LDO6, LDO9, LDO10, Speaker, Motor"
 #define LDO1_NAME               "BT"
 #define LDO2_NAME               "EMMC, CPU_ADC, CPU_CODEC, CPU_USB"
 #define LDO3_NAME               "NO USE-P1"
@@ -32,12 +40,12 @@
 
 /* ****************************PMU DC/LDO DEFAULT V************************** */
 #define DC1_INIT_UV             1150    /* CPU core */
-#define DC2_INIT_UV             1150    /* LPDDR2, CPU MEM */
+#define DC2_INIT_UV             1150    /* LPDDR2, CPU MEM, SENSOR HUB*/
 #define DC3_INIT_UV             0       /* NO USE */
-#define DC4_INIT_UV             1725    /* EMMC, LPDDR2, CPUIO,PLL, SENSOR, SENSOR HUB */
-#define DC5_INIT_UV             3000    /* LDO3, LDO4, Speaker, Motor */
+#define DC4_INIT_UV             1725    /* EMMC, LPDDR2, CPUIO, PLL, SENSOR, SENSOR HUB */
+#define DC5_INIT_UV             3000    /* LDO3, LDO4, LDO6, LDO9, LDO10, Speaker, Motor */
 #define LDO1_INIT_UV            1725    /* BT */
-#define LDO2_INIT_UV            3000    /* EMMC, CPU_ADC, CPU_CODEC, CPU_USB */
+#define LDO2_INIT_UV            2850    /* EMMC, CPU_ADC, CPU_CODEC, CPU_USB */
 #define LDO3_INIT_UV            0       /* NO USE */
 #define LDO4_INIT_UV            1725    /* Amoled */
 #define LDO5_INIT_UV            2500    /* CPU_USB, CPU_MIPI, if is SENSOR 9-Axis */
@@ -77,7 +85,7 @@
 #define DC3_BOOT_ON             0
 #define DC4_BOOT_ON             1
 #define DC5_BOOT_ON             1
-#define LDO1_BOOT_ON            1
+#define LDO1_BOOT_ON            0
 #define LDO2_BOOT_ON            1
 #define LDO3_BOOT_ON            0
 #define LDO4_BOOT_ON            1
@@ -85,8 +93,8 @@
 #define LDO6_BOOT_ON            1
 #define LDO7_BOOT_ON            0
 #define LDO8_BOOT_ON            0
-#define LDO9_BOOT_ON            1
-#define LDO10_BOOT_ON           1
+#define LDO9_BOOT_ON            0
+#define LDO10_BOOT_ON           0
 #define LDORTC1_BOOT_ON         1
 #define LDORTC2_BOOT_ON         1
 /* ****************************PMU DC/LDO BOOT ON END************************ */
