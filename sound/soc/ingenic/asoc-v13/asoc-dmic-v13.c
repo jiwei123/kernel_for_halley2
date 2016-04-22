@@ -20,6 +20,7 @@
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
 #include <sound/initval.h>
+#include <linux/ctype.h>
 #include <linux/io.h>
 #include <sound/soc.h>
 #include <sound/soc-dai.h>
@@ -278,8 +279,44 @@ static ssize_t jz_dmic_regs_show(struct device *dev,
 	return 0;
 }
 
+static ssize_t jz_dmic_regs_store(struct device *dev,
+		struct device_attribute *attr, const char *buf,
+		size_t count)
+{
+	struct jz_dmic *jz_dmic = dev_get_drvdata(dev);
+	const char *start = buf;
+	unsigned int reg, val;
+	int ret_count = 0;
+
+	while(!isxdigit(*start)) {
+		start++;
+		if (++ret_count >= count)
+			return count;
+	}
+	reg = simple_strtoul(start, (char **)&start, 16);
+
+	while(!isxdigit(*start)) {
+		start++;
+		if (++ret_count >= count)
+			return count;
+	}
+	val = simple_strtoul(start, (char **)&start, 16);
+
+	clk_enable(jz_dmic->clk_gate_dmic);
+	regulator_enable(jz_dmic->vcc_dmic);
+
+	dmic_write_reg(jz_dmic->dev, reg, val);
+
+	regulator_disable(jz_dmic->vcc_dmic);
+	clk_disable(jz_dmic->clk_gate_dmic);
+
+	return count;
+
+
+}
+
 static struct device_attribute jz_dmic_sysfs_attrs[] = {
-	__ATTR(dmic_regs, S_IRUGO, jz_dmic_regs_show, NULL),
+	__ATTR(dmic_regs, S_IRUGO|S_IWUGO, jz_dmic_regs_show, jz_dmic_regs_store),
 };
 
 static struct snd_soc_dai_driver jz_dmic_dai = {
