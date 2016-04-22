@@ -50,6 +50,7 @@
 #define RECOVERY_SIGNATURE	(0x001a1a)
 #define REBOOT_SIGNATURE	(0x003535)
 #define UNMSAK_SIGNATURE	(0x7c0000)//do not use these bits
+#define FASTBOOT_SIGNATURE      (0x000666)// means "FASTBOOT"
 
 static void wdt_start_count(int msecs)
 {
@@ -134,6 +135,10 @@ void jz_wdt_restart(char *command)
 			cpm_outl(0x0,CPM_CPSPPR);
 			udelay(100);
 		}
+	} else if ((command != NULL) && !strcmp(command, "bootloader")) {
+		cpm_outl(0x5a5a,CPM_CPSPPR);
+		cpm_outl(FASTBOOT_SIGNATURE,CPM_CPPSR);
+		cpm_outl(0x0,CPM_CPSPPR);
 	} else {
 		cpm_outl(0x5a5a,CPM_CPSPPR);
 		cpm_outl(REBOOT_SIGNATURE,CPM_CPPSR);
@@ -183,7 +188,9 @@ void jz_hibernate_restart(char *command)
 {
 	local_irq_disable();
 
-	if ((command != NULL) && !strcmp(command, "recovery")) {
+	if ((command != NULL)
+	     &&(!strcmp(command, "recovery")
+	     || !strcmp(command, "bootloader")) {
 		jz_wdt_restart(command);
 	}
 
@@ -203,7 +210,7 @@ int __init reset_init(void)
 }
 arch_initcall(reset_init);
 
-static char *reset_command[] = {"wdt","hibernate","recovery"};
+static char *reset_command[] = {"wdt","hibernate","recovery","bootloader"};
 static int reset_proc_show(struct seq_file *m, void *v)
 {
 	int len = 0;
@@ -242,6 +249,9 @@ static int reset_write_proc(struct file *file, const char __user *buffer,
 		break;
 	case 3:
 		jz_wdt_restart("recovery");
+		break;
+	case 4:
+		jz_wdt_restart("bootloader");
 		break;
 
 	}
