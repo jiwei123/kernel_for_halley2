@@ -145,17 +145,15 @@ struct proc_dir_entry *bluetooth_dir, *sleep_dir;
 /*
  * Local functions
  */
-
 static void hsuart_power(int on)
 {
-	if (on) {
-		/*msm_hs_request_clock_on(bsi->uport);
-		   msm_hs_set_mctrl(bsi->uport, TIOCM_RTS); */
-	} else {
-		//    msm_hs_set_mctrl(bsi->uport, 0);
-		//    msm_hs_request_clock_off(bsi->uport);
-	}
-	BT_SLEEP_ERR("uart power %d\n", on);
+    if (on) {
+        /*msm_hs_request_clock_on(bsi->uport);
+        msm_hs_set_mctrl(bsi->uport, TIOCM_RTS); */
+    } else {
+        //msm_hs_set_mctrl(bsi->uport, 0);
+        //msm_hs_request_clock_off(bsi->uport);
+    }
 }
 
 #ifdef BT_WAKEUP_SCREEN
@@ -193,7 +191,7 @@ static void bluesleep_sleep_wakeup(void)
     mod_timer(&tx_timer, DEFINE_TIMER_INTERVAL);
 
     if (test_bit(BT_ASLEEP, &flags)) {
-        BT_SLEEP_ERR("waking up...\n");
+        BT_SLEEP_DBG("waking up...\n");
         wake_lock(&bsi->wake_lock);
         gpio_set_value(bsi->ext_wake, 1);
         clear_bit(BT_ASLEEP, &flags);
@@ -209,15 +207,15 @@ static void bluesleep_sleep_wakeup(void)
 static void bluesleep_sleep_work(struct work_struct *work)
 {
 	if (bluesleep_can_sleep()) {
-		BT_SLEEP_ERR("can sleep...\n");
+	    BT_SLEEP_DBG("can sleep...\n");
 		/* already asleep, this is an error case */
 		if (test_bit(BT_ASLEEP, &flags)) {
-			BT_SLEEP_ERR("already asleep\n");
+		    BT_SLEEP_DBG("already asleep\n");
 			return;
 		}
 
 		if (bsi->uport->ops->tx_empty(bsi->uport)) {
-			BT_SLEEP_ERR("going to sleep...\n");
+		    BT_SLEEP_DBG("going to sleep...\n");
 			set_bit(BT_ASLEEP, &flags);
 			/*Deactivating UART */
 			hsuart_power(0);
@@ -227,7 +225,7 @@ static void bluesleep_sleep_work(struct work_struct *work)
 			//       wake_lock_timeout(&bsi->wake_lock, HZ / 2);
 			wake_lock_timeout(&bsi->wake_lock, 1000);
 		} else {
-			BT_SLEEP_ERR
+		    BT_SLEEP_DBG
 			    ("tx buffer is not empty, modify timer...\n");
 			/*lgh add */
 			gpio_set_value(bsi->ext_wake, 1);
@@ -237,7 +235,7 @@ static void bluesleep_sleep_work(struct work_struct *work)
 		}
 	} else if ((!gpio_get_value(bsi->ext_wake))
 		   && !test_bit(BT_ASLEEP, &flags)) {
-		BT_SLEEP_DBG("can not sleep, bt_wake %d\n",
+	    BT_SLEEP_DBG("can not sleep, bt_wake %d\n",
 			     gpio_get_value(bsi->ext_wake));
 		mod_timer(&tx_timer, DEFINE_TIMER_INTERVAL);
 		gpio_set_value(bsi->ext_wake, 1);
@@ -283,7 +281,7 @@ void bluesleep_outgoing_data(void)
 	/* if the tx side is sleeping... */
 	if (!gpio_get_value(bsi->ext_wake)) {
 
-		BT_SLEEP_ERR("tx was sleeping\n");
+		BT_SLEEP_DBG("tx was sleeping\n");
 		bluesleep_sleep_wakeup();
 	}
 
@@ -453,7 +451,7 @@ int bluesleep_start(void)
 		goto fail;
 	}
 
-	BT_SLEEP_ERR("set BT_PROTO\n");
+	BT_SLEEP_DBG("set BT_PROTO\n");
 	set_bit(BT_PROTO, &flags);
 	wake_lock(&bsi->wake_lock);
 	return 0;

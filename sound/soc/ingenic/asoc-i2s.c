@@ -108,7 +108,7 @@ static int jz_i2s_startup(struct snd_pcm_substream *substream,
 		__aic_clear_ror(aic);
 		jz_i2s->i2s_mode |= I2S_READ;
 	}
-	printk("start set AIC register....\n");
+	printk(KERN_DEBUG "start set AIC register....\n");
 	return 0;
 }
 

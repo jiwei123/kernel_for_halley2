@@ -22,7 +22,8 @@ static void disable_clk32k(void)
 }
 
 static struct bcm_power_platform_data bcm_power_platform_data = {
-	.wlan_pwr_en = BCM_PWR_EN,
+	.bcm_power_name	 = BCM_POWER_NAME,
+	.bcm_pwr_en = BCM_PWR_EN,
 	.clk_enable = enable_clk32k,
 	.clk_disable = disable_clk32k,
 };
@@ -40,51 +41,10 @@ struct platform_device	bcm_power_platform_device = {
 /*For BlueTooth*/
 #ifdef CONFIG_BROADCOM_RFKILL
 #include <linux/bt-rfkill.h>
-static void set_pin_status(int bt_power_state)
-{
-#if 0
-	if(bt_power_state){
-		/*set UART0_RXD, UART0_CTS_N ,2 pins to input nopull*/
-		jzgpio_set_func(GPIO_PORT_F, GPIO_INPUT, 0x3);
-		/*set UART0_TXD to output low*/
-		jzgpio_set_func(GPIO_PORT_F, GPIO_INPUT, 0x8);
-
-		/*set PCM0_DO ,PCM0_CLK, PCM0_SYN ,PCM0_DI 4 pins to OUTPUT_LOW*/
-		jzgpio_set_func(GPIO_PORT_F, GPIO_OUTPUT0, 0xF << 12);
-	}else{
-#if defined(GPIO_BT_RST_N)
-		jzgpio_set_func(GPIO_BT_RST_N / 32, GPIO_OUTPUT0,
-				1 << (GPIO_BT_RST_N % 32));
-#endif
-		jzgpio_set_func(GPIO_BT_INT / 32, GPIO_OUTPUT0,
-				1 << (GPIO_BT_INT % 32));
-		jzgpio_set_func(GPIO_BT_WAKE / 32, GPIO_OUTPUT0,
-				1 << (GPIO_BT_WAKE % 32));
-
-		/*set BT_RST_N ,BT_INT, BT_WAKE , BT_REG_ON 4 pins to OUTPUT_LOW*/
-		jzgpio_set_func(GPIO_BT_REG_ON / 32, GPIO_OUTPUT0,
-				1 << (GPIO_BT_REG_ON % 32));
-
-		/*set UART0_RXD, UART0_CTS_N, UART0_RTS_N 3 pins to OUTPUT_LOW*/
-		jzgpio_set_func(GPIO_PORT_F, GPIO_OUTPUT0 , 0x7);
-
-		/*set UART0_TXD to INPUT_NOPULL*/
-		jzgpio_set_func(GPIO_PORT_F, GPIO_INPUT , 1 << 3);
-
-		/*set PCM0_DO ,PCM0_CLK, PCM0_SYN ,PCM0_DI 4 pins to OUTPUT_LOW*/
-		jzgpio_set_func(GPIO_PORT_F, GPIO_OUTPUT0 , 0xF << 12);
-	}
-#endif
-}
-
 static void restore_pin_status(int bt_power_state)
 {
-
 	/*set UART0_RXD, UART0_CTS_N, UART0_RTS_N, UART0_TXD to FUNC*/
 	jzgpio_set_func(BLUETOOTH_UART_GPIO_PORT, BLUETOOTH_UART_GPIO_FUNC, BLUETOOTH_UART_FUNC_SHIFT);
-
-	/*set PCM0_DO ,PCM0_CLK, PCM0_SYN ,PCM0_DI 4 pins to FUNC*/
-	//jzgpio_set_func(GPIO_PORT_F, GPIO_FUNC_0, 0xF << 12);
 }
 
 static struct bt_rfkill_platform_data  bt_gpio_data = {
@@ -94,18 +54,9 @@ static struct bt_rfkill_platform_data  bt_gpio_data = {
 		.bt_wake = HOST_WAKE_BT,
 		.bt_int = BT_WAKE_HOST,
 		.bt_uart_rts = BT_UART_RTS,
-#if 0
-		.bt_int_flagreg = -1,
-		.bt_int_bit = -1,
-#endif
 	},
-
 	.restore_pin_status = restore_pin_status,
-	.set_pin_status = set_pin_status,
-#if 0
-	.suspend_gpio_set = NULL,
-	.resume_gpio_set = NULL,
-#endif
+	.set_pin_status = NULL,
 };
 
 struct platform_device bt_power_device  = {

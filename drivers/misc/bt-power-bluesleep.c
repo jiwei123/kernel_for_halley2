@@ -37,9 +37,9 @@
 #define DBG_MSG(fmt, ...)
 #endif
 
-#define DEV_NAME		"bt_power"
-#define RFKILL_STATE_SOFT_BLOCKED	0
-#define RFKILL_STATE_UNBLOCKED		1
+#define DEV_NAME                            "bt_power"
+#define RFKILL_STATE_SOFT_BLOCKED           (0)
+#define RFKILL_STATE_UNBLOCKED              (1)
 
 int bt_power_state = 0;
 
@@ -49,34 +49,30 @@ extern int bcm_power_down(void);
 extern int bcm_power_on(void);
 
 struct bt_power {
-	int bt_rst_n ;
 	bool first_called;
+	int bt_rst_n ;
 	int bt_reg_on;
-
 	struct bt_rfkill_platform_data *pdata;
-
 	struct mutex bt_power_lock;
 };
 
 static void bt_enable_power(struct bt_power *bt_power)
 {
-	if(bt_power->bt_reg_on != -1){
+	if(bt_power->bt_reg_on >= 0) {
 		gpio_direction_output(bt_power->bt_reg_on, 1);
-	} else {
-		pr_warn("%s bt_reg_on can not be defined to -1\n", __func__);
 	}
 }
 
 static void bt_disable_power(struct bt_power *bt_power)
 {
-	if(bt_power->bt_reg_on != -1){
+	if(bt_power->bt_reg_on >= 0) {
 		gpio_direction_output(bt_power->bt_reg_on, 0);
-	} else {
-		pr_warn("%s bt_reg_on can not be defined to -1\n", __func__);
+
 	}
 
-	if (bt_power->bt_rst_n != -1)
+    if (bt_power->bt_rst_n >= 0) {
         gpio_direction_output(bt_power->bt_rst_n, 0);
+    }
 }
 
 static int bt_power_control(struct bt_power *bt_power, int enable)
@@ -91,37 +87,24 @@ static int bt_power_control(struct bt_power *bt_power, int enable)
 		bcm_power_down();
 		bt_disable_power(bt_power);
 
-		if (bt_power->pdata->set_pin_status != NULL){
+		if (bt_power->pdata->set_pin_status != NULL) {
 			(*bt_power->pdata->set_pin_status)(enable);
-		} else {
-			pr_warn("%s set_pin_status is not defined\n", __func__);
 		}
 		break;
 	case RFKILL_STATE_UNBLOCKED:
-		if (bt_power->pdata->restore_pin_status != NULL){
+		if (bt_power->pdata->restore_pin_status != NULL) {
 			(*bt_power->pdata->restore_pin_status)(enable);
-		} else {
-			pr_warn("%s set_pin_status is not defined\n", __func__);
 		}
-
 		bcm_power_on();
 
-		if (bt_power->bt_rst_n != -1) {
+		if (bt_power->bt_rst_n >= 0) {
 			gpio_direction_output(bt_power->bt_rst_n, 0);
-		} else {
-			pr_warn("%s bt_rst_n can not be defined to -1\n", __func__);
 		}
-
 		bt_enable_power(bt_power);
-
 		mdelay(15);
-
-		if (bt_power->bt_rst_n != -1) {
+		if (bt_power->bt_rst_n >= 0) {
 			gpio_set_value(bt_power->bt_rst_n, 1);
-		} else {
-			pr_warn("%s bt_rst_n can not be defined to -1\n", __func__);
 		}
-
 		mdelay(15);
 		bluesleep_start();
 		break;
@@ -161,25 +144,22 @@ static int bt_power_rfkill_probe(struct platform_device *pdev, struct bt_power *
 	struct bt_rfkill_platform_data *pdata = pdev->dev.platform_data;
 	int ret = -ENOMEM;
 
-
 	pdata->rfkill = rfkill_alloc("bluetooth", &pdev->dev, RFKILL_TYPE_BLUETOOTH,
                             &bt_rfkill_ops, bt_power);
 
 	if (!pdata->rfkill) {
-		goto exit;
+	    return ret;
 	}
 	ret = rfkill_register(pdata->rfkill);
 	if (ret) {
 		rfkill_destroy(pdata->rfkill);
 		return ret;
 	}
-exit:
 	return ret;
 }
 
 static void bt_power_rfkill_remove(struct bt_rfkill_platform_data *pdata)
 {
-
 	if (pdata->rfkill)
 		rfkill_unregister(pdata->rfkill);
 }
@@ -191,7 +171,6 @@ static int __init_or_module bt_power_probe(struct platform_device *pdev)
 	int ret = 0;
 
 	pdata = pdev->dev.platform_data;
-
 	bt_power = kzalloc(sizeof(struct bt_power), GFP_KERNEL);
 	if (!bt_power) {
 		dev_err(&pdev->dev, "Failed to alloc memory for bt_power\n");
@@ -209,36 +188,27 @@ static int __init_or_module bt_power_probe(struct platform_device *pdev)
 		goto ERR2;
 	}
 
-	if (pdata->gpio.bt_rst_n >= 0) {
-		bt_power->bt_rst_n = pdata->gpio.bt_rst_n;
-	} else
-		bt_power->bt_rst_n = -1;
-
-	if (bt_power->bt_rst_n != -1) {
-		ret = gpio_request(bt_power->bt_rst_n, "bt_rst_n");
+	bt_power->bt_reg_on = pdata->gpio.bt_reg_on;
+	if (bt_power->bt_reg_on >= 0) {
+		ret = gpio_request(bt_power->bt_reg_on, "bt_reg_on");
 		if(unlikely(ret)){
-			dev_err(&pdev->dev, "Failed to request gpio for bt_rst_n\n");
+			dev_err(&pdev->dev, "Failed to request gpio for bt_reg_on[%d]\n", bt_power->bt_reg_on);
 			ret = -EBUSY;
 			goto ERR3;
 		}
 	}
 
-	if (pdata->gpio.bt_reg_on >= 0) {
-		bt_power->bt_reg_on = pdata->gpio.bt_reg_on;
-	} else {
-		bt_power->bt_reg_on = -1;
-	}
-
-	if (bt_power->bt_reg_on != -1) {
-		ret = gpio_request(bt_power->bt_reg_on, "bt_reg_on");
+	bt_power->bt_rst_n = pdata->gpio.bt_rst_n;
+	if (bt_power->bt_rst_n >= 0) {
+		ret = gpio_request(bt_power->bt_rst_n, "bt_rst_n");
 		if(unlikely(ret)){
-			dev_err(&pdev->dev, "Failed to request gpio for bt_reg_on\n");
+			dev_err(&pdev->dev, "Failed to request gpio for bt_rst_n[%d]\n", bt_power->bt_rst_n);
 			ret = -EBUSY;
 			goto ERR4;
 		}
 	}
 
-	if(bt_power->bt_rst_n != -1){
+	if(bt_power->bt_rst_n >= 0){
 		ret = gpio_direction_output(bt_power->bt_rst_n, 1);
 		if (ret) {
 			dev_err(&pdev->dev, "Failed to set gpio bt_rst_n to 1\n");
@@ -251,9 +221,9 @@ static int __init_or_module bt_power_probe(struct platform_device *pdev)
 
 	return 0;
 ERR5:
-	gpio_free(bt_power->bt_reg_on);
-ERR4:
 	gpio_free(bt_power->bt_rst_n);
+ERR4:
+	gpio_free(bt_power->bt_reg_on);
 ERR3:
 	bt_power_rfkill_remove(pdata);
 ERR2:

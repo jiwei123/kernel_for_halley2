@@ -39,216 +39,206 @@
 #include <linux/bcm_pm_core.h>
 
 struct bcm_power {
-	struct mutex mutex;
-	struct regulator *regulator;
-	int power_en;
-	int use_count;
-	bool probe_success;
-	void (*clk_enable)(void);
-	void (*clk_disable)(void);
+    struct mutex mutex;
+    struct regulator *regulator;
+    int power_en;
+    int use_count;
+    bool probe_success;
+    void (*clk_enable)(void);
+    void (*clk_disable)(void);
 };
-
 static struct bcm_power *bcm_power;
 
-static void clk_32k_on(void)
+static void __do_clk_32k_on(void)
 {
-	bcm_power->clk_enable();
+    bcm_power->clk_enable();
 }
 
-static void clk_32k_off(void)
+static void __do_clk_32k_off(void)
 {
-	bcm_power->clk_disable();
+    bcm_power->clk_disable();
 }
 
-static int wlan_power_on(void)
+static int __do_bcm_power_on(void)
 {
-	int ret = 0;
-	if (-1 != bcm_power->power_en){
-		gpio_direction_output(bcm_power->power_en, 1);
-	}
-	if (!IS_ERR(bcm_power->regulator)) {
-		ret = regulator_enable(bcm_power->regulator);
-	}
+    int ret = 0;
+    if (-1 != bcm_power->power_en){
+        gpio_direction_output(bcm_power->power_en, 1);
+    }
+    if (!IS_ERR(bcm_power->regulator)) {
+        ret = regulator_enable(bcm_power->regulator);
+    }
 
-	return ret;
+    return ret;
 }
 
-static int wlan_power_down(void)
+static int __do_bcm_power_down(void)
 {
-	int ret = 0;
-	if (-1 != bcm_power->power_en){
-		gpio_direction_output(bcm_power->power_en, 0);
-	}
-	if (!IS_ERR(bcm_power->regulator)) {
-		ret = regulator_disable(bcm_power->regulator);
-	}
+    int ret = 0;
+    if (-1 != bcm_power->power_en){
+        gpio_direction_output(bcm_power->power_en, 0);
+    }
+    if (!IS_ERR(bcm_power->regulator)) {
+        ret = regulator_force_disable(bcm_power->regulator);
+    }
 
-	return ret;
+    return ret;
 }
 
 static int _bcm_power_on(void)
 {
-	int ret = 0;
+    int ret = 0;
 
-	if (bcm_power->use_count < 0) {
-		pr_err("%s, bcm power manager unbalanced, use_count is %d\n",
-				__func__, bcm_power->use_count);
-		return -EIO;
-	}
+    if (bcm_power->use_count < 0) {
+        pr_err("%s, bcm power manager unbalanced, use_count is %d\n",
+                __func__, bcm_power->use_count);
+        return -EIO;
+    }
 
-	if (bcm_power->use_count == 0) {
-		clk_32k_on();
-		msleep(1);
-		ret = wlan_power_on();
-		if (ret < 0) {
-			pr_err("%s, wlan power on failure\n", __func__);
-			return -EIO;
-		}
-	}
+    if (bcm_power->use_count == 0) {
+        __do_clk_32k_on();
+        msleep(1);
+        ret = __do_bcm_power_on();
+        if (ret < 0) {
+            pr_err("%s, wlan power on failure\n", __func__);
+            return -EIO;
+        }
+    }
 
-	bcm_power->use_count++;
+    bcm_power->use_count++;
 
-	return bcm_power->use_count;
+    return bcm_power->use_count;
 }
 
 static int _bcm_power_down(void)
 {
-	int ret = 0;
+    int ret = 0;
 
-	if (bcm_power->use_count <= 0) {
-		pr_err("%s, bcm power manager unbalanced, use_count is %d\n",
-				__func__, bcm_power->use_count);
-		return -EIO;
-	}
+    if (bcm_power->use_count <= 0) {
+        pr_err("%s, bcm power manager unbalanced, use_count is %d\n",
+                __func__, bcm_power->use_count);
+        return -EIO;
+    }
 
-	bcm_power->use_count--;
+    bcm_power->use_count--;
 
-	if (bcm_power->use_count == 0) {
-		ret = wlan_power_down();
-		if (ret < 0) {
-			pr_err("%s, wlan power on failure\n", __func__);
-			return -EIO;
-		}
-		msleep(1);
-		clk_32k_off();
-	}
+    if (bcm_power->use_count == 0) {
+        ret = __do_bcm_power_down();
+        if (ret < 0) {
+            pr_err("%s, wlan power on failure\n", __func__);
+            return -EIO;
+        }
+        msleep(1);
+        __do_clk_32k_off();
+    }
 
-	return bcm_power->use_count;
+    return bcm_power->use_count;
 }
 
 int bcm_power_on(void)
 {
-	int ret = 0;
+    int ret = 0;
 
-	if (!bcm_power)
-		return -EIO;
+    if (!bcm_power)
+        return -EIO;
 
-	mutex_lock(&bcm_power->mutex);
-	ret = _bcm_power_on();
-	mutex_unlock(&bcm_power->mutex);
+    mutex_lock(&bcm_power->mutex);
+    ret = _bcm_power_on();
+    mutex_unlock(&bcm_power->mutex);
 
-	if (ret > 0)
-		ret = 0;
+    if (ret > 0)
+        ret = 0;
 
-	return ret;
+    return ret;
 }
 EXPORT_SYMBOL(bcm_power_on);
 
 int bcm_power_down(void)
 {
-	int ret = 0;
+    int ret = 0;
+    if (!bcm_power)
+        return -EIO;
 
-	if (!bcm_power)
-		return -EIO;
+    mutex_lock(&bcm_power->mutex);
+    ret = _bcm_power_down();
+    mutex_unlock(&bcm_power->mutex);
 
-	mutex_lock(&bcm_power->mutex);
-	ret = _bcm_power_down();
-	mutex_unlock(&bcm_power->mutex);
+    if (ret > 0)
+        ret = 0;
 
-	if (ret > 0)
-		ret = 0;
-
-	return ret;
+    return ret;
 }
-
 EXPORT_SYMBOL(bcm_power_down);
 
 static int bcm_power_probe(struct platform_device *pdev)
 {
-	int ret = 0;
-	struct bcm_power_platform_data *pdata;
+    int ret = 0;
+    struct bcm_power_platform_data *pdata;
 
-	pdata = pdev->dev.platform_data;
+    pdata = pdev->dev.platform_data;
 
-	bcm_power = kzalloc(sizeof(struct bcm_power), GFP_KERNEL);
-	if (!bcm_power) {
-		dev_err(&pdev->dev, "Failed to alloc driver structure\n");
-		return -ENOMEM;
-	}
+    bcm_power = kzalloc(sizeof(struct bcm_power), GFP_KERNEL);
+    if (!bcm_power) {
+        dev_err(&pdev->dev, "Failed to alloc driver structure\n");
+        return -ENOMEM;
+    }
 
-	bcm_power->clk_enable = pdata->clk_enable;
-	bcm_power->clk_disable = pdata->clk_disable;
-	bcm_power->power_en = pdata->wlan_pwr_en;
-	if (-1 != bcm_power->power_en){
-		ret = gpio_request(bcm_power->power_en, "bcm_power");
-		if (ret) {
-			kfree(bcm_power);
-			bcm_power = NULL;
-			return -ENODEV;
-		}
-		gpio_direction_output(bcm_power->power_en, 0);
-		//	gpio_set_value(bcm_power->power_en, 0);
-	}
+    bcm_power->clk_enable = pdata->clk_enable;
+    bcm_power->clk_disable = pdata->clk_disable;
+    bcm_power->power_en = pdata->bcm_pwr_en;
+    if (-1 != bcm_power->power_en) {
+        ret = gpio_request(bcm_power->power_en, "bcm_power");
+        if (ret) {
+            kfree(bcm_power);
+            bcm_power = NULL;
+            return -ENODEV;
+        }
+        gpio_direction_output(bcm_power->power_en, 0);
+    }
 
-	mutex_init(&bcm_power->mutex);
+    mutex_init(&bcm_power->mutex);
 
-	bcm_power->regulator = regulator_get(NULL, "bcm_vddio_1v8");
-	if (IS_ERR(bcm_power->regulator)) {
-		pr_err("wifi regulator missing\n");
-		ret = -EINVAL;
-		//goto ERR1;
-	}
-
-	bcm_power->probe_success = true;
-	return 0;
-ERR1:
-	if (-1 != bcm_power->power_en){
-		gpio_free(bcm_power->power_en);
-	}
-	bcm_power = NULL;
-	kfree(bcm_power);
-	return ret;
+    bcm_power->regulator = regulator_get(NULL, pdata->bcm_power_name);
+    if (IS_ERR(bcm_power->regulator)) {
+        pr_debug("bcm core regulator missing %s\n", pdata->bcm_power_name);
+        ret = -EINVAL;
+    }
+    /* default BCM power is off in case of LDO always_on */
+    __do_bcm_power_on();
+    __do_bcm_power_down();
+    bcm_power->probe_success = true;
+    return 0;
 }
 
 static int bcm_power_remove(struct platform_device *pdev)
 {
-	if (!IS_ERR(bcm_power->regulator))
-		regulator_put(bcm_power->regulator);
-	if (-1 != bcm_power->power_en){
-		gpio_free(bcm_power->power_en);
-	}
-	kfree(bcm_power);
+    if (!IS_ERR(bcm_power->regulator))
+        regulator_put(bcm_power->regulator);
+    if (-1 != bcm_power->power_en){
+        gpio_free(bcm_power->power_en);
+    }
+    kfree(bcm_power);
 
-	return 0;
+    return 0;
 }
 
 static struct platform_driver bcm_power_driver = {
-	.driver = {
-		.name = "bcm_power",
-		.owner = THIS_MODULE,
-	},
-	.probe = bcm_power_probe,
-	.remove = __exit_p(bcm_power_remove),
+    .driver = {
+        .name = "bcm_power",
+        .owner = THIS_MODULE,
+    },
+    .probe = bcm_power_probe,
+    .remove = __exit_p(bcm_power_remove),
 };
 
 static int __init bcm_power_init(void)
 {
-	return platform_driver_register(&bcm_power_driver);
+    return platform_driver_register(&bcm_power_driver);
 }
 
-static int __exit bcm_power_exit(void)
+static void __exit bcm_power_exit(void)
 {
-	platform_driver_unregister(&bcm_power_driver);
+    platform_driver_unregister(&bcm_power_driver);
 }
 
 module_init(bcm_power_init);
