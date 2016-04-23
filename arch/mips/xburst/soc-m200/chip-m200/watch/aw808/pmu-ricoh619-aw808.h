@@ -23,7 +23,7 @@
 #define DC3_NAME                "NO USE-P0"
 #define DC4_NAME                "EMMC, LPDDR2, CPUIO, PLL, SENSOR, SENSOR HUB"
 #define DC5_NAME                "LDO3, LDO4, LDO6, LDO9, LDO10, Speaker, Motor"
-#define LDO1_NAME               "BT"
+#define LDO1_NAME               "BT-VDDIO"
 #define LDO2_NAME               "EMMC, CPU_ADC, CPU_CODEC, CPU_USB"
 #define LDO3_NAME               "NO USE-P1"
 #define LDO4_NAME               "Amoled-P0"
@@ -44,7 +44,7 @@
 #define DC3_INIT_UV             0       /* NO USE */
 #define DC4_INIT_UV             1725    /* EMMC, LPDDR2, CPUIO, PLL, SENSOR, SENSOR HUB */
 #define DC5_INIT_UV             3000    /* LDO3, LDO4, LDO6, LDO9, LDO10, Speaker, Motor */
-#define LDO1_INIT_UV            1725    /* BT */
+#define LDO1_INIT_UV            1725    /* BT-VDDIO */
 #define LDO2_INIT_UV            2850    /* EMMC, CPU_ADC, CPU_CODEC, CPU_USB */
 #define LDO3_INIT_UV            0       /* NO USE */
 #define LDO4_INIT_UV            1725    /* Amoled */
@@ -64,13 +64,13 @@
 #define DC2_ALWAYS_ON           1
 #define DC3_ALWAYS_ON           0
 #define DC4_ALWAYS_ON           1
-#define DC5_ALWAYS_ON           0
+#define DC5_ALWAYS_ON           1
 #define LDO1_ALWAYS_ON          1
 #define LDO2_ALWAYS_ON          1
 #define LDO3_ALWAYS_ON          0
-#define LDO4_ALWAYS_ON          0
+#define LDO4_ALWAYS_ON          1
 #define LDO5_ALWAYS_ON          1
-#define LDO6_ALWAYS_ON          0
+#define LDO6_ALWAYS_ON          1
 #define LDO7_ALWAYS_ON          0
 #define LDO8_ALWAYS_ON          0
 #define LDO9_ALWAYS_ON          0
@@ -133,10 +133,10 @@
 /* ****************************PMU LDO1~6 ECO SLEEP MODE END***************** */
 
 /* ****************************PMU DCDC POWER_ON MODE************************ */
-#define DCDC1_MODE              DCDC_PSM_MODE
-#define DCDC2_MODE              DCDC_PSM_MODE
+#define DCDC1_MODE              DCDC_AUTO_MODE
+#define DCDC2_MODE              DCDC_AUTO_MODE
 #define DCDC3_MODE              DCDC_PSM_MODE
-#define DCDC4_MODE              DCDC_PSM_MODE
+#define DCDC4_MODE              DCDC_AUTO_MODE
 #define DCDC5_MODE              DCDC_PSM_MODE
 /* ****************************PMU DCDC POWER_ON MODE END******************** */
 
