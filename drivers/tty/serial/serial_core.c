@@ -562,7 +562,7 @@ static int uart_write(struct tty_struct *tty,
 	 */
 	if(!bluesleep_tty_strcmp(tty->name)) {
 		while (tty->hw_stopped && timeout--) {
-			printk("serial_core: wait hw_stopped to be 0\n");
+			printk(KERN_DEBUG "serial_core: wait hw_stopped to be 0\n");
 			mdelay(2);
 		}
 		if (tty->hw_stopped && (timeout < 0))

@@ -231,6 +231,7 @@
 /* ****************************GPIO NFC END********************************** */
 
 /* ****************************GPIO WIFI START******************************* */
+#define BCM_POWER_NAME      NULL
 #define BCM_PWR_EN          GPIO_PA(1)
 #define WL_WAKE_HOST        GPIO_PC(12)
 #define WL_REG_EN           GPIO_PC(15)
