@@ -219,6 +219,7 @@
 /* ****************************GPIO AUDIO END******************************** */
 
 /* ****************************GPIO WIFI START******************************* */
+#define BCM_POWER_NAME   LDO1_NAME
 #define BCM_PWR_EN       GPIO_PA(0)
 #define WL_WAKE_HOST	GPIO_PA(9)
 #define WL_REG_EN   GPIO_PA(8)

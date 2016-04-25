@@ -338,6 +338,7 @@
 /* ****************************GPIO AUDIO END******************************** */
 
 /* ****************************GPIO WIFI START******************************* */
+#define BCM_POWER_NAME   LDO1_NAME
 #define BCM_PWR_EN       GPIO_PE(2) //elink_zqb 20151105 (-1)
 #define WL_WAKE_HOST     GPIO_PC(23) //elink_zqb 20151105 (-1)
 #define WL_REG_EN        GPIO_PC(13)//(-1)
