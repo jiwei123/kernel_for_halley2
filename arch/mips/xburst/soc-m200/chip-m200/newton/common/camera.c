@@ -12,7 +12,7 @@ static int ov9724_power(int onoff)
 	if(temp) {
 		if (-1 != CAMERA_PWDN_N) {
 			ret = gpio_request(CAMERA_PWDN_N, "CAMERA_PWDN_N");
-			if (!ret) {
+			if (!!ret) {
 				printk("%s,Error, request gpio CAMERA_PWDN_N. ret:%d\n",
 						__func__, ret);
 			}
@@ -20,7 +20,7 @@ static int ov9724_power(int onoff)
 
 		if (-1 != CAMERA_RST) {
 			ret = gpio_request(CAMERA_RST, "CAMERA_RST");
-			if (!ret) {
+			if (!!ret) {
 				printk("%s,Error, request gpio CAMERA_RST. ret:%d\n",
 						__func__, ret);
 			}
@@ -28,7 +28,7 @@ static int ov9724_power(int onoff)
 
 		if (-1 != CAMERA_PWEN) {
 			ret = gpio_request(CAMERA_PWEN, "CAMERA_PWEN");
-			if (!ret) {
+			if (!!ret) {
 				printk("%s,Error, request gpio CAMERA_PWEN. ret:%d\n",
 						__func__, ret);
 			}
@@ -39,7 +39,7 @@ static int ov9724_power(int onoff)
 	if (onoff) { /* conflict with USB_ID pin */
 		if (-1 != CAMERA_PWEN) {
 			ret = gpio_direction_output(CAMERA_PWEN, 1);
-			if (!ret) {
+			if (!!ret) {
 				printk("%s,Error, gpio CAMERA_PWEN output 1. ret:%d\n",
 						__func__, ret);
 			}
@@ -47,7 +47,7 @@ static int ov9724_power(int onoff)
 		mdelay(10); /* this is necesary */
 		if (-1 != CAMERA_PWDN_N) {
 			ret = gpio_direction_output(CAMERA_PWDN_N, 1);
-			if (!ret) {
+			if (!!ret) {
 				printk("%s,Error, gpio CAMERA_PWDN_N output 1. ret:%d\n",
 						__func__, ret);
 			}
@@ -55,7 +55,7 @@ static int ov9724_power(int onoff)
 	} else {
 		if (-1 != CAMERA_PWDN_N) {
 			ret = gpio_direction_output(CAMERA_PWDN_N, 0);
-			if (!ret) {
+			if (!!ret) {
 				printk("%s,Error, gpio CAMERA_PWDN_N output 0. ret:%d\n",
 						__func__, ret);
 			}
@@ -63,7 +63,7 @@ static int ov9724_power(int onoff)
 		mdelay(3);
 		if (-1 != CAMERA_PWEN) {
 			ret = gpio_direction_output(CAMERA_PWEN, 0);
-			if (!ret) {
+			if (!!ret) {
 				printk("%s,Error, gpio CAMERA_PWEN output 0. ret:%d\n",
 						__func__, ret);
 			}
@@ -79,19 +79,19 @@ static int ov9724_reset(void)
 	/*reset*/
 	if(CAMERA_RST != -1) {
 		ret = gpio_direction_output(CAMERA_RST, 1);   /*PWM0 */
-		if (!ret) {
+		if (!!ret) {
 			printk("%s,Error, gpio CAMERA_RST output 1. ret:%d\n",
 					__func__, ret);
 		}
 		mdelay(10);
 		ret = gpio_direction_output(CAMERA_RST, 0);   /*PWM0 */
-		if (!ret) {
+		if (!!ret) {
 			printk("%s,Error, gpio CAMERA_RST output 0. ret:%d\n",
 					__func__, ret);
 		}
 		mdelay(10);
 		ret = gpio_direction_output(CAMERA_RST, 1);   /*PWM0 */
-		if (!ret) {
+		if (!!ret) {
 			printk("%s,Error, gpio CAMERA_RST output 0. ret:%d\n",
 					__func__, ret);
 		}
