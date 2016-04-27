@@ -30,7 +30,8 @@
 
 #include "fifo_ring.h"
 
-#define SENSOR_VDD_REGULATOR "sensor3v3"
+#define SENSOR_VDD_REGULATOR  "sensor3v3"
+#define SENSOR_VDD_REGULATOR1 "NJRC heart rate-P0"
 #define DEV_NAME "jz-hwmon"
 
 #ifndef ADCFG_CMD_AUX1
@@ -418,6 +419,14 @@ static int hradc_probe(struct platform_device *pdev) {
 	if (IS_ERR(mhradc->reg_vdd)) {
 		mhradc->reg_vdd = NULL;
 		pr_err("hradc: failed to get regulator: [%s]\n", "evg_vdd");
+	}
+
+	if (mhradc->reg_vdd == NULL) {
+	    mhradc->reg_vdd = regulator_get(&pdev->dev, SENSOR_VDD_REGULATOR1);
+	    if (IS_ERR(mhradc->reg_vdd)) {
+	        mhradc->reg_vdd = NULL;
+	        pr_err("hradc: failed to get regulator: [%s]\n", SENSOR_VDD_REGULATOR1);
+	    }
 	}
 
 	mhradc->idev = input_allocate_device();
