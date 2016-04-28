@@ -638,6 +638,7 @@ static void ft6x0x_ts_do_suspend(struct ft6x0x_ts_data *ft6x0x_ts)
 	ft6x0x_ts->is_suspend = 1;
 	disable_irq_nosync(ft6x0x_ts->client->irq);
 	ret = ft6x0x_ts_disable(ft6x0x_ts);
+	set_pin_status(ft6x0x_ts->gpio.wake, 0);
 	mutex_unlock(&ft6x0x_ts->lock);
 	if (ret < 0)
 		dev_dbg(&ft6x0x_ts->client->dev, "[FTS]ft6x0x suspend failed! \n");
@@ -655,6 +656,7 @@ static void ft6x0x_ts_do_resume(struct ft6x0x_ts_data *ft6x0x_ts)
 	if (ret < 0)
 		dev_info(&ft6x0x_ts->client->dev, "-------tsc resume failed!------\n");
 	ft6x0x_ts->is_suspend = 0;
+	ft6x0x_ts_reset(ft6x0x_ts);
 	mutex_unlock(&ft6x0x_ts->lock);
 
 	enable_irq(ft6x0x_ts->client->irq);
@@ -900,6 +902,7 @@ exit_create_singlethread_workqueue:
 	if (!IS_ERR(ft6x0x_ts->power))
 		regulator_put(ft6x0x_ts->power);
 
+	set_pin_status(ft6x0x_ts->gpio.wake, 0);
 	gpio_free(ft6x0x_ts->gpio.irq->num);
 	gpio_free(ft6x0x_ts->gpio.wake->num);
 	i2c_set_clientdata(client, NULL);

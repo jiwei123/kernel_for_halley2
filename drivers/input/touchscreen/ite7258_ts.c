@@ -1590,6 +1590,7 @@ exit_input_register_device_failed:
 
 exit_input_dev_alloc_failed:
 exit_get_version:
+    gpio_direction_output(ite7258_ts->rst, 0);
 	gpio_free(ite7258_ts->rst);
 	gpio_free(ite7258_ts->irq);
 

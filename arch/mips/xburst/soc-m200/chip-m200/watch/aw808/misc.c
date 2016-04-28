@@ -55,7 +55,7 @@ FIXED_REGULATOR_DEF(tp_vio, "tp_vio", 1800 * 1000, GPIO_TP_EN, 1, 0, 10, NULL,
 #endif
 
 #ifdef CONFIG_LCD_X163
-FIXED_REGULATOR_DEF(lcd_blk, "lcd_blk_vcc", 4000 * 1000, GPIO_LCD_BLK_EN, 1, 0, 0, NULL,
+FIXED_REGULATOR_DEF(lcd_blk, "lcd_blk_vcc", 4000 * 1000, GPIO_LCD_BLK_EN, 1, 1, 0, NULL,
 		"lcd_blk_vcc", NULL);
 #endif
 

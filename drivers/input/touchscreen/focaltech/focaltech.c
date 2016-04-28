@@ -684,6 +684,7 @@ fail:
 #endif
 static void focaltech_ts_do_suspend(struct fts_data *fts)
 {
+    struct fts_platform_data *pdata = fts->platform_data;
 	int ret = -1;
 
 	mutex_lock(&fts->lock);
@@ -716,6 +717,7 @@ static void focaltech_ts_do_suspend(struct fts_data *fts)
 		disable_irq(fts->client->irq);
 		fts_clear_report_data(fts);
 		regulator_force_disable(fts->vcc_reg);
+		gpio_set_value(pdata->reset_gpio_number, 0);
 	}
 	mutex_unlock(&fts->lock);
 	return;
@@ -953,6 +955,7 @@ exit_input_register_device_failed:
 exit_input_dev_alloc_failed:
 exit_create_singlethread:
 exit_chip_check_failed:
+    gpio_set_value(pdata->reset_gpio_number, 0);
 	gpio_free(pdata->irq_gpio_number);
 	gpio_free(pdata->reset_gpio_number);
 	kfree(fts);
