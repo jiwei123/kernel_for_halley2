@@ -1131,7 +1131,7 @@ static void unset_regulator_supplies(struct regulator_dev *rdev)
 	}
 }
 
-#define REG_STR_SIZE	64
+#define REG_STR_SIZE	256
 
 static struct regulator *create_regulator(struct regulator_dev *rdev,
 					  struct device *dev,
@@ -1153,10 +1153,12 @@ static struct regulator *create_regulator(struct regulator_dev *rdev,
 		regulator->dev = dev;
 
 		/* Add a link to the device sysfs entry */
-		size = scnprintf(buf, REG_STR_SIZE, "%s-%s",
-				 dev->kobj.name, supply_name);
-		if (size >= REG_STR_SIZE)
+		size = strlen(dev->kobj.name) + strlen(supply_name);
+		if (size >= REG_STR_SIZE) {
+			rdev_warn(rdev, "supply_name is overflow !: %s\n", supply_name);
 			goto overflow_err;
+		}
+		scnprintf(buf, REG_STR_SIZE, "%s-%s", dev->kobj.name, supply_name);
 
 		regulator->supply_name = kstrdup(buf, GFP_KERNEL);
 		if (regulator->supply_name == NULL)
