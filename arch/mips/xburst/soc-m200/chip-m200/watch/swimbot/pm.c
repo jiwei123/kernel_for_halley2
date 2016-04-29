@@ -107,10 +107,10 @@ __initdata int gpio_ss_table[][2] = {
     { 32 * 5 + 6, GSS_OUTPUT_LOW }, /* DMIC_CLK */
     { 32 * 5 + 7, GSS_INPUT_PULL }, /* DMIC_DOUT */
 
-    { 32 * 5 + 12, GSS_OUTPUT_LOW }, /* BT_PCM_DO */
-    { 32 * 5 + 13, GSS_OUTPUT_LOW }, /* BT_PCM_CLK */
-    { 32 * 5 + 14, GSS_OUTPUT_LOW }, /* BT_PCM_SYN */
-    { 32 * 5 + 15, GSS_OUTPUT_LOW }, /* BT_PCM_DI */
+    { 32 * 5 + 12, GSS_INPUT_NOPULL }, /* BT_PCM_DO */
+    { 32 * 5 + 13, GSS_INPUT_NOPULL }, /* BT_PCM_CLK */
+    { 32 * 5 + 14, GSS_INPUT_NOPULL }, /* BT_PCM_SYN */
+    { 32 * 5 + 15, GSS_INPUT_NOPULL }, /* BT_PCM_DI */
     { GSS_TABLET_END, GSS_TABLET_END }
 };
 #endif
