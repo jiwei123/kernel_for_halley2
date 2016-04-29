@@ -38,8 +38,8 @@
 #endif
 
 #define DEV_NAME                            "bt_power"
-#define RFKILL_STATE_SOFT_BLOCKED           (0)
-#define RFKILL_STATE_UNBLOCKED              (1)
+#define RFKILL_STATE_POWER_DOWN             (0)
+#define RFKILL_STATE_POWER_ON               (1)
 
 int bt_power_state = 0;
 
@@ -49,7 +49,6 @@ extern int bcm_power_down(void);
 extern int bcm_power_on(void);
 
 struct bt_power {
-	bool first_called;
 	int bt_rst_n ;
 	int bt_reg_on;
 	struct bt_rfkill_platform_data *pdata;
@@ -81,7 +80,7 @@ static int bt_power_control(struct bt_power *bt_power, int enable)
 		return 0;
 
 	switch (enable)	{
-	case RFKILL_STATE_SOFT_BLOCKED:
+	case RFKILL_STATE_POWER_DOWN:
 		bluesleep_stop();
 		msleep(15);
 		bcm_power_down();
@@ -91,8 +90,8 @@ static int bt_power_control(struct bt_power *bt_power, int enable)
 			(*bt_power->pdata->set_pin_status)(enable);
 		}
 		break;
-	case RFKILL_STATE_UNBLOCKED:
-		if (bt_power->pdata->restore_pin_status != NULL) {
+	case RFKILL_STATE_POWER_ON:
+		if (bt_power->pdata->restore_pin_status != NULL){
 			(*bt_power->pdata->restore_pin_status)(enable);
 		}
 		bcm_power_on();
@@ -123,14 +122,9 @@ static int bt_rfkill_set_block(void *data, bool blocked)
 	int ret;
 	struct bt_power *bt_power = (struct bt_power *)data;
 
-	if (!bt_power->first_called) {
-		mutex_lock(&bt_power->bt_power_lock);
-		ret = bt_power_control(bt_power, blocked ? 0 : 1);
-		mutex_unlock(&bt_power->bt_power_lock);
-	} else {
-		bt_power->first_called = false;
-		return 0;
-	}
+    mutex_lock(&bt_power->bt_power_lock);
+    ret = bt_power_control(bt_power, blocked ? 0 : 1);
+    mutex_unlock(&bt_power->bt_power_lock);
 
 	return ret;
 }
@@ -178,54 +172,62 @@ static int __init_or_module bt_power_probe(struct platform_device *pdev)
 		goto ERR1;
 	}
 
-	bt_power->first_called = true;
-
 	bt_power->pdata = pdata;
-	ret = bt_power_rfkill_probe(pdev, bt_power);
-	if (ret) {
-		dev_err(&pdev->dev, "Failed to probe bluetooth rfkill\n");
-		ret = -ENOMEM;
-		goto ERR2;
-	}
 
-	bt_power->bt_reg_on = pdata->gpio.bt_reg_on;
-	if (bt_power->bt_reg_on >= 0) {
-		ret = gpio_request(bt_power->bt_reg_on, "bt_reg_on");
+    if (pdata->gpio.bt_reg_on >= 0) {
+        bt_power->bt_reg_on = pdata->gpio.bt_reg_on;
+    } else {
+        bt_power->bt_reg_on = -1;
+    }
+
+    if (bt_power->bt_reg_on != -1) {
+        ret = gpio_request(bt_power->bt_reg_on, "bt_reg_on");
+        if(unlikely(ret)){
+            dev_err(&pdev->dev, "Failed to request gpio for bt_reg_on\n");
+            ret = -EBUSY;
+            goto ERR2;
+        }
+    }
+
+	if (pdata->gpio.bt_rst_n >= 0) {
+		bt_power->bt_rst_n = pdata->gpio.bt_rst_n;
+	} else
+		bt_power->bt_rst_n = -1;
+
+	if (bt_power->bt_rst_n != -1) {
+		ret = gpio_request(bt_power->bt_rst_n, "bt_rst_n");
 		if(unlikely(ret)){
-			dev_err(&pdev->dev, "Failed to request gpio for bt_reg_on[%d]\n", bt_power->bt_reg_on);
+			dev_err(&pdev->dev, "Failed to request gpio for bt_rst_n\n");
 			ret = -EBUSY;
 			goto ERR3;
 		}
 	}
 
-	bt_power->bt_rst_n = pdata->gpio.bt_rst_n;
-	if (bt_power->bt_rst_n >= 0) {
-		ret = gpio_request(bt_power->bt_rst_n, "bt_rst_n");
-		if(unlikely(ret)){
-			dev_err(&pdev->dev, "Failed to request gpio for bt_rst_n[%d]\n", bt_power->bt_rst_n);
-			ret = -EBUSY;
-			goto ERR4;
-		}
-	}
-
-	if(bt_power->bt_rst_n >= 0){
+	if(bt_power->bt_rst_n != -1){
 		ret = gpio_direction_output(bt_power->bt_rst_n, 1);
 		if (ret) {
 			dev_err(&pdev->dev, "Failed to set gpio bt_rst_n to 1\n");
 			ret = -EIO;
-			goto ERR5;
+			goto ERR4;
 		}
 	}
+
 	mutex_init(&bt_power->bt_power_lock);
+    ret = bt_power_rfkill_probe(pdev, bt_power);
+    if (ret) {
+        dev_err(&pdev->dev, "Failed to probe bluetooth rfkill\n");
+        ret = -ENOMEM;
+        goto ERR5;
+    }
 	platform_set_drvdata(pdev, bt_power);
 
 	return 0;
+
 ERR5:
-	gpio_free(bt_power->bt_rst_n);
 ERR4:
-	gpio_free(bt_power->bt_reg_on);
+    gpio_free(bt_power->bt_rst_n);
 ERR3:
-	bt_power_rfkill_remove(pdata);
+    gpio_free(bt_power->bt_reg_on);
 ERR2:
 	kfree(bt_power);
 ERR1:

@@ -41,22 +41,33 @@ struct platform_device	bcm_power_platform_device = {
 /*For BlueTooth*/
 #ifdef CONFIG_BROADCOM_RFKILL
 #include <linux/bt-rfkill.h>
-static void restore_pin_status(int bt_power_state)
+
+static void bt_restore_pin_status(int bt_power_state)
 {
-	/*set UART0_RXD, UART0_CTS_N, UART0_RTS_N, UART0_TXD to FUNC*/
-	jzgpio_set_func(BLUETOOTH_UART_GPIO_PORT, BLUETOOTH_UART_GPIO_FUNC, BLUETOOTH_UART_FUNC_SHIFT);
+	jz_gpio_set_func(BT_UART_TXD, BT_UART_FUNC);
+	jz_gpio_set_func(BT_UART_RXD, BT_UART_FUNC);
+	jz_gpio_set_func(BT_UART_CTS, BT_UART_FUNC);
+	jz_gpio_set_func(BT_UART_RTS, BT_UART_FUNC);
+}
+
+static void bt_set_pin_status(int enable)
+{
+	jz_gpio_set_func(BT_UART_TXD, GPIO_INPUT);
+	jz_gpio_set_func(BT_UART_RXD, GPIO_INPUT);
+	jz_gpio_set_func(BT_UART_CTS, GPIO_INPUT);
+	jz_gpio_set_func(BT_UART_RTS, GPIO_INPUT);
 }
 
 static struct bt_rfkill_platform_data  bt_gpio_data = {
-	.gpio = {
-		.bt_rst_n = HOST_BT_RST,
-		.bt_reg_on = BT_REG_EN,
-		.bt_wake = HOST_WAKE_BT,
-		.bt_int = BT_WAKE_HOST,
-		.bt_uart_rts = BT_UART_RTS,
-	},
-	.restore_pin_status = restore_pin_status,
-	.set_pin_status = NULL,
+    .gpio = {
+        .bt_rst_n    = HOST_BT_RST,
+        .bt_reg_on   = BT_REG_EN,
+        .bt_wake     = HOST_WAKE_BT,
+        .bt_int      = BT_WAKE_HOST,
+        .bt_uart_rts = BT_UART_RTS,
+    },
+    .restore_pin_status = bt_restore_pin_status,
+    .set_pin_status     = bt_set_pin_status,
 };
 
 struct platform_device bt_power_device  = {

@@ -100,7 +100,7 @@ static int _bcm_power_on(void)
         msleep(1);
         ret = __do_bcm_power_on();
         if (ret < 0) {
-            pr_err("%s, wlan power on failure\n", __func__);
+            pr_err("%s, bcm power on failure\n", __func__);
             return -EIO;
         }
     }
@@ -125,7 +125,7 @@ static int _bcm_power_down(void)
     if (bcm_power->use_count == 0) {
         ret = __do_bcm_power_down();
         if (ret < 0) {
-            pr_err("%s, wlan power on failure\n", __func__);
+            pr_err("%s, bcm power on failure\n", __func__);
             return -EIO;
         }
         msleep(1);
