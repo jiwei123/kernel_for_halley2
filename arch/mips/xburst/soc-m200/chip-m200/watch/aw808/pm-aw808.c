@@ -21,7 +21,7 @@ __initdata int gpio_ss_table[][2] = {
     { 32 * 0 + 14, GSS_IGNORE }, /* TP_RST*/
     { 32 * 0 + 15, GSS_IGNORE }, /* SENSOR_INT1 */
 
-    { 32 * 0 + 18, GSS_INPUT_NOPULL }, /* MSC0_CLK */
+    { 32 * 0 + 18, GSS_OUTPUT_LOW }, /* MSC0_CLK */
     { 32 * 0 + 19, GSS_INPUT_NOPULL }, /* MSC0_CMD */
     { 32 * 0 + 20, GSS_INPUT_NOPULL }, /* MSC0_D0 */
     { 32 * 0 + 21, GSS_INPUT_NOPULL }, /* MSC0_D1 */
@@ -88,7 +88,7 @@ __initdata int gpio_ss_table[][2] = {
     { 32 * 4 + 21, GSS_INPUT_NOPULL }, /* SDIO_D1 */
     { 32 * 4 + 22, GSS_INPUT_NOPULL }, /* SDIO_D2 */
     { 32 * 4 + 23, GSS_INPUT_NOPULL }, /* SDIO_D3 */
-    { 32 * 4 + 28, GSS_INPUT_NOPULL }, /* SDIO_CLK */
+    { 32 * 4 + 28, GSS_OUTPUT_LOW }, /* SDIO_CLK */
     { 32 * 4 + 29, GSS_INPUT_NOPULL }, /* SDIO_CMD */
     { 32 * 4 + 30, GSS_INPUT_NOPULL }, /* SMB1_SDA */
     { 32 * 4 + 31, GSS_INPUT_NOPULL }, /* SMB1_SCK */
