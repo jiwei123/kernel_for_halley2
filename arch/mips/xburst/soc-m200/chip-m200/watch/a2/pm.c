@@ -17,7 +17,7 @@ __initdata int gpio_ss_table[][2] = {
 	{32*0+13,	GSS_INPUT_PULL		},	/* NC */
 	{32*0+14,	GSS_INPUT_PULL		},	/* NC */
 	{32*0+15,	GSS_INPUT_PULL 		},	/* NC */
-	{32*0+18,	GSS_IGNORE		},	/* MSC0_CLK */
+	{32*0+18,	GSS_OUTPUT_LOW		},	/* MSC0_CLK */
 	{32*0+19,	GSS_INPUT_NOPULL	},	/* MSC0_CMD */
 	{32*0+20,	GSS_INPUT_NOPULL	},	/* MSC0_D0 */
 	{32*0+21,	GSS_INPUT_NOPULL	},	/* MSC0_D1 */
@@ -99,12 +99,12 @@ __initdata int gpio_ss_table[][2] = {
 	{32*4+2, 	GSS_IGNORE			},	/* Vibra_IN/TRIG */
 	{32*4+3,	GSS_INPUT_NOPULL	},	/* SMB2_SCK */
 	{32*4+10,	GSS_IGNORE		},	/* USB_DETE 	@@@*/
-	{32*4+20,	GSS_IGNORE		},	/* SDIO_D0_WIFI */
-	{32*4+21,	GSS_IGNORE		},	/* SDIO_D1_WIFI */
-	{32*4+22,	GSS_IGNORE		},	/* SDIO_D2_WIFI */
-	{32*4+23,	GSS_IGNORE		},	/* SDIO_D3_WIFI */
-	{32*4+28,	GSS_IGNORE		},	/* SDIO_CLK_WIFI @@@*/
-	{32*4+29,	GSS_IGNORE		},	/* SDIO_CMD_WIFI */
+	{32*4+20,	GSS_INPUT_NOPULL		},	/* SDIO_D0_WIFI */
+	{32*4+21,	GSS_INPUT_NOPULL		},	/* SDIO_D1_WIFI */
+	{32*4+22,	GSS_INPUT_NOPULL		},	/* SDIO_D2_WIFI */
+	{32*4+23,	GSS_INPUT_NOPULL		},	/* SDIO_D3_WIFI */
+	{32*4+28,	GSS_OUTPUT_LOW			},	/* SDIO_CLK_WIFI @@@*/
+	{32*4+29,	GSS_INPUT_NOPULL		},	/* SDIO_CMD_WIFI */
 	{32*4+30,	GSS_INPUT_NOPULL	},	/* SMB1_SDA */
 	{32*4+31,	GSS_INPUT_NOPULL	},	/* SMB1_SCK */
 

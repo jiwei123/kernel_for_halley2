@@ -69,8 +69,8 @@ struct jzmmc_platform_data {
 	unsigned int type;
 };
 
-#define ENABLE_CLK32K     0x00000006
-#define DISABLE_CLK32K    0x00000010
+#define ENABLE_CLK32K     0x00000016
+#define DISABLE_CLK32K    0x00000002
 #define RTC_IOBASE        0x10003000
 #define RTC_RTCCR        (0x00)
 #define RTC_WENR         (0x3c)
