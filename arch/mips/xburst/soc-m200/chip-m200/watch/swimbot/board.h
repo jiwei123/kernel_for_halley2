@@ -390,10 +390,12 @@
 //#define GPIO_PB_FLGREG      (0x10010058)
 #define GPIO_BT_INT_BIT     (1 << (BT_WAKE_HOST % 32))
 /* bluetooth uart set */
-#define BLUETOOTH_UPORT_NAME  "ttyS1"
-#define BLUETOOTH_UART_GPIO_PORT	GPIO_PORT_D
-#define BLUETOOTH_UART_GPIO_FUNC	GPIO_FUNC_2
-#define BLUETOOTH_UART_FUNC_SHIFT	(0x1<<28)
+#define BLUETOOTH_UPORT_NAME            "ttyS1"
+#define BT_UART_FUNC                    GPIO_FUNC_2
+#define BT_UART_TXD                     GPIO_PD(29)
+#define BT_UART_RXD                     GPIO_PD(26)
+#define BT_UART_CTS                     GPIO_PD(27)
+#define BT_UART_RTS                     GPIO_PD(28)
 #endif
 /* ****************************GPIO BLUETOOTH END**************************** */
 

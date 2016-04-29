@@ -259,26 +259,29 @@ int jzgpio_set_func(enum gpio_port port,
 	return 0;
 }
 
+#define m_assert(_exp)                                                               \
+    do {                                                                             \
+        if (!(_exp)) {                                                               \
+            printk(KERN_ERR "%s %d : assert %s failed\n", __func__, __LINE__, #_exp);\
+            dump_stack();                                                            \
+            BUG();                                                                   \
+        }                                                                            \
+    } while (0)
+
 int jz_gpio_set_func(int gpio, enum gpio_function func)
 {
-	int port = gpio / 32;
-	int pin = BIT(gpio & 0x1f);
+	unsigned int port = gpio / 32;
+	unsigned int pin = gpio % 32;
+	struct jzgpio_chip *jz;
 
-	struct jzgpio_chip *jz = &jz_gpio_chips[port];
+	if (gpio == -1)
+		return 0;
 
-/*
- * TODO: ugly stuff
- * should i check and mark the pin has been requested?
- * it's a duplicate of request_gpio
- */
-#if 0
-	if (jz->dev_map[0] & pins)
-		return -EINVAL;
+	m_assert(gpio >= 0 &&  port < GPIO_NR_PORTS);
+	jz = &jz_gpio_chips[port];
 
-	jz->dev_map[0] |= pins;
-#endif
+	gpio_set_func(jz, func, 1 << pin);
 
-	gpio_set_func(jz, func, pin);
 	return 0;
 }
 

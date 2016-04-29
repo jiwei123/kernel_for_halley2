@@ -237,16 +237,18 @@
 
 /* ****************************GPIO BLUETOOTH START************************** */
 /* BT gpio */
-#define BLUETOOTH_UART_GPIO_PORT        GPIO_PORT_F
-#define BLUETOOTH_UART_GPIO_FUNC        GPIO_FUNC_2
-#define BLUETOOTH_UART_FUNC_SHIFT       0x4
-
 #define HOST_WAKE_BT	GPIO_PA(2)
 #define BT_WAKE_HOST	GPIO_PA(3)
 #define BT_REG_EN	GPIO_PA(1)
 #define BT_UART_RTS	GPIO_PF(2)
 #define HOST_BT_RST     -1
-#define BLUETOOTH_UPORT_NAME  "ttyS0"
+#define BLUETOOTH_UPORT_NAME            "ttyS0"
+#define BT_UART_FUNC                    GPIO_FUNC_2
+#define BT_UART_TXD                     GPIO_PF(3)
+#define BT_UART_RXD                     GPIO_PF(0)
+#define BT_UART_CTS                     GPIO_PF(1)
+#define BT_UART_RTS                     GPIO_PF(2
+
 /* ****************************GPIO BLUETOOTH END**************************** */
 
 /* ***************************GPIO VIBRATOR START***************************** */

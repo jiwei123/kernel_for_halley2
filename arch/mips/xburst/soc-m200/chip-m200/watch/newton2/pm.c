@@ -68,8 +68,8 @@ __initdata int gpio_ss_table[][2] = {
 	{32*3+18,	GSS_INPUT_NOPULL	},	/* BOOT_SEL1 	@@@*/
 	{32*3+19,	GSS_INPUT_NOPULL	},	/*  */
 	{32*3+26,	GSS_IGNORE		},	/* GPS_UART1_RXD */
-	{32*3+27,	GSS_INPUT_PULL		},	/* NC */
-	{32*3+28,	GSS_INPUT_PULL		},	/* NC */
+	{32*3+27,	GSS_IGNORE		},	/* NC */
+	{32*3+28,	GSS_IGNORE		},	/* NC */
 	{32*3+29,	GSS_IGNORE		},	/* GPS_UART1_TXD */
 	{32*3+30,	GSS_OUTPUT_HIGH	},	/* SMB0_SDA */
 	{32*3+31,	GSS_OUTPUT_HIGH	},	/* SMB0_CLK */
@@ -101,10 +101,10 @@ __initdata int gpio_ss_table[][2] = {
 	{32*5+6,	GSS_OUTPUT_LOW		},	/* DMIC_CLK 	@@@*/
 	{32*5+7,	GSS_INPUT_PULL		},	/* DMIC_DOUT 	@@@*/
 #endif
-	{32*5+12,	GSS_IGNORE		},	/* BT_PCM_DO */
-	{32*5+13,	GSS_IGNORE		},	/* BT_PCM_CLK */
-	{32*5+14,	GSS_IGNORE		},	/* BT_PCM_SYN */
-	{32*5+15,	GSS_IGNORE		},	/* BT_PCM_DI */
+	{32*5+12,	GSS_INPUT_NOPULL	},	/* BT_PCM_DO */
+	{32*5+13,	GSS_INPUT_NOPULL	},	/* BT_PCM_CLK */
+	{32*5+14,	GSS_INPUT_NOPULL	},	/* BT_PCM_SYN */
+	{32*5+15,	GSS_INPUT_NOPULL	},	/* BT_PCM_DI */
 	{GSS_TABLET_END	,GSS_TABLET_END	}
 };
 #endif
