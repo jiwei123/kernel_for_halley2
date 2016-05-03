@@ -309,6 +309,42 @@ struct ricoh61x {
 	int			bank_num;
 };
 
+/*
+ * 这个结构体的作用主要是为了降低休眠时的功耗
+ * 列出pmu dcdc 和 ldo的供电关系，以动态地节约休眠时功耗
+ *
+ * ricoh619的ldo的输入源是外接的，可以选择采用dcdc或者vsys供电
+ * 所以对与一个dcdc来说，可以给如下四组ldo供电
+ *   VINL1 : ldo1 ldo2 rtc1.8 rtc1.1 (一般由vsys供电)
+ *   VINL2 : ldo5 ldo7 ldo8
+ *   VINL3 : ldo3 ldo4
+ *   VINL4 : ldo6 ldo9 ldo10
+ *
+ * 下面是关于dcdc5的例子
+ * see arch/mips/xburst/soc-m200/chip-m200/watch/aw808/pmu-ricoh619-aw808.h
+ * 就目前而言多数的板子都会使用dcdc5 给 LDO_3_4 LDO_6_9_10 供电
+
+#if 0
+ #define DC5_ALWAYS_ON           1 // 除了ldo以外，休眠时有设备需要dcdc5供电
+                                   // 如果不在乎dcdc5 25uA的功耗，也可以直接设置成always_on
+#else
+ #define DC5_ALWAYS_ON           0 // 除了ldo以外，休眠时没有设备需要dcdc5供电
+                                   // 此时休眠时dcdc的状态由ldo的状态决定
+                                   // 动态的关闭dcdc5，可以节省约25 uA的功耗
+#endif
+ #define DC5_BOOT_ON             1
+
+ #define DC5_SUPPLY_LDO_5_7_8    0
+ #define DC5_SUPPLY_LDO_3_4      1 // ldo 3 4 由dcdc5供电
+ #define DC5_SUPPLY_LDO_6_9_10   1 // ldo 6 9 10 由dcdc5供电
+*/
+struct ricoh619_supply {
+	unsigned int ldo_5_7_8:1;
+	unsigned int ldo_3_4:1;
+	unsigned int ldo_6_9_10:1;
+	unsigned int need_enable_when_resume:1; /* this bit is for driver, do not use it */
+} ;
+
 struct ricoh619_platform_data {
 	int		num_subdevs;
 	struct	ricoh619_subdev_info *subdevs;
@@ -320,6 +356,7 @@ struct ricoh619_platform_data {
 	bool enable_shutdown_pin;
 	int eco_slp_mode;
 	int dcdc_mode[5];
+	struct ricoh619_supply dc5_supply;
 };
 
 /* ==================================== */

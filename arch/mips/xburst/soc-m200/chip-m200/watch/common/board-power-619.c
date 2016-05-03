@@ -160,7 +160,7 @@ RICOH_PDATA_INIT(dc3, 0,	600,   3500, 0, DC3_ALWAYS_ON, DC3_BOOT_ON, 1,
 		 DC3_INIT_UV, DC3_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(dc4, 0,	600,   3500, 0, DC4_ALWAYS_ON, DC4_BOOT_ON, 1,
 		 DC4_INIT_UV, DC4_INIT_ENABLE, 1, 0, 0, 0);
-RICOH_PDATA_INIT(dc5, 0,	600,   3500, 0, DC5_ALWAYS_ON | LDO6_ALWAYS_ON | LDO9_ALWAYS_ON | LDO10_ALWAYS_ON, DC5_BOOT_ON | LDO6_BOOT_ON | LDO9_BOOT_ON | LDO10_BOOT_ON, 1,
+RICOH_PDATA_INIT(dc5, 0,	600,   3500, 0, DC5_ALWAYS_ON, DC5_BOOT_ON, 1,
 		 DC5_INIT_UV, DC5_INIT_ENABLE, 1, 0, 0, 0);
 RICOH_PDATA_INIT(ldo1, 0,	900,   3500, 0, LDO1_ALWAYS_ON, LDO1_BOOT_ON, 1,
 		 LDO1_INIT_UV, LDO1_INIT_ENABLE, 1, 0, 0, 0);
@@ -492,6 +492,43 @@ struct ricoh619_gpio_init_data ricoh_gpio_data[] = {
 #define ECO_SLP_MODE (LDO1_ECO_SLEEP | LDO2_ECO_SLEEP << 1 | LDO3_ECO_SLEEP << 2 \
         | LDO4_ECO_SLEEP << 3 | LDO5_ECO_SLEEP << 4 | LDO6_ECO_SLEEP << 5)
 
+#ifndef DC5_SUPPLY_LDO_5_7_8
+#error "DC5_SUPPLY_LDO_5_7_8 is not defined! see this file for help!"
+#endif
+
+/*
+ * DC5_SUPPLY_LDO_5_7_8
+ * DC5_SUPPLY_LDO_3_4
+ * DC5_SUPPLY_LDO_6_9_10
+ * 这几个宏的作用主要是为了降低休眠时的功耗
+ * 列出pmu dcdc 和 ldo的供电关系，以动态地节约休眠时功耗
+ *
+ * ricoh619的ldo的输入源是外接的，可以选择采用dcdc或者vsys供电
+ * 所以对与一个dcdc来说，可以给如下四组ldo供电
+ *   VINL1 : ldo1 ldo2 rtc1.8 rtc1.1 (一般由vsys供电)
+ *   VINL2 : ldo5 ldo7 ldo8
+ *   VINL3 : ldo3 ldo4
+ *   VINL4 : ldo6 ldo9 ldo10
+ *
+ * 下面是关于dcdc5的例子
+ * see arch/mips/xburst/soc-m200/chip-m200/watch/aw808/pmu-ricoh619-aw808.h
+ * 就目前而言多数的板子都会使用dcdc5 给 LDO_3_4 LDO_6_9_10 供电
+
+#if 0
+ #define DC5_ALWAYS_ON           1 // 除了ldo以外，休眠时有设备需要dcdc5供电
+                                   // 如果不在乎dcdc5 25uA的功耗，也可以直接设置成always_on
+#else
+ #define DC5_ALWAYS_ON           0 // 除了ldo以外，休眠时没有设备需要dcdc5供电
+                                   // 此时休眠时dcdc的状态由ldo的状态决定
+                                   // 动态的关闭dcdc5，可以节省约25 uA的功耗
+#endif
+ #define DC5_BOOT_ON             1
+
+ #define DC5_SUPPLY_LDO_5_7_8    0
+ #define DC5_SUPPLY_LDO_3_4      1 // ldo 3 4 由dcdc5供电
+ #define DC5_SUPPLY_LDO_6_9_10   1 // ldo 6 9 10 由dcdc5供电
+*/
+
 static struct ricoh619_platform_data ricoh_platform = {
     .num_subdevs = ARRAY_SIZE(ricoh_devs_dcdc),
     .subdevs = ricoh_devs_dcdc,
@@ -508,6 +545,11 @@ static struct ricoh619_platform_data ricoh_platform = {
         DCDC4_MODE,
         DCDC5_MODE
     },
+	.dc5_supply = {
+		.ldo_5_7_8  = DC5_SUPPLY_LDO_5_7_8,
+		.ldo_3_4    = DC5_SUPPLY_LDO_3_4,
+		.ldo_6_9_10 = DC5_SUPPLY_LDO_6_9_10,
+	},
 };
 
 struct i2c_board_info __initdata ricoh619_regulator = {

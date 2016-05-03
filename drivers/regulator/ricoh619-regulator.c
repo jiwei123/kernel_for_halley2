@@ -35,6 +35,16 @@
 #include <linux/regulator/machine.h>
 #include <linux/mfd/ricoh619.h>
 #include <linux/regulator/ricoh619-regulator.h>
+#include <linux/syscore_ops.h>
+
+#define m_assert(_exp)                                                               \
+    do {                                                                             \
+        if (!(_exp)) {                                                               \
+            printk(KERN_ERR "%s %d : assert %s failed\n", __func__, __LINE__, #_exp);\
+            dump_stack();                                                            \
+            BUG();                                                                   \
+        }                                                                            \
+    } while (0)
 
 #define DCDC5_ON (1 << 3)
 #define LDO6_ON  (1 << 2)
@@ -42,6 +52,8 @@
 #define LDO10_ON (1 << 0)
 
 int fixed_reglators_on = 0;
+
+extern struct ricoh619_supply ricoh619_dc5_supply;
 
 struct ricoh61x_regulator {
 	int		id;
@@ -79,6 +91,8 @@ struct ricoh61x_regulator {
 
 static unsigned int ricoh61x_suspend_status;
 
+static struct regulator_dev *ricoh619_rdev[RICOH619_ID_NUMS];
+
 static inline struct device *to_ricoh61x_dev(struct regulator_dev *rdev)
 {
 	return rdev_get_dev(rdev)->parent->parent;
@@ -113,29 +127,6 @@ static int ricoh61x_reg_enable(struct regulator_dev *rdev)
 	struct device *parent = to_ricoh61x_dev(rdev);
 	int ret = 0;
 
-//if enbale ldo6/9/10, should enable dcdc5 first. bc dcdc5 is the power supply for these ldos.
-//this is for the x3, aw808 borads
-    if(ri->id == RICOH619_ID_LDO6 || ri->id == RICOH619_ID_LDO9 || ri->id == RICOH619_ID_LDO10) {
-	    ricoh61x_set_bits(parent, 0x34, (1 << 0));
-        switch(ri->id) {
-            case RICOH619_ID_LDO6:
-                fixed_reglators_on = fixed_reglators_on | LDO6_ON;
-                break;
-            case RICOH619_ID_LDO9:
-                fixed_reglators_on = fixed_reglators_on | LDO9_ON;
-                break;
-            case RICOH619_ID_LDO10:
-                fixed_reglators_on = fixed_reglators_on | LDO10_ON;
-                break;
-			default:
-                break;
-		}
-	    udelay(ri->delay);
-	}
-    if(ri->id == RICOH619_ID_DC5) {
-        fixed_reglators_on = fixed_reglators_on | DCDC5_ON;
-    }
-
 	ret = ricoh61x_set_bits(parent, ri->reg_en_reg, (1 << ri->en_bit));
 	if (ret < 0) {
 		dev_err(&rdev->dev, "Error in updating the STATE register\n");
@@ -155,32 +146,6 @@ static int ricoh61x_reg_disable(struct regulator_dev *rdev)
 	ret = ricoh61x_clr_bits(parent, ri->reg_en_reg, (1 << ri->en_bit));
 	if (ret < 0)
 		dev_err(&rdev->dev, "Error in updating the STATE register\n");
-
-    if(ri->id == RICOH619_ID_LDO6 || ri->id == RICOH619_ID_LDO9 || ri->id == RICOH619_ID_LDO10 || ri->id == RICOH619_ID_DC5) {
-        switch(ri->id) {
-            case RICOH619_ID_LDO6:
-                fixed_reglators_on = fixed_reglators_on & (~LDO6_ON);
-                break;
-            case RICOH619_ID_LDO9:
-                fixed_reglators_on = fixed_reglators_on & (~LDO9_ON);
-                break;
-            case RICOH619_ID_LDO10:
-                fixed_reglators_on = fixed_reglators_on & (~LDO10_ON);
-                break;
-            case RICOH619_ID_DC5:
-                fixed_reglators_on = fixed_reglators_on & (~DCDC5_ON);
-                if(fixed_reglators_on) {
-                    printk("NOTICE!!!! : the dc5 has disabled, but the regulator which depend on it do not disabled!!! \n");
-                }
-                break;
-			default:
-                break;
-		}
-//if all the regulator ldo6, ldo9, ldo10 had been close, close the dcdc5.
-        if(!fixed_reglators_on) {
-            ricoh61x_clr_bits(parent, 0x34, (1 << 0));
-        }
-    }
 
 	return ret;
 }
@@ -576,6 +541,7 @@ static int ricoh61x_regulator_probe(struct platform_device *pdev)
 		return PTR_ERR(rdev);
 	}
 
+	ricoh619_rdev[ri->id] = rdev;
 	platform_set_drvdata(pdev, rdev);
 
 	if (rdev && tps_pdata->init_enable && ri->desc.ops->is_enabled(rdev)) {
@@ -602,14 +568,107 @@ static struct platform_driver ricoh61x_regulator_driver = {
 	.remove		= ricoh61x_regulator_remove,
 };
 
+static void ricoh619_set_supply_dcdc_state(int dcdc_id, struct ricoh619_supply *dcdc_supply)
+{
+	int on = 0;
+
+	/*
+	 * the dcdc will not disable when "a" or "b" is true
+	 *   a, always_on is set to 1
+	 *   b, have consumer use it
+	 *      if boot is 1, use_count > 1
+	 *      if boot is 0, use_count > 0
+	 */
+	if (ricoh619_rdev[dcdc_id]->constraints->always_on ||
+		(ricoh619_rdev[dcdc_id]->constraints->boot_on && ricoh619_rdev[dcdc_id]->use_count > 1) ||
+		(!ricoh619_rdev[dcdc_id]->constraints->boot_on && ricoh619_rdev[dcdc_id]->use_count > 0) )
+		on = 1;
+
+	if (dcdc_supply->ldo_5_7_8) {
+		if (ricoh619_rdev[RICOH619_ID_LDO5]->use_count != 0 ||
+			ricoh619_rdev[RICOH619_ID_LDO7]->use_count != 0 ||
+			ricoh619_rdev[RICOH619_ID_LDO8]->use_count != 0)
+			on = 1;
+	}
+
+	if (dcdc_supply->ldo_3_4) {
+		if (ricoh619_rdev[RICOH619_ID_LDO3]->use_count != 0 ||
+			ricoh619_rdev[RICOH619_ID_LDO4]->use_count != 0)
+			on = 1;
+	}
+
+	if (dcdc_supply->ldo_6_9_10) {
+		if (ricoh619_rdev[RICOH619_ID_LDO6]->use_count != 0 ||
+			ricoh619_rdev[RICOH619_ID_LDO9]->use_count != 0 ||
+			ricoh619_rdev[RICOH619_ID_LDO10]->use_count != 0)
+			on = 1;
+	}
+
+	dcdc_supply->need_enable_when_resume = 0;
+
+	if (on) {
+		/*
+		 * dcdc must be opened, if it have supplies
+		 */
+		m_assert(ricoh619_rdev[dcdc_id]->use_count != 0);
+	} else {
+		if (ricoh619_rdev[dcdc_id]->use_count != 0) {
+			/*
+			 * disable dcdc directly, no need to decrese it's use_count
+			 */
+			if (ricoh619_rdev[dcdc_id] != NULL)
+				ricoh61x_reg_disable(ricoh619_rdev[dcdc_id]);
+			dcdc_supply->need_enable_when_resume = 1;
+		}
+	}
+
+	ricoh61x_regulator_set_sleep_mode_power(ricoh619_rdev[dcdc_id], on);
+}
+
+static void ricoh619_restore_supply_dcdc_state(int dcdc_id, struct ricoh619_supply *dcdc_supply)
+{
+	if (dcdc_supply->need_enable_when_resume == 1) {
+		/*
+		 * enale dcdc directly, do not care it's use_count
+		 */
+		ricoh61x_reg_enable(ricoh619_rdev[dcdc_id]);
+		dcdc_supply->need_enable_when_resume = 0;
+	}
+}
+
+int ricoh61x_syscore_suspend(void)
+{
+	/*
+	 * disable dcdc5 if not supply to anyone
+	 */
+	ricoh619_set_supply_dcdc_state(RICOH619_ID_DC5, &ricoh619_dc5_supply);
+
+	return 0;
+}
+
+void ricoh61x_syscore_resume(void)
+{
+	/*
+	 * enable dcdc5 if it disable when suspend
+	 */
+	ricoh619_restore_supply_dcdc_state(RICOH619_ID_DC5, &ricoh619_dc5_supply);
+}
+
+static struct syscore_ops ricoh61x_syscore_ops = {
+	.suspend = ricoh61x_syscore_suspend,
+	.resume = ricoh61x_syscore_resume,
+};
+
 static int __init ricoh61x_regulator_init(void)
 {
+	register_syscore_ops(&ricoh61x_syscore_ops);
 	return platform_driver_register(&ricoh61x_regulator_driver);
 }
 postcore_initcall(ricoh61x_regulator_init);
 
 static void __exit ricoh61x_regulator_exit(void)
 {
+	unregister_syscore_ops(&ricoh61x_syscore_ops);
 	platform_driver_unregister(&ricoh61x_regulator_driver);
 }
 module_exit(ricoh61x_regulator_exit);

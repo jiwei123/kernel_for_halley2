@@ -64,7 +64,7 @@
 #define DC2_ALWAYS_ON           1
 #define DC3_ALWAYS_ON           0
 #define DC4_ALWAYS_ON           1
-#define DC5_ALWAYS_ON           1
+#define DC5_ALWAYS_ON           0
 #define LDO1_ALWAYS_ON          1
 #define LDO2_ALWAYS_ON          1
 #define LDO3_ALWAYS_ON          0
@@ -118,6 +118,21 @@
 #define LDORTC1_INIT_ENABLE     LDORTC1_BOOT_ON
 #define LDORTC2_INIT_ENABLE     LDORTC2_BOOT_ON
 /* ****************************PMU DC/LDO INIT ENABLE END******************** */
+
+/* ****************************PMU DCDC5 SUPPLY LDOS ********************* */
+/*
+ * the pmu supply is in group
+ *----------------------------------
+ * VINL1 : ldo1 ldo2 rtc1.8 rtc1.1
+ * VINL2 : ldo5 ldo7 ldo8
+ * VINL3 : ldo3 ldo4
+ * VINL4 : ldo6 ldo9 ldo10
+ *----------------------------------
+ */
+#define DC5_SUPPLY_LDO_5_7_8    0
+#define DC5_SUPPLY_LDO_3_4      1
+#define DC5_SUPPLY_LDO_6_9_10   1
+/* ****************************PMU DCDC5 SUPPLY LDOS END ********************* */
 
 /* ****************************PMU LDO1-6 ECO SLEEP MODE********************* */
 

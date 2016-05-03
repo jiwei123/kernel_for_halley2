@@ -5230,6 +5230,10 @@ static int ricoh61x_battery_suspend(struct device *dev)
 	ricoh61x_write(info->dev->parent, RICOH61x_ADC_CNT2, 0x2);
 	/* Start auto-mode & average 4-time conversion mode for ADC */
 	ricoh61x_write(info->dev->parent, RICOH61x_ADC_CNT3, 0x28);
+
+	/* disable fg when suspend */
+	ricoh61x_clr_bits(info->dev->parent, RICOH61x_FG_CTRL, 0x01);
+
 	record_debug("PMU:suspend soc = %d,  displayed soc = %d \n",  info->soca->suspend_soc, info->soca->displayed_soc);
 #endif
 	return 0;
@@ -5267,6 +5271,9 @@ static int ricoh61x_battery_resume(struct device *dev)
     char vbat_flag = 0;
 		int r_soc = info->soca->soc;
 		int max_suspend_soc = calculate_max_suspend_soc();
+
+	/* enable fg when resume */
+	ricoh61x_set_bits(info->dev->parent, RICOH61x_FG_CTRL, 0x01);
 
 	record_debug("%s %d display soc %d\n", __FUNCTION__, __LINE__, info->soca->displayed_soc);
 

@@ -55,9 +55,9 @@ __initdata int gpio_ss_table[][2] = {
     { 32 * 2 + 16, GSS_IGNORE }, /* BT_WAKE_HOST */
     { 32 * 2 + 17, GSS_IGNORE }, /* WL_WAKE_HOST */
     { 32 * 2 + 18, GSS_INPUT_NOPULL }, /* AMOLED_TE */
-    { 32 * 2 + 19, GSS_INPUT_NOPULL }, /* AMOLED_RST */
+    { 32 * 2 + 19, GSS_IGNORE }, /* AMOLED_RST */
     { 32 * 2 + 22, GSS_INPUT_NOPULL }, /* PRE-TEST-TP30 */
-    { 32 * 2 + 23, GSS_INPUT_NOPULL }, /* GPIO_SWIRE */
+    { 32 * 2 + 23, GSS_IGNORE }, /* GPIO_SWIRE */
     { 32 * 2 + 24, GSS_INPUT_NOPULL }, /* SWIRE_GPIO */
 
     { 32 * 2 + 25, GSS_INPUT_NOPULL }, /* SLCD_WR_NC */

@@ -45,6 +45,10 @@ int g_soc;
 int g_fg_on_mode;
 #endif
 
+#ifdef CONFIG_REGULATOR_RICOH619
+struct ricoh619_supply ricoh619_dc5_supply;
+#endif
+
 #ifdef CONFIG_BATTERY_JZM200
 	struct device *bat_jzm200;
 #endif
@@ -888,6 +892,10 @@ static int ricoh61x_i2c_probe(struct i2c_client *client,
 
 #ifdef CONFIG_BATTERY_JZM200
 	bat_jzm200 = &client->dev;
+#endif
+
+#ifdef CONFIG_REGULATOR_RICOH619
+	ricoh619_dc5_supply = pdata->dc5_supply;
 #endif
 
 	mutex_init(&ricoh61x->io_lock);

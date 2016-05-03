@@ -1219,6 +1219,14 @@ static void ite7258_ts_do_suspend(struct ite7258_ts_data *ts)
 		disable_irq(ts->irq);
 		ts->is_suspend = 1;
 		ite7258_enter_sleep_mode(ts);
+
+		if (ts->vio_reg)
+			regulator_disable(ts->vio_reg);
+		msleep(1);
+		regulator_disable(ts->vcc_reg);
+
+		gpio_direction_input(ts->rst);
+
 		mutex_unlock(&ts->lock);
 		dev_dbg(&ts->client->dev, "[FTS]ite7258 suspend\n");
 	}
@@ -1228,6 +1236,12 @@ static void ite7258_ts_do_resume(struct ite7258_ts_data *ts)
 {
 	if (ts->is_suspend) {
 		mutex_lock(&ts->lock);
+
+		regulator_enable(ts->vcc_reg);
+		if (ts->vio_reg)
+			regulator_enable(ts->vio_reg);
+		msleep(10);
+
 		ite7258_exit_sleep_mode(ts);
 		dev_dbg(&ts->client->dev, "[FTS]ite7258 resume.\n");
 		gpio_direction_output(ts->rst, 1);

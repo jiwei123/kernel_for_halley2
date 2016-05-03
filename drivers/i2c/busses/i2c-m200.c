@@ -381,7 +381,7 @@ static int jz_i2c_disable(struct jz_i2c *i2c)
 
 	i2c_writeb(i2c, I2C_ENB, 0);
 	while ((i2c_readb(i2c, I2C_ENSTA) & I2C_ENB_I2CENB) && (--timeout > 0))
-		msleep(1);
+		mdelay(1);
 
 	if (!timeout) {
 		dev_err(&(i2c->adap.dev),"disable i2c%d failed\n", i2c->adap.nr);
@@ -398,7 +398,7 @@ static int jz_i2c_enable(struct jz_i2c *i2c)
 
 	i2c_writeb(i2c, I2C_ENB, 1);
 	while (!(i2c_readb(i2c, I2C_ENSTA) & I2C_ENB_I2CENB) && (--timeout > 0))
-		msleep(1);
+		mdelay(1);
 
 	if (!timeout) {
 		dev_err(&(i2c->adap.dev),"enable i2c%d failed\n", i2c->adap.nr);

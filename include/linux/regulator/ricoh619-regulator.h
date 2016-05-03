@@ -51,6 +51,9 @@ enum regulator_id {
 	RICOH619_ID_LDO10,
 	RICOH619_ID_LDORTC1,
 	RICOH619_ID_LDORTC2,
+
+	/* KEEP LAST */
+	RICOH619_ID_NUMS,
 };
 
 struct ricoh619_regulator_platform_data {
