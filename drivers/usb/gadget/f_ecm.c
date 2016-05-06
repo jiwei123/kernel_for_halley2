@@ -968,6 +968,48 @@ static struct usb_function *ecm_alloc(struct usb_function_instance *fi)
 	return &ecm->port.func;
 }
 
+int ecm_bind_config(struct usb_configuration *c,u8 *ethaddr)
+{
+	struct f_ecm    *ecm;
+	int             status;
+
+	if (!can_support_ecm(c->cdev->gadget) || !ethaddr)
+	            return -EINVAL;
+
+	if(ecm_string_defs[0].id == 0)
+	{
+		status = usb_string_id(c->cdev);
+		if (status < 0)
+		            return status;
+		ecm_string_defs[0].id = status;
+		ecm_control_intf.iInterface = status;
+
+		/* data interface label */
+		status = usb_string_id(c->cdev);
+		if (status < 0)
+		            return status;
+		ecm_string_defs[2].id = status;
+		ecm_data_intf.iInterface = status;
+
+		/* MAC address */
+		status = usb_string_id(c->cdev);
+		if (status < 0)
+		            return status;
+		ecm_string_defs[1].id = status;
+		ecm_desc.iMACAddress = status;
+
+	}
+
+	if(ecm_string_defs[1].s == NULL ||
+		strcmp(ecm_string_defs[1].s,ethaddr))
+	    strcpy(ecm_string_defs[1].s,ethaddr);
+
+
+	return 0;
+
+}
+EXPORT_SYMBOL(ecm_bind_config);
+
 DECLARE_USB_FUNCTION_INIT(ecm, ecm_alloc_inst, ecm_alloc);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("David Brownell");
