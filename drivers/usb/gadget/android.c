@@ -42,7 +42,6 @@
 #include "f_rndis.c"
 #include "rndis.c"
 #include "u_ether.h"
-int ecm_bind_config(struct usb_configuration *c,u8 *ethaddr);
 
 MODULE_AUTHOR("Mike Lockwood");
 MODULE_DESCRIPTION("Android Composite USB Driver");
@@ -1118,47 +1117,38 @@ static struct android_usb_function audio_source_function = {
 };
 #endif
 
-struct  cdc2_source_function
+struct  ecm_source_config
 {
 	struct usb_function_instance * fi_ethernet;
 	struct usb_function *f_ecm ;
-	struct eth_dev *the_dev;
-	u8 hostaddr[ETH_ALEN];
 
 };
 
-static int cdc2_ecm_init(struct android_usb_function *f,
+static int ecm_init(struct android_usb_function *f,
 			struct usb_composite_dev *cdev)
 {
-    struct cdc2_source_function *config;
+    struct ecm_source_config *config;
 
-	config = kzalloc(sizeof(struct cdc2_source_function), GFP_KERNEL);
+	config = kzalloc(sizeof(struct ecm_source_config), GFP_KERNEL);
 	if (!config)
 		return -ENOMEM;
 	f->config = config;
 	return 0;
 }
 
-static void cdc2_ecm_cleanup(struct android_usb_function *f)
+static void ecm_cleanup(struct android_usb_function *f)
 {
 	kfree(f->config);
 	return;
 }
-static int cdc2_ecm_bind_config(struct android_usb_function *f,
+
+static int ecm_bind_config(struct android_usb_function *f,
 						struct usb_configuration *c)
 {
 	int status = 0;
-	struct cdc2_source_function *config = f->config;
+	struct ecm_source_config *config = f->config;
 
-	config->the_dev = gether_setup(c->cdev->gadget,NULL,NULL, config->hostaddr,QMULT_DEFAULT);
-	if (IS_ERR(config->the_dev))
-		return PTR_ERR(config->the_dev);
-
-	status = ecm_bind_config(c,config->hostaddr);
-	if(status < 0)
-	    return status;
-
-	config->fi_ethernet=usb_get_function_instance("ecm");
+	config->fi_ethernet = usb_get_function_instance("ecm");
 	if(IS_ERR(config->fi_ethernet))
 	    return PTR_ERR(config->fi_ethernet);
 
@@ -1180,24 +1170,23 @@ err_func_ecm:
 
 }
 
-static void cdc2_ecm_unbind_config(struct android_usb_function *f,
+static void ecm_unbind_config(struct android_usb_function *f,
 						struct usb_configuration *c)
 {
-	struct cdc2_source_function *config = f->config;
+	struct ecm_source_config *config = f->config;
 	usb_put_function(config->f_ecm);
 	usb_put_function_instance(config->fi_ethernet);
-	gether_cleanup(config->the_dev);
 
 	return;
 
 }
 
-static struct android_usb_function cdc2_ecm_function	= {
-	.name		= "cdc2_ecm",
-	.init		= cdc2_ecm_init,
-	.cleanup	= cdc2_ecm_cleanup,
-	.bind_config	= cdc2_ecm_bind_config,
-	.unbind_config	= cdc2_ecm_unbind_config,
+static struct android_usb_function ecm_function	= {
+	.name		= "ecm",
+	.init		= ecm_init,
+	.cleanup	= ecm_cleanup,
+	.bind_config	= ecm_bind_config,
+	.unbind_config	= ecm_unbind_config,
 };
 
 
@@ -1213,7 +1202,7 @@ static struct android_usb_function *supported_functions[] = {
 #ifdef CONFIG_USB_GADGET_AUDIO_SOURCE
 	&audio_source_function,
 #endif
-	&cdc2_ecm_function,
+	&ecm_function,
 	NULL
 };
 

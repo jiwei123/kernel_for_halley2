@@ -42,7 +42,6 @@ USB_GADGET_COMPOSITE_OPTIONS();
  * the runtime footprint, and giving us at least some parts of what
  * a "gcc --combine ... part1.c part2.c part3.c ... " build would.
  */
-int ecm_bind_config(struct usb_configuration *c,u8 *ethaddr);
 /*-------------------------------------------------------------------------*/
 
 static struct usb_device_descriptor device_desc = {
@@ -100,8 +99,6 @@ static struct usb_gadget_strings *dev_strings[] = {
 	NULL,
 };
 
-static u8 hostaddr[ETH_ALEN];
-static struct eth_dev *the_dev;
 /*-------------------------------------------------------------------------*/
 static struct usb_function *f_ecm;
 static struct usb_function_instance *fi_ethernet;
@@ -119,10 +116,6 @@ static int __init cdc_do_config(struct usb_configuration *c)
 		c->descriptors = otg_desc;
 		c->bmAttributes |= USB_CONFIG_ATT_WAKEUP;
 	}
-
-	status = ecm_bind_config(c, hostaddr);
-	if (status < 0)
-		return status;
 
 	fi_ethernet = usb_get_function_instance("ecm");
 	if (IS_ERR(fi_ethernet))
@@ -191,11 +184,6 @@ static int __init cdc_bind(struct usb_composite_dev *cdev)
 		return -EINVAL;
 	}
 
-	/* set up network link layer */
-	the_dev = gether_setup(cdev->gadget,NULL,NULL, hostaddr,QMULT_DEFAULT);
-	if (IS_ERR(the_dev))
-		return PTR_ERR(the_dev);
-
 	/* Allocate string descriptor numbers ... note that string
 	 * contents can be overridden by the composite_dev glue.
 	 */
@@ -218,7 +206,6 @@ static int __init cdc_bind(struct usb_composite_dev *cdev)
 	return 0;
 
 fail1:
-	gether_cleanup(the_dev);
 	return status;
 }
 
@@ -230,7 +217,6 @@ static int __exit cdc_unbind(struct usb_composite_dev *cdev)
 	usb_put_function(f_acm);
 	usb_put_function_instance(fi_serial);
 
-	gether_cleanup(the_dev);
 	return 0;
 }
 
