@@ -51,9 +51,9 @@ static bool is_init = 0;
 static inline int bl_regulator(int gpio, int en)
 {
 	if (en)
-		tps65137_digital_pulse_power_on(gpio, 1, 31);
+		tps65137_digital_pulse_power_on(gpio, 0, 31);
 	else
-		tps65137_digital_pulse_power_off(gpio, 1);
+		tps65137_digital_pulse_power_off(gpio, 0);
 	return 0;
 }
 
@@ -120,7 +120,7 @@ int edo_e1392am1_power_on(struct lcd_device *lcd, int enable)
 			printk(KERN_ERR "failed to enable lcd io reg\n");
 
 		bl_regulator(GPIO_LCD_BLK_EN, 1);
-		//__tps65137_digital_pulse(GPIO_LCD_BLK_EN, 1, 19);
+		//__tps65137_digital_pulse(GPIO_LCD_BLK_EN, 0, 19);
 		//msleep(200);
 #if defined(CONFIG_SLPT) && defined(CONFIG_REGULATOR_RICOH619)
 		ricoh61x_regulator_set_sleep_mode_power(regulator_to_rdev(lcd_vcc_reg), 1);
