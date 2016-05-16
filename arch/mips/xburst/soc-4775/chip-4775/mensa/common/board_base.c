@@ -29,11 +29,10 @@ struct jz_platform_device
 	int size;
 };
 
-
 static struct jz_platform_device platform_devices_array[] __initdata = {
-#define DEF_DEVICE(DEVICE, DATA, SIZE)  \
-	{ .pdevices = DEVICE,   \
-		.pdata = DATA, .size = SIZE,}
+#define DEF_DEVICE(DEVICE, DATA, SIZE)		\
+	{ .pdevices = DEVICE,			\
+	  .pdata = DATA, .size = SIZE,}
 
 #ifdef CONFIG_LEDS_GPIO
 	DEF_DEVICE(&jz_led_rgb, 0, 0),
@@ -217,7 +216,6 @@ static int __init board_base_init(void)
 {
 	int pdevices_array_size, i;
 
-
 	pdevices_array_size = ARRAY_SIZE(platform_devices_array);
 	for(i = 0; i < pdevices_array_size; i++) {
 		if(platform_devices_array[i].size)
@@ -229,15 +227,21 @@ static int __init board_base_init(void)
 	spi_register_board_info(jz_spi0_board_info, jz_spi0_devs_size);
 #endif
 
-
+#if (defined(CONFIG_SOFT_I2C0_GPIO_V12_JZ) || defined(CONFIG_I2C0_V12_JZ))
+	i2c_register_board_info(0, jz_i2c0_devs, jz_i2c0_devs_size);
+#endif
+#if (defined(CONFIG_SOFT_I2C1_GPIO_V12_JZ) || defined(CONFIG_I2C1_V12_JZ))
+	i2c_register_board_info(1, jz_i2c1_devs, jz_i2c1_devs_size);
+#endif
+#if (defined(CONFIG_SOFT_I2C2_GPIO_V12_JZ) || defined(CONFIG_I2C2_V12_JZ))
+	i2c_register_board_info(2, jz_i2c2_devs, jz_i2c2_devs_size);
+#endif
 #if (defined(CONFIG_SOFT_I2C3_GPIO_V12_JZ) || defined(CONFIG_I2C3_V12_JZ))
 	i2c_register_board_info(3, jz_i2c3_devs, jz_i2c3_devs_size);
 #endif
 
-
 	return 0;
 }
-
 
 /*
  *  * Called by arch/mips/kernel/proc.c when 'cat /proc/cpuinfo'.

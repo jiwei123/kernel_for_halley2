@@ -13,5 +13,5 @@ obj-$(CONFIG_MTD_NAND_JZ4775)		+= nand-mtd.o
 obj-$(CONFIG_MMC)		+= mmc.o
 obj-$(CONFIG_BCM4330_RFKILL)		+= bt.o
 obj-$(CONFIG_MTD_NAND_MIRCON_ACA)	+= nand_aca.o
-obj-$(CONFIG_SOC_CAMERA)     += mensa-cim.o
+obj-$(CONFIG_SOC_CAMERA)     += cim_board.o
 obj-y += board_base.o misc.o

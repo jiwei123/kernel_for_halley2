@@ -75,14 +75,6 @@ static struct ft5336_platform_data ft5336_tsc_pdata = {
 
 #if (defined(CONFIG_I2C_GPIO) || defined(CONFIG_I2C0_V12_JZ))
 struct i2c_board_info jz_i2c0_devs[] __initdata = {
-#ifdef	CONFIG_SOC_CAMERA_OV7725
-	[FRONT_CAMERA_INDEX] = {
-		I2C_BOARD_INFO("ov772x_fornt", 0x21),
-	},
-#endif
-	[BACK_CAMERA_INDEX] = {
-		I2C_BOARD_INFO("ov5640-back", 0x3C),
-	},
 #ifdef CONFIG_TOUCHSCREEN_GWTC9XXXB
 	{
 		I2C_BOARD_INFO("gwtc9xxxb_ts", 0x05),
@@ -125,6 +117,20 @@ struct i2c_board_info jz_i2c0_devs[] __initdata = {
 #endif /*CONFIG_BCM2079X_NFC*/
 
 };
+
+struct i2c_board_info jz_i2c0_camera_devs[] __initdata = {
+#ifdef	CONFIG_SOC_CAMERA_OV7725
+	[FRONT_CAMERA_INDEX] = {
+		I2C_BOARD_INFO("ov772x_fornt", 0x21),
+	},
+#endif
+#ifdef CONFIG_SOC_CAMERA_OV5640
+	[BACK_CAMERA_INDEX] = {
+		I2C_BOARD_INFO("ov5640-back", 0x3C),
+	},
+#endif
+};
+int jz_i2c0_camera_devs_size = ARRAY_SIZE(jz_i2c0_camera_devs);
 #endif
 
 #ifdef CONFIG_GPIO_PCA953X
@@ -138,6 +144,10 @@ static struct pca953x_platform_data dorado_pca953x_pdata = {
 
 #if (defined(CONFIG_I2C_GPIO) || defined(CONFIG_I2C1_V12_JZ))
 struct i2c_board_info jz_i2c1_devs[] __initdata = {
+
+};
+
+struct i2c_board_info jz_i2c1_camera_devs[] __initdata = {
 #ifdef CONFIG_SOC_CAMERA_OV5640
 	[FRONT_CAMERA_INDEX] = {
 		I2C_BOARD_INFO("ov5640-front", 0x3C),
@@ -149,7 +159,14 @@ struct i2c_board_info jz_i2c1_devs[] __initdata = {
 	},
 #endif
 };
+int jz_i2c1_camera_devs_size = ARRAY_SIZE(jz_i2c1_camera_devs);
 #endif  /*I2C1*/
+
+#if (defined(CONFIG_I2C_GPIO) || defined(CONFIG_I2C2_V12_JZ))
+struct i2c_board_info jz_i2c2_devs[] __initdata = {
+
+};
+#endif  /*I2C2*/
 
 
 #if	(defined(CONFIG_SOFT_I2C0_GPIO_V12_JZ) || defined(CONFIG_I2C0_V12_JZ))
@@ -158,6 +175,10 @@ int jz_i2c0_devs_size = ARRAY_SIZE(jz_i2c0_devs);
 
 #if	(defined(CONFIG_SOFT_I2C1_GPIO_V12_JZ) || defined(CONFIG_I2C1_V12_JZ))
 int jz_i2c1_devs_size = ARRAY_SIZE(jz_i2c1_devs);
+#endif
+
+#if	(defined(CONFIG_SOFT_I2C2_GPIO_V12_JZ) || defined(CONFIG_I2C2_V12_JZ))
+int jz_i2c2_devs_size = ARRAY_SIZE(jz_i2c2_devs);
 #endif
 
 /*
