@@ -209,27 +209,6 @@ static int icdc_d3_set_bias_level(struct snd_soc_codec *codec,
 		enum snd_soc_bias_level level) {
 	DEBUG_MSG("%s enter set level %d\n", __func__, level);
 
-	switch (level) {
-	case SND_SOC_BIAS_ON:
-	case SND_SOC_BIAS_PREPARE:
-		break;
-	case SND_SOC_BIAS_STANDBY:
-		if (snd_soc_update_bits(codec, SCODA_REG_CR_VIC, SCODA_CR_VIC_SB_MASK, 0))
-			msleep(250);
-		if (snd_soc_update_bits(codec, SCODA_REG_CR_VIC, SCODA_CR_VIC_SB_SLEEP_MASK, 0)) {
-			msleep(10);
-		}
-		snd_soc_update_bits(codec, SCODA_REG_AICR_ADC, SCODA_AICR_ADC_SB_MASK, 0);
-		snd_soc_update_bits(codec, SCODA_REG_AICR_DAC, SCODA_AICR_DAC_SB_MASK, 0);
-		break;
-	case SND_SOC_BIAS_OFF:
-		snd_soc_update_bits(codec, SCODA_REG_AICR_ADC, SCODA_AICR_ADC_SB_MASK, 1);
-		snd_soc_update_bits(codec, SCODA_REG_AICR_DAC, SCODA_AICR_DAC_SB_MASK, 1);
-		snd_soc_update_bits(codec, SCODA_REG_CR_VIC, SCODA_CR_VIC_SB_SLEEP_MASK, 1);
-		snd_soc_update_bits(codec, SCODA_REG_CR_VIC, SCODA_CR_VIC_SB_MASK, 1);
-		break;
-	}
-
 	codec->dapm.bias_level = level;
 	return 0;
 }
@@ -568,7 +547,12 @@ static int icdc_d3_suspend(struct snd_soc_codec *codec)
 {
 	struct icdc_d3 *icdc_d3 = snd_soc_codec_get_drvdata(codec);
 
+	snd_soc_update_bits(codec, SCODA_REG_AICR_ADC, SCODA_AICR_ADC_SB_MASK, 1);
+	snd_soc_update_bits(codec, SCODA_REG_AICR_DAC, SCODA_AICR_DAC_SB_MASK, 1);
+	snd_soc_update_bits(codec, SCODA_REG_CR_VIC, SCODA_CR_VIC_SB_SLEEP_MASK, 1);
+	snd_soc_update_bits(codec, SCODA_REG_CR_VIC, SCODA_CR_VIC_SB_MASK, 1);
 	icdc_d3_set_bias_level(codec, SND_SOC_BIAS_OFF);
+
 	snd_soc_update_bits(codec, SCODA_REG_CR_CK, SCODA_CR_CK_SDCLK_MASK, 1);
 	return 0;
 }
@@ -578,7 +562,15 @@ static int icdc_d3_resume(struct snd_soc_codec *codec)
 	struct icdc_d3 *icdc_d3 = snd_soc_codec_get_drvdata(codec);
 
 	snd_soc_update_bits(codec, SCODA_REG_CR_CK, SCODA_CR_CK_SDCLK_MASK, 0);
+
 	icdc_d3_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
+	if (snd_soc_update_bits(codec, SCODA_REG_CR_VIC, SCODA_CR_VIC_SB_MASK, 0))
+		msleep(250);
+	if (snd_soc_update_bits(codec, SCODA_REG_CR_VIC, SCODA_CR_VIC_SB_SLEEP_MASK, 0)) {
+		msleep(10);
+	}
+	snd_soc_update_bits(codec, SCODA_REG_AICR_ADC, SCODA_AICR_ADC_SB_MASK, 0);
+	snd_soc_update_bits(codec, SCODA_REG_AICR_DAC, SCODA_AICR_DAC_SB_MASK, 0);
 	return 0;
 }
 #endif
@@ -588,8 +580,6 @@ static int icdc_d3_probe(struct snd_soc_codec *codec)
 	struct icdc_d3 *icdc_d3 = snd_soc_codec_get_drvdata(codec);
 
 	dev_info(codec->dev, "codec icdc-d3 probe enter\n");
-	/*power on codec bias*/
-	icdc_d3_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 
 	/* power off codec */
 	snd_soc_update_bits(codec, SCODA_REG_CR_VIC, SCODA_CR_VIC_SB_SLEEP_MASK, 1);
