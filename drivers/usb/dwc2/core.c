@@ -581,7 +581,7 @@ static void dwc2_init_csr(struct dwc2 *dwc) {
 	dwc->hwcfgs.hwcfg2.d32 = dwc_readl(&dwc->core_global_regs->ghwcfg2);
 	dwc->hwcfgs.hwcfg3.d32 = dwc_readl(&dwc->core_global_regs->ghwcfg3);
 	dwc->hwcfgs.hwcfg4.d32 = dwc_readl(&dwc->core_global_regs->ghwcfg4);
-
+#if 0
 	/* Force host mode to get HPTXFSIZ exact power on value */
 	{
 		gusbcfg_data_t gusbcfg = {.d32 = 0 };
@@ -598,6 +598,7 @@ static void dwc2_init_csr(struct dwc2 *dwc) {
 		dwc_writel(gusbcfg.d32, &dwc->core_global_regs->gusbcfg);
 		mdelay(100);
 	}
+#endif
 
 	dwc->hwcfgs.hcfg.d32 = dwc_readl(&dwc->host_if.host_global_regs->hcfg);
 	dwc->hwcfgs.dcfg.d32 = dwc_readl(&dwc->dev_if.dev_global_regs->dcfg);

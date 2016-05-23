@@ -214,7 +214,6 @@ static int __init_or_module bt_power_probe(struct platform_device *pdev)
 	if(bt_rst_n > 0){
 		gpio_direction_output(bt_rst_n,1);
 	}
-	printk("jkzhao++++++++AP6212 BT probe ok\n");
 	return 0;
 }
 

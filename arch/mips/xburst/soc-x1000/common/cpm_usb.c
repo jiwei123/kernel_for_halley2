@@ -114,10 +114,8 @@ void jz_otg_sft_id(int level)
 {
 	if (level) {
 		cpm_set_bit(USBRDT_IDDIG_REG, CPM_USBRDT);
-		printk("sft id ==================== 1\n");
 	} else {
 		cpm_clear_bit(USBRDT_IDDIG_REG, CPM_USBRDT);
-		printk("sft id ==================== 0\n");
 	}
 	cpm_set_bit(USBRDT_IDDIG_EN, CPM_USBRDT);
 	if (!jz_otg_phy_is_suspend())
@@ -134,7 +132,6 @@ void jz_otg_sft_id_off(void)
 		mdelay(150);
 	else
 		sft_id_set = true;
-	printk("sft id =========================off\n");
 }
 EXPORT_SYMBOL(jz_otg_sft_id_off);
 

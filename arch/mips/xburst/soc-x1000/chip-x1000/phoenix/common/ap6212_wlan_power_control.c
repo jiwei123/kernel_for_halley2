@@ -114,7 +114,7 @@ start:
 			jzmmc_clk_ctrl(WLAN_SDIO_INDEX, 1);
 
 			gpio_set_value(reset, 0);
-			msleep(100);
+			msleep(1);
 
 			gpio_set_value(reset, 1);
 
@@ -123,7 +123,7 @@ start:
 			wlan_pw_en_enable();
 
 			gpio_set_value(reset, 0);
-			msleep(100);
+			msleep(1);
 
 			gpio_set_value(reset, 1);
 
