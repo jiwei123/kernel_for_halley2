@@ -277,6 +277,7 @@ static void jzfb_config_fg0(struct fb_info *info)
 	osd->fg0.w = mode->xres;
 	osd->fg0.h = mode->yres;
 	osd->fg0.is_enabled = 1;
+    osd->fg0.blend_coef = COEF_1;
 
 	osd->fg1.fg  = 1;
 	osd->fg1.bpp = osd->fg0.bpp;
@@ -284,6 +285,7 @@ static void jzfb_config_fg0(struct fb_info *info)
 	osd->fg1.w   = osd->fg0.w;
 	osd->fg1.h   = osd->fg0.h;
 	osd->fg1.is_enabled = 0;
+    osd->fg1.blend_coef = COEF_1;
 
 	/* OSD mode enable and alpha blending is enabled */
 	cfg = LCDC_OSDC_OSDEN | LCDC_OSDC_ALPHAEN;
@@ -443,15 +445,21 @@ static void jzfb_config_tft_lcd_dma(struct fb_info *info,
 
 	/* data has not been premultied */
 	framedesc->cpos |= LCDC_CPOS_PREMULTI;
+#if 0
 	/* coef_sle 0 use 1 */
 	framedesc->cpos |= LCDC_CPOS_COEF_SLE_1;
+#else
+    framedesc->cpos |= jzfb->osd.fg0.blend_coef << LCDC_CPOS_COEF_SLE_BIT;
+#endif
 	framedesc->cpos |= (jzfb->osd.fg0.y << LCDC_CPOS_YPOS_BIT
 			    & LCDC_CPOS_YPOS_MASK);
 	framedesc->cpos |= (jzfb->osd.fg0.x << LCDC_CPOS_XPOS_BIT
 			    & LCDC_CPOS_XPOS_MASK);
 
 	/* fg0 alpha value */
+/* FIXME:  here reset the fg0's global alpha to 0xff, there will be mistake if the user had set the global alpha before. */
 	framedesc->desc_size = 0xff << LCDC_DESSIZE_ALPHA_BIT;
+
 	framedesc->desc_size |= size->height_width;
 	framedesc->offsize = 0;
 	if (framedesc->offsize == 0) {
@@ -509,15 +517,21 @@ static void jzfb_config_smart_lcd_dma(struct fb_info *info,
 
 	/* data has not been premultied */
 	framedesc->cpos |= LCDC_CPOS_PREMULTI;
+#if 0
 	/* coef_sle 0 use 1 */
 	framedesc->cpos |= LCDC_CPOS_COEF_SLE_1;
+#else
+    framedesc->cpos |= jzfb->osd.fg0.blend_coef << LCDC_CPOS_COEF_SLE_BIT;
+#endif
 	framedesc->cpos |= (jzfb->osd.fg0.y << LCDC_CPOS_YPOS_BIT
 			    & LCDC_CPOS_YPOS_MASK);
 	framedesc->cpos |= (jzfb->osd.fg0.x << LCDC_CPOS_XPOS_BIT
 			    & LCDC_CPOS_XPOS_MASK);
 
 	/* fg0 alpha value */
+/* FIXME:  here reset the fg0's global alpha to 0xff, there will be mistake if the user had set the global alpha before. */
 	framedesc->desc_size = 0xff << LCDC_DESSIZE_ALPHA_BIT;
+
 	framedesc->desc_size |= size->height_width;
 
 	framedesc[1].next = jzfb->framedesc_phys;
@@ -606,12 +620,17 @@ static void jzfb_config_fg1_dma(struct fb_info *info,
 	/* data has not been premultied */
 	jzfb->fg1_framedesc->cpos |= LCDC_CPOS_PREMULTI;
 	/* coef_sle 0 use 1 */
+#if 0
 	jzfb->fg1_framedesc->cpos |= LCDC_CPOS_COEF_SLE_1;
+#else
+    jzfb->fg1_framedesc->cpos |= jzfb->osd.fg1.blend_coef << LCDC_CPOS_COEF_SLE_BIT;
+#endif
 	jzfb->fg1_framedesc->cpos |= (jzfb->osd.fg1.y << LCDC_CPOS_YPOS_BIT
 			    & LCDC_CPOS_YPOS_MASK);
 	jzfb->fg1_framedesc->cpos |= (jzfb->osd.fg1.x << LCDC_CPOS_XPOS_BIT
 			    & LCDC_CPOS_XPOS_MASK);
 
+/* FIXME:  here reset the fg1's global alpha to 0xff, there will be mistake if the user had set the global alpha before. */
 	jzfb->fg1_framedesc->desc_size = size->fg1_height_width | 0xff <<
 		LCDC_DESSIZE_ALPHA_BIT;
 
@@ -2073,6 +2092,26 @@ static int jzfb_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 	return 0;
 }
 
+static void jzfb_set_blend_coef(struct fb_info *info, struct jzfb_fg_blend *fg_blend)
+{
+	int i;
+	int desc_num;
+	struct jzfb *jzfb = info->par;
+	struct jzfb_framedesc *framedesc;
+
+	if (!fg_blend->fg) { //fg0
+		desc_num = jzfb->desc_num -1;
+		framedesc = jzfb->framedesc[0];
+	} else { //fg1
+		desc_num = 1;
+		framedesc = jzfb->fg1_framedesc;
+	}
+    for ( i = 0; i < desc_num; i++) {
+        (framedesc + i)->cpos &= ~LCDC_CPOS_COEF_SLE_MASK;
+        (framedesc + i)->cpos |= fg_blend->coef << LCDC_CPOS_COEF_SLE_BIT;
+    }
+}
+
 static void jzfb_set_alpha(struct fb_info *info, struct jzfb_fg_alpha *fg_alpha)
 {
 	int i;
@@ -2366,6 +2405,7 @@ static int jzfb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 		struct jzfb_color_key color_key;
 		struct jzfb_mode_res res;
 		struct jzfb_aosd aosd;
+        struct jzfb_fg_blend blend;
 	} osd;
 
 	switch (cmd) {
@@ -2470,6 +2510,19 @@ static int jzfb_ioctl(struct fb_info *info, unsigned int cmd, unsigned long arg)
 			return jzfb_prepare_dma_desc(info);
 		}
 		break;
+    case JZFB_SET_FG_BLEND:
+        if (copy_from_user(&osd.blend, argp, sizeof(
+                        struct jzfb_fg_blend))) {
+            dev_info(info->dev, "copy FG blend coef from user failed\n");
+            return -EFAULT;
+        }
+        if (osd.blend.fg) {
+            jzfb->osd.fg1.blend_coef = osd.blend.coef;
+        } else {
+            jzfb->osd.fg0.blend_coef = osd.blend.coef;
+        }
+        jzfb_set_blend_coef(info, &osd.blend);
+        break;
 	case JZFB_GET_FG_SIZE:
 		if (copy_from_user(&osd.fg_size, argp, sizeof(
 					   struct jzfb_fg_size))) {
