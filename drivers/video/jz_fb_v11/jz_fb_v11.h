@@ -58,6 +58,13 @@ struct jzfb_display_size {
 	u32 fg1_height_width;
 };
 
+enum jzfb_blend_coefficient {
+    COEF_0 = 0,
+    COEF_1,
+    COEF_ALPHA,
+    COEF_1_MINUS_ALPHA,
+};
+
 enum jzfb_format_order {
 	FORMAT_X8R8G8B8 = 1,
 	FORMAT_X8B8G8R8,
@@ -79,6 +86,7 @@ struct jzfb_fg_t {
 	u32 y;
 	u32 w;
 	u32 h;
+    u32 blend_coef;
 };
 
 /**
@@ -201,6 +209,11 @@ struct jzfb_fg_alpha {
 	__u32 value; /* 0x00-0xFF */
 };
 
+struct jzfb_fg_blend {
+	__u32 fg;
+	__u32 coef;
+};
+
 struct jzfb_bg {
 	__u32 fg; /* 0:fg0, 1:fg1 */
 	__u32 red;
@@ -241,6 +254,7 @@ struct jzfb_aosd {
 #define JZFB_GET_RESOLUTION		_IOWR('F', 0x105, struct jzfb_mode_res)
 
 /* Reserved for future extend */
+#define JZFB_SET_FG_BLEND   	_IOW('F', 0x115, struct jzfb_fg_blend)
 #define JZFB_SET_FG_SIZE		_IOW('F', 0x116, struct jzfb_fg_size)
 #define JZFB_GET_FG_SIZE		_IOWR('F', 0x117, struct jzfb_fg_size)
 #define JZFB_SET_FG_POS			_IOW('F', 0x118, struct jzfb_fg_pos)
