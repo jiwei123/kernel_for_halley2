@@ -122,15 +122,15 @@ static int jzdmic_open(struct inode *inode, struct file *filp)
 	filp->private_data = jzdmic;
 	record_fifo->n_size	= wakeup_module_get_record_buffer_len(); /* dead size, don't change */
 	xfer->buf = (char *)wakeup_module_get_record_buffer();
-	xfer->tail = xfer->head;
 
 	if(xfer->buf > 0x80000000 && xfer->buf < 0xa0000000) {
 		jzdmic->cache_addr = 1;
-		xfer->head = (char *)KSEG0ADDR(wakeup_module_get_dma_address()) - xfer->buf;;
+		xfer->head = (char *)KSEG0ADDR(wakeup_module_get_dma_address()) - xfer->buf;
 	} else {
 		jzdmic->cache_addr = 0;
-		xfer->head = (char *)KSEG1ADDR(wakeup_module_get_dma_address()) - xfer->buf;;
+		xfer->head = (char *)KSEG1ADDR(wakeup_module_get_dma_address()) - xfer->buf;
 	}
+	xfer->tail = xfer->head;
 
 	mod_timer(&jzdmic->record_timer, jiffies + msecs_to_jiffies(20));
 
@@ -245,7 +245,7 @@ static long jzdmic_ioctl(struct file *filp, unsigned int cmd, unsigned long args
 {
 	struct jzdmic_dev *jzdmic = filp->private_data;
 	void __user *argp = (void __user *)args;
-	int ret;
+	int ret = 0;
 	int device;
 	unsigned long samplerate;
 	switch(cmd) {

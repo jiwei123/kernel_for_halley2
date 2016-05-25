@@ -22,7 +22,7 @@
 
 #include <linux/voice_wakeup_module.h>
 
-#define FIRMWARE_LOAD_ADDRESS	0xaff00000
+#define FIRMWARE_LOAD_ADDRESS	0x8ff00000
 
 static int wakeup_firmware [] = {
 
@@ -234,7 +234,10 @@ static int __init wakeup_module_init(void)
 {
 	/* load voice wakeup firmware */
 	memcpy((void*)FIRMWARE_LOAD_ADDRESS, wakeup_firmware, sizeof(wakeup_firmware));
+	dma_cache_sync(NULL, FIRMWARE_LOAD_ADDRESS, sizeof(wakeup_firmware), DMA_TO_DEVICE);
 	setup_ops();
+
+
 
 	m_ops->_module_init();
 	m_ops->set_dma_channel(JZDMA_REQ_I2S1 + 1);  /* dma phy id 5 */
