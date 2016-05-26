@@ -279,6 +279,19 @@ static int jz_asoc_dma_prepare_and_submit(struct snd_pcm_substream *substream)
 	return 0;
 }
 
+
+static int jz_pcm_prepare(struct snd_pcm_substream *substream)
+{
+#ifndef CONFIG_JZ_ASOC_DMA_HRTIMER_MODE
+	struct jz_pcm_runtime_data *prtd = substream->runtime->private_data;
+	if (atomic_read(&prtd->stopped_pending))
+		printk(KERN_DEBUG"prepare wait dma stopping\n");
+	while(atomic_read(&prtd->stopped_pending));
+	printk(KERN_DEBUG"prepare wait dma stopping ok\n");
+#endif
+	return 0;
+}
+
 static int jz_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 {
 	struct jz_pcm_runtime_data *prtd = substream->runtime->private_data;
@@ -363,7 +376,10 @@ struct jz_dma_pcm {
 	enum jzdma_type dma_type;
 };
 
-#define JZ_DMA_BUFFERSIZE (127 * PAGE_SIZE)
+#define PERIOD_BYTES_MIN (1024)
+#define PERIODS_MIN	4
+#define PERIODS_MAX	120
+#define JZ_DMA_BUFFERSIZE (PERIODS_MAX * PERIOD_BYTES_MIN)
 static const struct snd_pcm_hardware jz_pcm_hardware = {
 	.info = SNDRV_PCM_INFO_MMAP |
 		SNDRV_PCM_INFO_PAUSE |
@@ -382,10 +398,10 @@ static const struct snd_pcm_hardware jz_pcm_hardware = {
 	.channels_min           = 1,
 	.channels_max           = 2,
 	.buffer_bytes_max       = JZ_DMA_BUFFERSIZE,
-	.period_bytes_min       = PAGE_SIZE,     /* 1K */
-	.period_bytes_max       = PAGE_SIZE * 16, /* 64K */
-	.periods_min            = 4,
-	.periods_max            = 256,
+	.period_bytes_min       = PERIOD_BYTES_MIN,
+	.period_bytes_max       = JZ_DMA_BUFFERSIZE / PERIODS_MIN,
+	.periods_min            = PERIODS_MIN,
+	.periods_max            = PERIODS_MAX,
 	.fifo_size              = 0,
 };
 
@@ -477,6 +493,7 @@ static int jz_pcm_close(struct snd_pcm_substream *substream)
 struct snd_pcm_ops jz_pcm_ops = {
 	.open		= jz_pcm_open,
 	.close		= jz_pcm_close,
+	.prepare	= jz_pcm_prepare,
 	.ioctl		= snd_pcm_lib_ioctl,
 	.hw_params	= jz_pcm_hw_params,
 	.hw_free	= snd_pcm_lib_free_pages,
