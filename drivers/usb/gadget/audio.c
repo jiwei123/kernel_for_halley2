@@ -116,9 +116,8 @@ static int __init audio_do_config(struct usb_configuration *c)
 		c->bmAttributes |= USB_CONFIG_ATT_WAKEUP;
 	}
 
-	audio_bind_config(c);
 
-	return 0;
+	return audio_bind_config(c);
 }
 
 static struct usb_configuration audio_config_driver = {
