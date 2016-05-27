@@ -30,6 +30,7 @@ struct jz_dmic {
 	int en;
 	struct regulator * vcc_dmic;
 	struct clk	*clk_gate_dmic;
+	struct clk	*dmic_enable;
 	/*for dma*/
 	struct jz_pcm_dma_params rx_dma_data;
 

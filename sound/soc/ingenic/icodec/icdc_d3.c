@@ -354,7 +354,7 @@ static struct snd_soc_dai_driver  icdc_d3_codec_dai = {
 	},
 	.capture = {
 		.stream_name = "Capture",
-		.channels_min = 2,
+		.channels_min = 1,
 		.channels_max = 2,
 #if defined(CONFIG_SOC_4780)
 		.rates = SNDRV_PCM_RATE_8000_96000,
@@ -400,6 +400,9 @@ static const struct soc_enum icdc_d3_enum[] = {
 	SOC_VALUE_ENUM_SINGLE(SCODA_MIX_0, 0, 1,  ARRAY_SIZE(icdc_d3_dac_mixer_mode_sel),icdc_d3_dac_mixer_mode_sel, icdc_d3_mixer_mode_sel_value),/*8*/
 	SOC_VALUE_ENUM_SINGLE(SCODA_MIX_4, 0, 1,  ARRAY_SIZE(icdc_d3_dac_mixer_mode_sel),icdc_d3_dac_mixer_mode_sel, icdc_d3_mixer_mode_sel_value),/*9*/
 	SOC_VALUE_ENUM_SINGLE(SCODA_MIX_2, 0, 1,  ARRAY_SIZE(icdc_d3_adc_mixer_mode_sel),icdc_d3_adc_mixer_mode_sel, icdc_d3_mixer_mode_sel_value),/*10*/
+
+	SOC_VALUE_ENUM_SINGLE(SCODA_MIX_2, 6, 0x3,  ARRAY_SIZE(icdc_d3_mixer_input_sel),icdc_d3_mixer_input_sel, icdc_d3_mixer_input_sel_value),/*11*/
+	SOC_VALUE_ENUM_SINGLE(SCODA_MIX_2, 4, 0x3,  ARRAY_SIZE(icdc_d3_mixer_input_sel),icdc_d3_mixer_input_sel, icdc_d3_mixer_input_sel_value),/*12*/
 };
 
 
@@ -436,7 +439,11 @@ static const struct snd_kcontrol_new icdc_d3_titanium_mixer_mode_sel_controls =
 static const struct snd_kcontrol_new icdc_d3_aiadc_mixer_mode_sel_controls =
 	SOC_DAPM_ENUM("Route", icdc_d3_enum[10]);
 
+static const struct snd_kcontrol_new icdc_d3_aiadc_input_sel_controls_l =
+	SOC_DAPM_ENUM("Route", icdc_d3_enum[11]);
 
+static const struct snd_kcontrol_new icdc_d3_aiadc_input_sel_controls_r =
+	SOC_DAPM_ENUM("Route", icdc_d3_enum[12]);
 
 static const struct snd_kcontrol_new icdc_d3_snd_controls[] = {
 	/* Volume controls */
@@ -481,6 +488,8 @@ static const struct snd_soc_dapm_widget icdc_d3_dapm_widgets[] = {
 /* ADC */
 	SND_SOC_DAPM_MUX("ADC Mode Mux", SND_SOC_NOPM, 0, 0, &icdc_d3_aiadc_mixer_mode_sel_controls),
 	SND_SOC_DAPM_MUX("AIADC Mux", SND_SOC_NOPM, 0, 0, &icdc_d3_aiadc_input_sel_controls),
+	SND_SOC_DAPM_MUX("AIADC Mux L", SND_SOC_NOPM, 0, 0, &icdc_d3_aiadc_input_sel_controls_l),
+	SND_SOC_DAPM_MUX("AIADC Mux R", SND_SOC_NOPM, 0, 0, &icdc_d3_aiadc_input_sel_controls_r),
 	SND_SOC_DAPM_MUX("ADC MIXER Mux", SND_SOC_NOPM, 0, 0, &icdc_d3_adc_input_sel_controls),
 
 /* PINS */
@@ -509,8 +518,18 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{ "AIADC Mux" , "Cross Inputs","ADC Mode Mux"},
 	{ "AIADC Mux" , "Mixed Inputs","ADC Mode Mux"},
 	{ "AIADC Mux" , "Zero Inputs","ADC Mode Mux"},
+	{ "AIADC Mux L" , "Normal Inputs","ADC Mode Mux"},
+	{ "AIADC Mux L" , "Cross Inputs","ADC Mode Mux"},
+	{ "AIADC Mux L" , "Mixed Inputs","ADC Mode Mux"},
+	{ "AIADC Mux L" , "Zero Inputs","ADC Mode Mux"},
+	{ "AIADC Mux R" , "Normal Inputs","ADC Mode Mux"},
+	{ "AIADC Mux R" , "Cross Inputs","ADC Mode Mux"},
+	{ "AIADC Mux R" , "Mixed Inputs","ADC Mode Mux"},
+	{ "AIADC Mux R" , "Zero Inputs","ADC Mode Mux"},
 
 	{ "ADC", NULL, "AIADC Mux" },
+	{ "ADC", NULL, "AIADC Mux L" },
+	{ "ADC", NULL, "AIADC Mux R" },
 
 	{ "ADC MIXER Mux" , "Normal Inputs","ADC Mux"},
 	{ "ADC MIXER Mux" , "Cross Inputs","ADC Mux"},

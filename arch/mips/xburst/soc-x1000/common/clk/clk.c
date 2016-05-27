@@ -107,6 +107,9 @@ void __init init_all_clk(void)
 		}
 		if(clk_srcs[i].flags & CLK_FLG_ENABLE)
 			clk_srcs[i].init_state = 1;
+		if(clk_srcs[i].flags & CLK_FLG_SOFTCLK) {
+			init_softclk_clk(&clk_srcs[i]);
+		}
 	}
 	for(i = 0; i < clk_srcs_size; i++) {
 		if(clk_srcs[i].parent && clk_srcs[i].init_state)
@@ -338,8 +341,10 @@ static int enable_write(struct file *file, const char __user *buffer,size_t coun
 		if(count && (buffer[0] == '1')){
 			clk_enable(tmp);
 		}
-		else if(count && (buffer[0] == '0'))
+		else if(count && (buffer[0] == '0')){
+			clk_enable(tmp);
 			clk_disable(tmp);
+		}
 		else
 			printk("\"echo 1 > enable\" or \"echo 0 > enable \" ");
 		clk_put(tmp);

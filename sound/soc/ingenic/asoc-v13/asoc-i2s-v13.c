@@ -44,6 +44,7 @@ struct jz_i2s {
 	int i2s_mode;
 	struct jz_pcm_dma_params tx_dma_data;
 	struct jz_pcm_dma_params rx_dma_data;
+	struct clk	*i2s_enable;
 };
 
 #define I2S_RFIFO_DEPTH 32
@@ -275,8 +276,7 @@ static void jz_i2s_start_substream(struct snd_pcm_substream *substream,
 	} else {
 		__aic_flush_rxfifo(aic);
 		mdelay(1);
-		__i2s_enable_record(aic);
-		__i2s_enable_receive_dma(aic);
+		clk_enable(jz_i2s->i2s_enable);
 		if (jz_i2s_debug) __aic_en_ror_int(aic);
 	}
 	return;
@@ -321,7 +321,7 @@ static void jz_i2s_stop_substream(struct snd_pcm_substream *substream,
 				}
 			}
 		}
-		__i2s_disable_record(aic);
+		clk_disable(jz_i2s->i2s_enable);
 		__aic_clear_ror(aic);
 	}
 	return;
@@ -329,6 +329,7 @@ static void jz_i2s_stop_substream(struct snd_pcm_substream *substream,
 
 static int jz_i2s_trigger(struct snd_pcm_substream *substream, int cmd, struct snd_soc_dai *dai)
 {
+	struct jz_i2s *jz_i2s = dev_get_drvdata(dai->dev);
 	struct jz_pcm_runtime_data *prtd = substream->runtime->private_data;
 	I2S_DEBUG_MSG("enter %s, substream = %s cmd = %d\n",
 		      __func__,
@@ -370,7 +371,6 @@ static void jz_i2s_shutdown(struct snd_pcm_substream *substream,
 	work_mode = aic_set_work_mode(jz_i2s->aic, work_mode, false);
 	BUG_ON((work_mode != AIC_NO_MODE));
 
-	jz_i2s_stop_substream(substream, dai);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 		jz_i2s->i2s_mode &= ~I2S_WRITE;
@@ -465,6 +465,14 @@ static int jz_i2s_platfrom_probe(struct platform_device *pdev)
 		if (ret)
 			dev_warn(&pdev->dev,"attribute %s create failed %x",
 					attr_name(jz_i2s_sysfs_attrs[i]), ret);
+	}
+
+	jz_i2s->i2s_enable = clk_get(&pdev->dev, "i2s_enable");
+	if (IS_ERR_OR_NULL(jz_i2s->i2s_enable)) {
+		ret = PTR_ERR(jz_i2s->i2s_enable);
+		jz_i2s->i2s_enable = NULL;
+		dev_err(&pdev->dev, "Failed to get clock: %d\n", ret);
+		return ret;
 	}
 
 	ret = snd_soc_register_component(&pdev->dev, &jz_i2s_component,

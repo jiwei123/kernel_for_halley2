@@ -29,6 +29,7 @@
 
 static struct clk clk_srcs[] = {
 #define GATE(x)  (((x)<<24) | CLK_FLG_GATE)
+#define SOFTGATE(x)  (((x)<<24) | CLK_FLG_SOFTCLK)
 #define CPCCR(x) (((x)<<24) | CLK_FLG_CPCCR)
 #define CGU(no)  (((no)<<24) | CLK_FLG_CGU)
 #define CGU_AUDIO(no)  (((no)<<24) | CLK_FLG_CGU_AUDIO)
@@ -85,6 +86,9 @@ static struct clk clk_srcs[] = {
 	DEF_CLK(AHB0,  		GATE(29)),
 	DEF_CLK(CPU,  		GATE(30)),
 	DEF_CLK(DDR,  		GATE(31)),
+	DEF_CLK(AEC_ENABLE,  		SOFTGATE(0)),
+	DEF_CLK(I2S_ENABLE,  		SOFTGATE(1)),
+	DEF_CLK(DMIC_ENABLE,  		SOFTGATE(2)),
 
 	DEF_CLK(WDT,  		TCU_WDT(0)),
 

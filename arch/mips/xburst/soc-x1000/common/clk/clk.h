@@ -35,6 +35,8 @@ struct clk {
 #define CLK_RELATIVE(flg) 	(((flg) >> 16) & 0xff)
 #define CLK_FLG_PARENT	BIT(7)
 #define CLK_FLG_RELATIVE BIT(8)
+#define CLK_SOFTCLK_BIT(flg)	((flg) >> 24)
+#define CLK_FLG_SOFTCLK BIT(10)
 	struct clk_ops *ops;
 	atomic_t count;
 	int init_state;
@@ -174,6 +176,16 @@ enum {
 
 	CLK_ID_STOP,
 	CLK_ID_INVALID,
+
+/**********************************************************************************/
+	CLK_ID_SOFTCLK,
+	CLK_ID_DMIC_ENABLE,
+#define CLK_NAME_DMIC_ENABLE "dmic_enable"
+	CLK_ID_I2S_ENABLE,
+#define CLK_NAME_I2S_ENABLE "i2s_enable"
+	CLK_ID_AEC_ENABLE,
+#define CLK_NAME_AEC_ENABLE "aec_enable"
+
 };
 
 
@@ -216,4 +228,5 @@ void __init init_cpccr_clk(struct clk *clk);
 void __init init_ext_pll(struct clk *clk);
 void __init init_gate_clk(struct clk *clk);
 void __init init_wdt_clk(struct clk *clk);
+void __init init_softclk_clk(struct clk *clk);
 #endif /* _CLK_H_ */

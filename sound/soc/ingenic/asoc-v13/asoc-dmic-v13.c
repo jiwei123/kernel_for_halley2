@@ -147,14 +147,12 @@ static int jz_dmic_hw_params(struct snd_pcm_substream *substream,
 static void jz_dmic_start_substream(struct snd_pcm_substream *substream,
 		struct snd_soc_dai *dai)
 {
+	struct jz_dmic *jz_dmic = dev_get_drvdata(dai->dev);
 	struct device *dev = dai->dev;
 	DMIC_DEBUG_MSG("enter %s, substream start capture\n", __func__);
 
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
-/*		__dmic_reset(dev);*/
-/*		while(__dmic_get_reset(dev));*/
-		__dmic_enable_rdms(dev);
-		__dmic_enable(dev);
+		clk_enable(jz_dmic->dmic_enable);
 	} else {
 		dev_err(dai->dev, "DMIC is a capture device\n");
 	}
@@ -164,6 +162,7 @@ static void jz_dmic_start_substream(struct snd_pcm_substream *substream,
 static void jz_dmic_stop_substream(struct snd_pcm_substream *substream,
 		struct snd_soc_dai *dai)
 {
+	struct jz_dmic *jz_dmic = dev_get_drvdata(dai->dev);
 	struct device *dev = dai->dev;
 	DMIC_DEBUG_MSG("enter %s, substream stop capture\n",__func__);
 
@@ -171,7 +170,7 @@ static void jz_dmic_stop_substream(struct snd_pcm_substream *substream,
 		if (__dmic_is_enable_rdms(dev)) {
 			__dmic_disable_rdms(dev);
 		}
-		__dmic_disable(dev);
+		clk_disable(jz_dmic->dmic_enable);
 	}else{
 		dev_err(dai->dev, "DMIC is a capture device\n");
 	}
@@ -180,6 +179,7 @@ static void jz_dmic_stop_substream(struct snd_pcm_substream *substream,
 
 static int jz_dmic_trigger(struct snd_pcm_substream *substream, int cmd, struct snd_soc_dai *dai)
 {
+	struct jz_dmic *jz_dmic = dev_get_drvdata(dai->dev);
 #ifndef CONFIG_JZ_ASOC_DMA_HRTIMER_MODE
 	struct jz_pcm_runtime_data *prtd = substream->runtime->private_data;
 #endif
@@ -216,7 +216,6 @@ static void jz_dmic_shutdown(struct snd_pcm_substream *substream,
 	struct device *dev = dai->dev;
 
 	DMIC_DEBUG_MSG("enter %s, substream = capture\n", __func__);
-	jz_dmic_stop_substream(substream, dai);
 
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
 		jz_dmic->dmic_mode &= ~DMIC_READ;
@@ -241,18 +240,14 @@ static int jz_dmic_probe(struct snd_soc_dai *dai)
 	while(__dmic_get_reset(dev));
 	__dmic_set_sr_8k(dev);
 	__dmic_enable_hpf1(dev);
-/*	__dmic_disable_hpf1(dev);*/
 	__dmic_set_gcr(dev,8);
 	__dmic_mask_all_int(dev);
-	__dmic_enable_rdms(dev);
 	__dmic_enable_pack(dev);
 	__dmic_disable_sw_lr(dev);
 	__dmic_enable_lp(dev);
 	__dmic_set_request(dev,48);
-	__dmic_enable_hpf2(dev);
 	__dmic_set_thr_high(dev,32);
 	__dmic_set_thr_low(dev,16);
-	__dmic_enable_tri(dev);
 
 	clk_disable(jz_dmic->clk_gate_dmic);
 
@@ -382,6 +377,14 @@ static int jz_dmic_platfrom_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to get clock: %d\n", ret);
 		return ret;
 	}
+	jz_dmic->dmic_enable = clk_get(&pdev->dev, "dmic_enable");
+	if (IS_ERR_OR_NULL(jz_dmic->dmic_enable)) {
+		ret = PTR_ERR(jz_dmic->dmic_enable);
+		jz_dmic->dmic_enable = NULL;
+		dev_err(&pdev->dev, "Failed to get clock: %d\n", ret);
+		return ret;
+	}
+
 	ret = snd_soc_register_component(&pdev->dev, &jz_dmic_component,
 					 &jz_dmic_dai, 1);
 	if (ret)
