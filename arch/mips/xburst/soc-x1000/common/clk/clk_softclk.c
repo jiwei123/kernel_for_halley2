@@ -55,9 +55,6 @@ static int softclk_enable(struct clk *clk,int on)
 	else
 		soft_gate &= ~(1 << bit);
 
-	printk("soft_gate=%x on=%d bit=%x\n", soft_gate, on, bit);
-
-
 	if(on){		//enable
 		if(soft_gate == 7){ //aec mode
 			printk("aec amic dmic enable\n");
